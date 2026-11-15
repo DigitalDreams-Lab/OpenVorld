@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.6.0 - 2026-11-15
+
+- API keys: paste the key itself in Settings (kept on this computer, never in the vorld file, a chat or an error) or name an environment variable; a key typed in the variable-name box is moved out and scrubbed from chats; + openai-compatible for any address
+
 ## 0.5.0 - 2026-11-15
 
 - Images show in chat messages (links to pictures render under the paragraph); a link to a file outside the chat's folders offers 'Allow this file for this session'; Codex keeps its write access after a writ is granted (resumed sessions got no sandbox settings) and the pictures it generates land in the reply; file previews open from links

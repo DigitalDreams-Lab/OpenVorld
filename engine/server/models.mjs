@@ -29,7 +29,7 @@ function fromFile(spec) {
 async function fromEndpoint(def, inst, env, fetcher) {
   const base = String(inst?.base_url ?? (def.id === 'anthropic-api' ? 'https://api.anthropic.com' : '')).replace(/\/+$/, '');
   if (!base) return null;
-  const key = inst?.api_key_env ? env[inst.api_key_env] : env.ANTHROPIC_API_KEY;
+  const key = inst?.api_key ?? (inst?.api_key_env ? env[inst.api_key_env] : env.ANTHROPIC_API_KEY);
   const headers = def.id === 'anthropic-api' ? { 'x-api-key': key ?? '', 'anthropic-version': '2023-06-01' } : key ? { authorization: `Bearer ${key}` } : {};
   if (def.id === 'anthropic-api' && !key) return null;
   try {

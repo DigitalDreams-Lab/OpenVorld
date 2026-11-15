@@ -1,7 +1,9 @@
 // OpenAI-compatible chat/completions driver (OpenRouter, OpenAI, Ollama, LM Studio, vLLM, Groq, ...).
 // Stateless: the engine sends the thread history. When the crew member has tools (engine/server/agents/tools.mjs)
 // the ENGINE runs the agent loop: model -> tool calls (checked against writs) -> results -> model.
-// The API key is read from an environment variable the founder names in Settings (never stored in vorld files).
+// The API key is an environment variable the founder names in Settings, or the key itself saved there (see keys.mjs); it is never
+// stored in vorld files or written into a message.
+import { looksLikeEnvName } from '../../keys.mjs';
 
 const noToolSupport = new Set(); // base_url|model pairs that rejected tools once this session
 
@@ -23,8 +25,10 @@ async function* sse(body) {
 export async function run({ system, prompt, images = [], history = [], model, cfg = {}, tools = null, maxRounds = 16, signal, onEvent }) {
   if (!cfg.base_url) throw new Error('this provider has no base URL; set it in Settings');
   if (!model) throw new Error('pick a model for this provider in Settings');
-  const key = cfg.api_key_env ? process.env[cfg.api_key_env] : null;
-  if (cfg.api_key_env && !key) throw new Error(`environment variable ${cfg.api_key_env} is not set`);
+  // the key was resolved by the engine (a variable's value, or the key saved in Settings); only a variable NAME is ever put in a message
+  const key = cfg.api_key ?? (looksLikeEnvName(cfg.api_key_env) ? process.env[cfg.api_key_env] : null) ?? null;
+  const missing = cfg.key_missing ?? (looksLikeEnvName(cfg.api_key_env) && !key ? cfg.api_key_env : null);
+  if (missing) throw new Error(`environment variable ${missing} is not set. Set it before starting OpenVorld, or paste the key itself in Settings`);
   const url = `${cfg.base_url.replace(/\/$/, '')}/chat/completions`;
   const pair = `${url}|${model}`;
   let useTools = !!tools?.specs?.length && cfg.tools !== false && cfg.tools !== 'none' && !noToolSupport.has(pair);

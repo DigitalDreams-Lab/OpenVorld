@@ -12,6 +12,7 @@ import { gameFor } from './game.mjs';
 import { listThreads, createThread, getThread, updateThread, readEvents, appendEvent } from './threads.mjs';
 import { runTurn, stopTurn, stopAllTurns, activeTurnCount, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
 import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, stopAllParties, partyBusy } from './parties.mjs';
+import { adoptLegacyKeys, cleanProviders, hasKey, keyFor, looksLikeEnvName } from './keys.mjs';
 import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, allowReplyFile, addReferences } from './attachments.mjs';
 import { listGrants, grant, revoke, checkFolder, checkScope, deny, holds } from './gate.mjs';
 import { browseFolder, pickNative, nativeDialog, browseConfig } from './browse.mjs';
@@ -230,14 +231,15 @@ route('DELETE', '/api/vorlds/:id/crew/:mid/signin', async ({ p }) => { const ctx
 route('GET', '/api/vorlds/:id/settings', ({ p }) => {
   const ctx = W(p);
   return {
-    providers: withoutSecrets(ctx.doc.providers ?? []), detected: detected(),
+    providers: (ctx.doc.providers ?? []).map((q) => ({ ...withoutSecrets(q), api_key_env: looksLikeEnvName(q.api_key_env) ? q.api_key_env : '', has_key: hasKey(ctx, q.name) || (!!q.api_key_env && !looksLikeEnvName(q.api_key_env)) })), detected: detected(),
     catalog: Object.entries(ctx.providers).map(([id, v]) => ({ id, label: v.label, drivers: Object.keys(v.drivers ?? {}), models: v.models ?? {}, presets: v.presets ?? null })),
     storage: { home: fs.realpathSync(HOME), vorld: fs.realpathSync(ctx.dir) },
   };
 });
 route('PUT', '/api/vorlds/:id/settings', async ({ p, req }) => {
   const b = await body(req);
-  if (Array.isArray(b.providers)) saveVorld(W(p), (d) => { d.providers = withoutSecrets(b.providers).slice(0, 20); });   // keys are never stored: use api_key_env
+  // a key is an environment variable name, or the key itself (kept apart from the vorld file, see keys.mjs); it never goes into the vorld file
+  if (Array.isArray(b.providers)) { const ctx = W(p), list = cleanProviders(ctx, b.providers.slice(0, 20)); saveVorld(ctx, (d) => { d.providers = list; }); }
   vorldChanged(p.id);
   return { ok: true };
 });
@@ -246,7 +248,7 @@ route('GET', '/api/vorlds/:id/models', async ({ p, q }) => {
   if (!def) return { source: 'none', live: false, models: [], tiers: {} };
   const name = q.get('name') || undefined;
   const instance = (ctx.doc.providers ?? []).find((x) => x.id === id && (!name || x.name === name));
-  return listModels({ id, def, instance, current: [q.get('current')].filter(Boolean) });
+  return listModels({ id, def, instance: instance && { ...instance, api_key: keyFor(ctx, instance).key ?? undefined }, current: [q.get('current')].filter(Boolean) });
 });
 
 // chats (threads)
@@ -433,6 +435,9 @@ for (const r of migrateVorlds()) {
   else if (r.status === 'newer') console.warn(`vorld ${r.id}: saved by a newer OpenVorld (data format ${r.schema}); left untouched, update OpenVorld to open it`);
   else console.warn(`vorld ${r.id}: could not check its data format: ${r.error}`);
 }
+
+// a key typed where the variable name goes is moved into the key store (and scrubbed from the chats)
+for (const { id } of listVorlds()) { try { const n = adoptLegacyKeys(vorldCtx(id), saveVorld); if (n) console.log(`vorld ${id}: ${n} API key(s) moved out of the vorld file into the key store`); } catch (e) { console.warn(`vorld ${id}: could not check API keys: ${e.message}`); } }
 
 server.listen(PORT, '127.0.0.1', () => {
   // Desktop asks the OS for a free port, leaving a running browser-mode server alone.

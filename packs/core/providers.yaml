@@ -34,7 +34,8 @@ providers:
     drivers: { openai: { base_url: { ask: true }, api_key: { secret: true, optional: true } } }
     models: { source: endpoint, path: /models }
     presets:
+      openai-compatible: { base_url: "" }          # any address: type it, then the key
       openrouter: { base_url: "https://openrouter.ai/api/v1" }
-      openai:     { base_url: "https://api.openai.com/v1", api: responses }
+      openai:     { base_url: "https://api.openai.com/v1", api: responses }   # OpenAI itself
       ollama:     { base_url: "http://localhost:11434/v1", api_key: null }
       lm-studio:  { base_url: "http://localhost:1234/v1", api_key: null }

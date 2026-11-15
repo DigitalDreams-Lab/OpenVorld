@@ -8,6 +8,9 @@ import { play, setSfxVolume } from '../audio/sfx';
 import { notify, notifyPrefs, setNotifyPrefs } from '../notify';
 import { FolderPicker, useFolderDialog } from './FolderPicker';
 
+/** The same test as the server's: a variable name is SHOUTED; anything else in the key box is a key (and is masked). */
+const looksLikeEnvName = (s: string) => /^[A-Z_][A-Z0-9_]{1,63}$/.test(String(s).trim());
+
 const tail = (p: string) => { const parts = p.split('/').filter(Boolean); return parts.length > 3 ? `…/${parts.slice(-2).join('/')}` : p; };
 const close = () => setState({ modal: null });
 
@@ -24,11 +27,13 @@ export function Settings() {
   const addEndpoint = (name: string) => {
     const p = presets[name] ?? {};
     let n = name, k = 1; while (s.providers.some((q: any) => q.name === n)) n = `${name}-${++k}`;
-    setS((x: any) => ({ ...x, providers: [...x.providers, { id: 'openai-compatible', name: n, base_url: p.base_url ?? '', api: p.api, api_key_env: p.api_key === null ? '' : `${name.toUpperCase().replace(/-/g, '_')}_API_KEY` }] }));
+    setS((x: any) => ({ ...x, providers: [...x.providers, { id: 'openai-compatible', name: n, base_url: p.base_url ?? '', api: p.api, api_key_env: '' }] }));
   };
   const save = async () => {
     try {
-      await api(`/vorlds/${wid}/settings`, { method: 'PUT', body: { providers: s.providers } });
+      // the key box takes a key or a variable name: untouched keeps what is saved, emptied forgets it, anything typed is sent for the server to sort out
+      const providers = s.providers.map(({ key_input, has_key, ...q }: any) => (key_input === undefined ? q : key_input === '' ? { ...q, api_key_env: '', remove_key: true } : { ...q, api_key: key_input }));
+      await api(`/vorlds/${wid}/settings`, { method: 'PUT', body: { providers } });
       const next = await api(`/vorlds/${wid}`, { method: 'PUT', body: w });
       setState({ vorld: next, modal: null }); emit('vorld', next); play('seal.approved');
     } catch (e: any) { toast({ kind: 'error', title: e.message }); play('ui.error'); }
@@ -48,12 +53,17 @@ export function Settings() {
           <div key={i} className="endpoint endpoint-row">
             <b>{p.name}</b>
             <input className="field" placeholder="base URL" value={p.base_url ?? ''} onChange={(e) => setEndpoint(p, { base_url: e.target.value })} />
-            <input className="field" placeholder="API key env var (blank for local)" value={p.api_key_env ?? ''} onChange={(e) => setEndpoint(p, { api_key_env: e.target.value })} />
+            <span className="key-box">
+              <input className="field" type={looksLikeEnvName(p.key_input ?? p.api_key_env ?? '') ? 'text' : 'password'} autoComplete="off" spellCheck={false}
+                placeholder={p.has_key && p.key_input === undefined ? 'Key saved ✓ (paste to replace)' : 'API key, or env var name'}
+                value={p.key_input ?? (p.has_key ? '' : p.api_key_env ?? '')} onChange={(e) => setEndpoint(p, { key_input: e.target.value })} />
+              {p.has_key && p.key_input === undefined && <button type="button" className="link" onClick={() => setEndpoint(p, { key_input: '' })}>Remove saved key</button>}
+            </span>
             <button className="btn small" onClick={() => setS((x: any) => ({ ...x, providers: x.providers.filter((q: any) => q !== p) }))}>Remove</button>
           </div>
         ))}
         <div className="row wrap">{Object.keys(presets).map((p) => <button key={p} className="btn small" onClick={() => addEndpoint(p)}>+ {p}</button>)}</div>
-        <p className="muted small">Keys are never saved: set the environment variable before starting OpenVorld.</p>
+        <p className="muted small">Paste the key itself and it stays on this computer (never in the vorld file, a chat or a message), or type the name of an environment variable such as <code>OPENROUTER_API_KEY</code> set before OpenVorld starts. <b>+ openai-compatible</b> is for any other address.</p>
 
         <ProjectFolder />
         <DefaultFolder />

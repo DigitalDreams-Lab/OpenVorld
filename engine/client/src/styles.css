@@ -326,7 +326,7 @@ select.field.small { padding-right: 26px; }
 .cs-fields > label, .cs-fields .workbenches, .cs-fields .vault { grid-template-columns: minmax(0, 1fr); }
 .cs-preview * { min-width: 0; }
 
-.endpoint.endpoint-row { grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1fr) auto; }
+.endpoint.endpoint-row { grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1.2fr) auto; }
 .modal-bg.confirm-bg { position: fixed; z-index: 90; }
 .modal.confirm { width: min(380px, 92vw); padding: 16px 18px; display: grid; gap: 8px; }
 .modal.confirm h3 { margin: 0; }
@@ -502,3 +502,7 @@ select.field.small { padding-right: 26px; }
 .file-outside code { font-family: var(--code); font-size: 11.5px; overflow-wrap: anywhere; background: #fffaf0; padding: 1px 4px; }
 .file-outside-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .file-outside-actions small { opacity: .7; }
+
+/* the API key box of a model endpoint: masked while it holds a key, with a way to forget a saved one */
+.key-box { display: grid; gap: 2px; min-width: 0; }
+.key-box .link { justify-self: start; font-size: 12px; }

@@ -11,6 +11,7 @@ import * as openai from './drivers/openai.mjs';
 import * as scripted from './drivers/scripted.mjs';
 import { splitEnvelope } from './envelope.mjs';
 import { commandHelp, partyScope, prepareCommands } from './commands.mjs';
+import { keyFor } from '../keys.mjs';
 import { Transcript } from './steps.mjs';
 import { engineTools } from './tools.mjs';
 import { appendEvent, getThread, updateThread, history, readEvents } from '../threads.mjs';
@@ -40,7 +41,7 @@ export function brainOf(ctx, id) {
   const p = ctx.providers[b.provider];
   const inst = (ctx.doc.providers ?? []).find((x) => x.id === b.provider && (!b.name || x.name === b.name)) ?? {};
   const tier = m.model_tier ?? 'balanced';
-  return { provider: b.provider, driver: Object.keys(p?.drivers ?? {})[0] ?? 'cli', model: b.model || inst.models?.[tier] || p?.models?.tiers?.[tier], cfg: inst, label: p?.label ?? b.provider };
+  return { provider: b.provider, driver: Object.keys(p?.drivers ?? {})[0] ?? 'cli', model: b.model || inst.models?.[tier] || p?.models?.tiers?.[tier], cfg: (({ key, missing }) => ({ ...inst, api_key: key ?? undefined, key_missing: missing ?? undefined }))(keyFor(ctx, inst)), label: p?.label ?? b.provider };
 }
 
 function systemPrompt(ctx, id, benchId, scope = {}) {

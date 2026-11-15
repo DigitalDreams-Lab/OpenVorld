@@ -77,7 +77,7 @@ level_titles: [Cadet, Pilot, Navigator, Commander]
 
 ## Brains (`kind: providers`)
 
-This pack lists the brains a member can use. `claude-code` and `codex` run as headless CLIs. `openai-compatible` covers any HTTP API that speaks the OpenAI chat format; you add endpoints in Settings, and API keys are read from environment variables, never saved to disk. To add a preset:
+This pack lists the brains a member can use. `claude-code` and `codex` run as headless CLIs. `openai-compatible` covers any HTTP API that speaks the OpenAI chat format; you add endpoints in Settings. An endpoint's key is either the name of an environment variable (read when used, nothing stored) or the key itself, pasted in Settings: that one is kept on this computer in `<vorld>/provider-keys.json` (owner-only), and never goes into `vorld.yaml`, a chat, an error message or the browser. `+ openai-compatible` adds an endpoint for any address. To add a preset:
 
 ```yaml
 kind: providers
