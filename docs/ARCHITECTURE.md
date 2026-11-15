@@ -1,6 +1,6 @@
 # Architecture
 
-A **vorld** is the unit everything belongs to: one project folder, one crew, their quests and their history. openVorld has three parts: a small Node server, a React + Phaser client, and YAML packs. They talk over a local HTTP API and one WebSocket. Nothing leaves your computer except the calls a member's brain makes.
+A **vorld** is the unit everything belongs to: one project folder, one crew, their quests and their history. OpenVorld has three parts: a small Node server, a React + Phaser client, and YAML packs. They talk over a local HTTP API and one WebSocket. Nothing leaves your computer except the calls a member's brain makes.
 
 ```
 packs/ (YAML)  ─┐

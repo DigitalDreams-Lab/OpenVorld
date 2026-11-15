@@ -171,7 +171,7 @@ export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], c
       const u = new URL(String(url));
       if (!/^https?:$/.test(u.protocol)) throw new Error('only http and https');
       if (!domains.includes('*') && !domains.some((d) => u.hostname === d || u.hostname.endsWith('.' + d))) { onRequest({ capability: 'net.fetch', scope: u.hostname, why: `open ${u.href.slice(0, 80)}` }); throw new Error(`no writ for ${u.hostname}; the founder has been asked`); }
-      const r = await fetch(u, { signal, redirect: 'follow', headers: { 'user-agent': 'openVorld/1.0' } });
+      const r = await fetch(u, { signal, redirect: 'follow', headers: { 'user-agent': 'OpenVorld/1.0' } });
       const body = await r.text();
       const text = /html/.test(r.headers.get('content-type') ?? '') ? body.replace(/<(script|style)[\s\S]*?<\/\1>/gi, '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ').replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n\n') : body;
       return `${r.status} ${u.href}\n\n${text.trim().slice(0, lim.fetch_chars)}`;

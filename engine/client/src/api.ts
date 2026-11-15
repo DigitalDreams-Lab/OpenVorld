@@ -6,10 +6,10 @@ let tokenRefresh: Promise<void> | undefined;
 async function refreshToken() {
   if (!tokenRefresh) tokenRefresh = (async () => {
     const page = await fetch('/', { cache: 'no-store' });
-    if (!page.ok) throw new Error('Could not reconnect to the openVorld server. Retry in a moment.');
+    if (!page.ok) throw new Error('Could not reconnect to the OpenVorld server. Retry in a moment.');
     const html = new DOMParser().parseFromString(await page.text(), 'text/html');
     const token = html.querySelector<HTMLMetaElement>('meta[name="ov-token"]')?.content;
-    if (!token) throw new Error('Could not reconnect to the openVorld server. Retry in a moment.');
+    if (!token) throw new Error('Could not reconnect to the OpenVorld server. Retry in a moment.');
     TOKEN = token;
     const meta = document.querySelector<HTMLMetaElement>('meta[name="ov-token"]');
     if (meta) meta.content = token;
@@ -25,7 +25,7 @@ async function authenticatedFetch(url: string, options: RequestInit = {}) {
     if (res.status === 401) { await refreshToken(); res = await request(); }
     return res;
   } catch (error) {
-    if (error instanceof TypeError) throw new Error('Cannot reach the local openVorld server. Restart npm run dev, then retry.');
+    if (error instanceof TypeError) throw new Error('Cannot reach the local OpenVorld server. Restart npm run dev, then retry.');
     throw error;
   }
 }

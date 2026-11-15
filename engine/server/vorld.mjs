@@ -98,7 +98,7 @@ export function saveVorld(ctx, mutate) {
   cache.delete(ctx.id);
   return vorldCtx(ctx.id);
 }
-const writeDoc = (dir, doc) => fs.writeFileSync(path.join(dir, 'vorld.yaml'), `# An openVorld vorld. Edit freely while the game is closed.\n${YAML.stringify(doc)}`);
+const writeDoc = (dir, doc) => fs.writeFileSync(path.join(dir, 'vorld.yaml'), `# An OpenVorld vorld. Edit freely while the game is closed.\n${YAML.stringify(doc)}`);
 
 /** The map: houses for every agent around the plaza, seeded so two vorlds differ. */
 function planOf(ctx) {

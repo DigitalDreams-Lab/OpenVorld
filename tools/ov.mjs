@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// openVorld command line.
+// OpenVorld command line.
 //   npm run ov -- providers     agent CLIs found on this machine
 //   npm run ov -- validate      load every pack and report problems
 //   npm run ov -- vorlds        list your vorlds

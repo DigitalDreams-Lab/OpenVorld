@@ -1,6 +1,6 @@
 # Contributing
 
-Thanks for helping. openVorld aims to stay small, so a change is most welcome when it makes running work as a game simpler or clearer.
+Thanks for helping. OpenVorld aims to stay small, so a change is most welcome when it makes running work as a game simpler or clearer.
 
 ## Setup
 

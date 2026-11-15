@@ -1,4 +1,4 @@
-// openVorld local server. Binds to 127.0.0.1 only; every API call and the WebSocket need the per-launch token
+// OpenVorld local server. Binds to 127.0.0.1 only; every API call and the WebSocket need the per-launch token
 // (injected into the page it serves), and Host must be localhost (DNS-rebinding guard).
 import http from 'node:http';
 import fs from 'node:fs';
@@ -320,6 +320,6 @@ server.on('upgrade', (req, socket, head) => {
 
 for (const w of listVorlds()) { try { recoverQuests(vorldCtx(w.id)); } catch { /* a broken vorld never stops the server */ } }
 server.listen(PORT, '127.0.0.1', () => {
-  console.log(`openVorld server on http://127.0.0.1:${PORT}  (home: ${HOME})`);
+  console.log(`OpenVorld server on http://127.0.0.1:${PORT}  (home: ${HOME})`);
   if (!process.env.OV_TOKEN) console.log(`Open http://127.0.0.1:${PORT}/`);
 });

@@ -1,4 +1,4 @@
-// A throwaway openVorld home for tests, and a helper to found a vorld in it. Import this BEFORE any engine module:
+// A throwaway OpenVorld home for tests, and a helper to found a vorld in it. Import this BEFORE any engine module:
 // the engine reads OPENVORLD_HOME when it loads.
 import fs from 'node:fs';
 import os from 'node:os';

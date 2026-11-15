@@ -26,7 +26,7 @@ export function App() {
     if (last && boot.vorlds.some((w: any) => w.id === last)) open(last);
   }, [boot]);
 
-  if (error) return <div className="fatal">Cannot reach the openVorld server: {error}</div>;
+  if (error) return <div className="fatal">Cannot reach the OpenVorld server: {error}</div>;
   if (!boot) return <div className="fatal">Loading…</div>;
   if (screen.name === 'onboarding') return <Onboarding boot={boot} onDone={open} onCancel={() => setScreen({ name: 'title' })} />;
   if (screen.name === 'game') return <Game wid={screen.vorld} onExit={() => { try { sessionStorage.setItem('ov.atTitle', '1'); } catch { /* ignore */ } setScreen({ name: 'title' }); }} />;

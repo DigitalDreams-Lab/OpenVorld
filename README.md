@@ -1,8 +1,8 @@
-# openVorld
+# OpenVorld
 
 **Every project is a vorld.** A vorld is a project plus everyone working on it: the shared project folder, a crew of AI agents (each with a private workspace), the quests they plan and run together, and everything they've done so far. A project is just files; a vorld is the files plus the people and the work in progress.
 
-openVorld is the open-source home for vorlds. You see each vorld as a small pixel-art world where the crew lives, and you run it as the founder: you design the workflows, and you give the approvals.
+OpenVorld is the open-source home for vorlds. You see each vorld as a small pixel-art world where the crew lives, and you run it as the founder: you design the workflows, and you give the approvals.
 
 ```
 vorld "Lantern Tea"

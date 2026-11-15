@@ -52,7 +52,7 @@ export function Settings() {
           </div>
         ))}
         <div className="row wrap">{Object.keys(presets).map((p) => <button key={p} className="btn small" onClick={() => addEndpoint(p)}>+ {p}</button>)}</div>
-        <p className="muted small">Keys are never saved: set the environment variable before starting openVorld.</p>
+        <p className="muted small">Keys are never saved: set the environment variable before starting OpenVorld.</p>
 
         <ProjectFolder />
         <DefaultFolder />

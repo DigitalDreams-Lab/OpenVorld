@@ -30,7 +30,7 @@ test('a stopped local server gives an actionable error and never repeats a possi
   globalThis.document={querySelector:()=>({content:'token'})};
   let attempts=0;globalThis.fetch=async()=>{attempts++;throw new TypeError('Failed to fetch');};
   const {api}=await clientModule('engine/client/src/api.ts',{},true);
-  await assert.rejects(api('/vorlds',{body:{answers:{}}}),/Cannot reach the local openVorld server/);
+  await assert.rejects(api('/vorlds',{body:{answers:{}}}),/Cannot reach the local OpenVorld server/);
   assert.equal(attempts,1);
 });
 

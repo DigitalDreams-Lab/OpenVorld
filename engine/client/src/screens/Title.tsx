@@ -4,7 +4,7 @@ export function Title({ vorlds, version, onOpen, onNew }: { vorlds: any[]; versi
   return (
     <div className="title-screen">
       <div className="title-card panel">
-        <h1 className="logo">openVorld</h1>
+        <h1 className="logo">OpenVorld</h1>
         <p className="tagline">Every project is a vorld: one shared folder, a crew of AI agents, and the quests they run together.</p>
         <div className="vorld-list">
           {vorlds.map((w) => (
