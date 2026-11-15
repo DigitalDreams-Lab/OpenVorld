@@ -57,21 +57,21 @@ xp:
 
 levels: { base: 60, exponent: 1.6 }   # XP to reach level n = base * (n-1)^exponent
 
-# agent event -> reaction on the map (anim id, sfx id, balloon string key)
+# agent event -> reaction on the map (anim id, balloon string key). The crew's work is silent; sounds are notifications (client/src/notify.ts)
 reactions:
-  turn.start:   { anim: think, sfx: ui.open, balloon: balloon.thinking }
-  tool.read:    { anim: read_scroll, sfx: ui.open }
-  tool.search:  { anim: read_scroll, sfx: ui.open }
-  tool.web:     { anim: gaze, sfx: ui.open }
-  tool.edit:    { anim: hammer, sfx: forge.hammer }
-  tool.write:   { anim: hammer, sfx: forge.hammer }
-  tool.run:     { anim: bellows, sfx: forge.bellows }
+  turn.start:   { anim: think, balloon: balloon.thinking }
+  tool.read:    { anim: read_scroll }
+  tool.search:  { anim: read_scroll }
+  tool.web:     { anim: gaze }
+  tool.edit:    { anim: hammer }
+  tool.write:   { anim: hammer }
+  tool.run:     { anim: bellows }
   tool.vorld:   { anim: idle }
-  tool.error:   { anim: wince, sfx: ui.error }
-  test.pass:    { anim: cheer, sfx: forge.quench, balloon: balloon.tests_pass }
-  test.fail:    { anim: wince, sfx: ui.error, balloon: balloon.tests_fail }
-  writ.request: { anim: bow, sfx: writ.request }
-  turn.error:   { anim: faint, sfx: ui.error, balloon: balloon.error }
+  tool.error:   { anim: wince }
+  test.pass:    { anim: cheer, balloon: balloon.tests_pass }
+  test.fail:    { anim: wince, balloon: balloon.tests_fail }
+  writ.request: { anim: bow }
+  turn.error:   { anim: faint, balloon: balloon.error }
 
 # The reply envelope every member is asked to follow. Plain text is always accepted.
 envelope:

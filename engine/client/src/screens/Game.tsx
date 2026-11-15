@@ -4,6 +4,7 @@ import Phaser from 'phaser';
 import { api, artImage, connect } from '../api';
 import { announceAsking, emit, getState, on, setOpenWrits, setState, toast, useStore } from '../store';
 import { play } from '../audio/sfx';
+import { initNotifications, notify } from '../notify';
 import { VorldScene } from '../game/VorldScene';
 import { PANELS } from '../game/commands';
 import { loadGenerated } from '../game/pixels';
@@ -77,7 +78,8 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
       on('scene-ready', announceAsking),          // a scene (re)started: tell it who is asking
       on('parties', () => setState({ modal: 'parties', partyEdit: null })),
     ];
-    return () => { close(); offs.forEach((o) => o()); };
+    const stopBadge = initNotifications();
+    return () => { close(); offs.forEach((o) => o()); stopBadge(); };
   }, [wid]);
 
   useEffect(() => {
@@ -120,7 +122,7 @@ function handleBrowser(m: any) {
   emit('browsing', Object.keys(b).filter((r) => b[r].active));
 }
 
-let letterTick = 0;
+const nameOf = (role?: string) => getState().vorld?.crew?.find((c: any) => c.id === role)?.name ?? 'Someone';
 function handleThreadEvent(m: any) {
   const { thread, role, ev } = m;
   const put = (patch: any) => setState((s) => ({ live: { ...s.live, [thread]: { ...(s.live[thread] ?? { steps: [], working: false }), role, updatedAt: Date.now(), ...patch } } }));
@@ -132,10 +134,10 @@ function handleThreadEvent(m: any) {
     put({ steps: list });
   };
   // The activity balloon owns work text; keep animations without stacking a second speech bubble.
-  const react = (reaction: any) => { if (!reaction) return; play(reaction.sfx); emit('react', { role, reaction: { ...reaction, balloon: undefined } }); };
+  const react = (reaction: any) => { if (!reaction) return; emit('react', { role, reaction: { ...reaction, balloon: undefined, sfx: undefined } }); };      // animation only: the crew's work is silent
   switch (ev.type) {
     case 'turn.start': put({ steps: [], working: true, error: null }); emit('working', { role, working: true }); react(ev.reaction); break;
-    case 'delta': grow('text', ev.text); if (letterTick++ % 4 === 0) play('chat.letter'); break;
+    case 'delta': grow('text', ev.text); break;
     case 'thinking': grow('thinking', ev.text); break;
     case 'plan': { const list = steps(), i = list.findIndex((s) => s.t === 'plan'); if (i >= 0) list[i] = { t: 'plan', items: ev.items }; else list.push({ t: 'plan', items: ev.items }); put({ steps: list }); break; }
     case 'tool': put({ steps: [...steps(), { t: 'tool', id: ev.id, kind: ev.kind, name: ev.name, target: ev.target, detail: ev.detail, status: 'running' }] }); react(ev.reaction); break;
@@ -144,6 +146,7 @@ function handleThreadEvent(m: any) {
       react(ev.reaction);
       setOpenWrits((list) => (list.some((w) => w.id === ev.id) ? list : [...list, { id: ev.id, thread, role: ev.role ?? role, capability: ev.capability, scope: ev.scope, why: ev.why, risk: ev.risk, signin: !!ev.signin }]));
       setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));
+      notify({ kind: 'attention', title: `${nameOf(ev.role ?? role)} needs your OK`, body: `${getState().vorld?.permissions?.capabilities?.[ev.capability]?.label ?? ev.capability} ${ev.scope ?? ''}`.trim(), role: ev.role ?? role });
       break;
     case 'writ.answered': setOpenWrits((list) => list.filter((w) => w.id !== ev.id)); setState((s) => ({ threadsVersion: s.threadsVersion + 1 })); break;
     case 'turn.done':
@@ -151,12 +154,13 @@ function handleThreadEvent(m: any) {
       if (role) setState(s => ({ activityNotes: { ...s.activityNotes, [role]: { text: lastActivityLine(ev.text) || ev.meta?.balloon || '', at: Date.now() } } }));
       emit('working', { role, working: false });
       setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));
-      play('ui.click');
+      notify({ kind: 'done', title: `${nameOf(role)} is done`, body: lastActivityLine(ev.text), role });
       break;
     case 'turn.error':
       put({ working: false, error: ev.message });
       if (role) setState(s => ({ activityNotes: { ...s.activityNotes, [role]: { text: ev.message || 'Something went wrong.', at: Date.now(), error: true } } }));
       emit('working', { role, working: false }); react(ev.reaction ?? { anim: 'faint' });
+      notify({ kind: 'error', title: `${nameOf(role)} hit a problem`, body: ev.message, role });
       setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));
       break;
     default: setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));

@@ -444,3 +444,6 @@ select.field.small { padding-right: 26px; }
 .ab-why { font-size: 12px; font-style: italic; opacity: .8; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .ab-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .ab-actions .link { margin-left: auto; font-size: 12px; }
+
+.modal label.check { display: flex; flex-direction: row; align-items: center; gap: 10px; margin: 8px 0; font-size: 14px; font-weight: 400; cursor: pointer; }
+.check input { width: 16px; height: 16px; accent-color: var(--ink); }

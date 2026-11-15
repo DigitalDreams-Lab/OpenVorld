@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { emit, setState, toast, useStore } from '../store';
 import { play, setSfxVolume } from '../audio/sfx';
+import { notify, notifyPrefs, setNotifyPrefs } from '../notify';
 import { WritsList } from './WritsList';
 import { FolderPicker, useFolderDialog } from './FolderPicker';
 
@@ -60,6 +61,8 @@ export function Settings() {
         <WritsList />
         <h3>Sound</h3>
         <label className="form-row"><span>Effects</span><input type="range" min={0} max={1} step={0.05} defaultValue={0.8} onChange={(e) => { setSfxVolume(Number(e.target.value)); play('ui.click'); }} /></label>
+        <h3>Notifications</h3>
+        <NotifySettings />
         <p className="muted small">Saved on this computer in <code>{s.storage.vorld}</code></p>
         <div className="row end"><button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={save}>Save</button></div>
       </div>
@@ -136,6 +139,20 @@ function DefaultFolder() {
           <div className="row"><button className="btn small primary" disabled={!folder.trim()} onClick={() => save(folder)}>Use this folder</button><button className="btn small" onClick={() => setTyping(false)}>Cancel</button></div>
         </>
       )}
+    </>
+  );
+}
+
+/** How the crew gets your attention: a chime when someone needs you, and desktop notifications while the window is out of sight. */
+function NotifySettings() {
+  const [prefs, setPrefs] = useState(notifyPrefs());
+  const set = (patch: Partial<typeof prefs>) => { setNotifyPrefs(patch); setPrefs(notifyPrefs()); };
+  return (
+    <>
+      <label className="check"><input type="checkbox" checked={prefs.sound} onChange={(e) => set({ sound: e.target.checked })} /> Play a chime when someone needs me</label>
+      <label className="check"><input type="checkbox" checked={prefs.desktop} onChange={(e) => set({ desktop: e.target.checked })} /> Show a desktop notification when OpenVorld is in the background</label>
+      <p className="muted small">The crew's work itself (tool calls, typing) is silent. A notification means someone is waiting for your answer, or a job ended while you were away.</p>
+      <div className="row"><button className="btn small" onClick={() => notify({ kind: 'attention', title: 'OpenVorld', body: 'This is how a notification looks.' }, { force: true })}>Send a test</button></div>
     </>
   );
 }

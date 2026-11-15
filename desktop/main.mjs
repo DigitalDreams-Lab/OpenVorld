@@ -72,7 +72,8 @@ function createWindow() {
   contents.on('will-attach-webview', event => event.preventDefault());
   contents.session.setPermissionRequestHandler((webContents, permission, callback, details) => {
     const audio = permission === 'media' && details.mediaTypes?.length && details.mediaTypes.every(type => type === 'audio');
-    callback(Boolean(webContents === contents && isAppUrl(details.requestingUrl ?? webContents.getURL(), origin) && audio));
+    const notifications = permission === 'notifications';       // "someone needs you" while the window is in the background
+    callback(Boolean(webContents === contents && isAppUrl(details.requestingUrl ?? webContents.getURL(), origin) && (audio || notifications)));
   });
   contents.session.webRequest.onHeadersReceived({ urls: [`${origin}/*`] }, (details, callback) => {
     const policy = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self' data:; connect-src 'self' ${origin.replace('http:', 'ws:')}; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'none'`;

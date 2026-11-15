@@ -34,6 +34,8 @@ const SFX: Record<string, () => void> = {
   'achievement.rare': () => [523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, 0.3, 'triangle', 0.1, i * 0.06)),
   'achievement.legendary': () => { [392, 523, 659, 784, 1047].forEach((f, i) => tone(f, 0.6, 'sawtooth', 0.06, i * 0.09)); noise(1.2, 0.08, 400, 0.5, 0.4); },
   'level.up': () => [392, 494, 587, 784, 988].forEach((f, i) => tone(f, 0.22, 'square', 0.1, i * 0.08)),
+  // a notification: someone needs the founder (two soft rising notes)
+  'notify.attention': () => { tone(784, 0.22, 'sine', 0.14); tone(1047, 0.42, 'sine', 0.13, 0.13); },
   'writ.request': () => { noise(0.08, 0.3, 200, 0.8); tone(110, 0.3, 'sine', 0.2, 0, 0.7); },
   'seal.approved': () => { noise(0.1, 0.4, 150, 0.8); tone(90, 0.4, 'sine', 0.25, 0, 0.6); },
   'trial.passed': () => { tone(98, 1.5, 'sine', 0.3); [523, 659, 784, 1047].forEach((f, i) => tone(f, 0.8, 'square', 0.06, 0.2 + i * 0.12)); },
