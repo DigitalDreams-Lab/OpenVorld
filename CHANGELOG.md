@@ -2,6 +2,11 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.8.0 - 2026-11-16
+
+- Use the existing OpenVorld icon consistently across startup, Settings, About and the favicon, retaining the original native desktop icon
+- Refresh the README with real demo screenshots and add a repeatable screenshot and branding check
+
 ## 0.7.1 - 2026-11-15
 
 - The model-endpoint row in Settings lines up: the key box and the 'Forget key' button sit on one line next to the address, apart from the endpoint's own Remove

@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'node:url';
+import fs from 'node:fs';
 
 const SERVER = `http://127.0.0.1:${process.env.OV_PORT ?? 4317}`;
 // Dev only: inject the per-launch token the same way the server does for the built client.
@@ -13,6 +14,7 @@ const token = () => ({
 export default defineConfig({
   root: fileURLToPath(new URL('.', import.meta.url)),
   plugins: [react(), token()],
+  define: { __OPENVORLD_VERSION__: JSON.stringify(JSON.parse(fs.readFileSync(new URL('../../package.json', import.meta.url), 'utf8')).version) },
   server: {
     host: '127.0.0.1',
     port: Number(process.env.OV_CLIENT_PORT ?? 5173),

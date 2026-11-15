@@ -40,10 +40,35 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .portrait { background: color-mix(in srgb, var(--parchment) 70%, var(--turquoise)); border: 2px solid var(--ink); flex: none; } @keyframes bob { 50% { transform: translateY(-6px); } }
 
 /* title */
-.title-screen { height: 100%; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--lapis) 60%, var(--ink)), var(--ink)); }
-.title-card { width: min(460px, 92vw); padding: 28px; text-align: center; }
+.title-screen { height: 100%; display: grid; place-items: center; overflow: auto; padding: 28px 16px; background: radial-gradient(ellipse at 50% 30%, #304c45, #171c24 75%); }
+.title-card { width: min(480px, 92vw); padding: 30px 32px 22px; text-align: center; }
+.brand-icon { display: inline-block; vertical-align: middle; flex: none; object-fit: contain; }
+.title-card > .brand-icon { margin-bottom: 8px; }
 .logo { font-size: calc(44px * 1.15); margin: 0; letter-spacing: 1px; color: var(--ink); text-shadow: 3px 3px 0 var(--gold); }
-.tagline { margin: 4px 0 20px; }
+.title-motto { font-size: 17px; font-weight: 600; margin: 4px 0 10px; }
+.tagline { margin: 0 0 24px; font-size: 14px; line-height: 1.65; opacity: .75; }
+.title-footer { display: grid; gap: 6px; margin-top: 20px; font-size: 11px; color: color-mix(in srgb, var(--ink) 70%, var(--parchment)); }
+.title-footer .link { font-size: 12px; }
+.startup-state { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; background: #171c24; color: #f1e2bf; font-size: 14px; }
+.settings-brand { display: flex; align-items: center; gap: 12px; }
+.settings-brand h2 { margin: 0; }
+.settings-about { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 20px; }
+.settings-about p { min-width: 0; overflow-wrap: anywhere; }
+.settings-about .link { white-space: nowrap; }
+.about-dialog { width: min(440px, calc(100vw - 48px)); max-height: calc(100vh - 48px); padding: 24px 30px; color: var(--ink); text-align: center; overflow: auto; }
+.about-dialog::backdrop { background: #11191cba; }
+.about-dialog header { margin: -6px -12px 18px 0; }
+.eyebrow { font-size: 10px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; opacity: .65; }
+.about-dialog h2 { margin: 12px 0 0; font-size: 30px; }
+.about-version { font-size: 12px; opacity: .65; margin: 3px 0 20px; }
+.about-tagline { font-weight: 600; font-size: 18px; margin-bottom: 8px; }
+.about-tagline + p { font-size: 14px; line-height: 1.7; opacity: .8; }
+.about-facts { display: flex; justify-content: center; gap: 12px; margin: 24px 0; font-size: 11px; font-weight: 600; }
+.about-facts span + span { border-left: 1px solid color-mix(in srgb, var(--ink) 20%, transparent); padding-left: 12px; }
+.about-dialog a { text-decoration: none; }
+.about-credit { font-size: 10px; opacity: .6; margin: 22px 0 0; }
+@media (max-height: 760px) { .title-card > .brand-icon { width: 64px; height: 64px; } .title-card { padding-top: 22px; } .title-card .vorld-list { max-height: 24vh; } }
+@media (max-width: 540px) { .settings-about { flex-direction: column; align-items: flex-start; gap: 0; } }
 .vorld-list { display: grid; gap: 8px; margin-bottom: 16px; max-height: 40vh; overflow: auto; }
 .vorld-item { display: grid; text-align: left; padding: 10px 12px; border: 2px solid var(--ink); background: #fffaf0; cursor: pointer; }
 .vorld-item:hover { background: color-mix(in srgb, var(--gold) 30%, #fffaf0); }

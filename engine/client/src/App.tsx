@@ -4,6 +4,7 @@ import { setState } from './store';
 import { Title } from './screens/Title';
 import { Onboarding } from './screens/Onboarding';
 import { Game } from './screens/Game';
+import { BrandIcon } from './ui/Brand';
 
 type Screen = { name: 'title' } | { name: 'onboarding' } | { name: 'game'; vorld: string };
 
@@ -27,7 +28,7 @@ export function App() {
   }, [boot]);
 
   if (error) return <div className="fatal">Cannot reach the OpenVorld server: {error}</div>;
-  if (!boot) return <div className="fatal">Loading…</div>;
+  if (!boot) return <div className="startup-state" role="status"><BrandIcon size={80} /><span>Opening your vorlds…</span></div>;
   if (screen.name === 'onboarding') return <Onboarding boot={boot} onDone={open} onCancel={() => setScreen({ name: 'title' })} />;
   if (screen.name === 'game') return <Game wid={screen.vorld} onExit={() => { try { sessionStorage.setItem('ov.atTitle', '1'); } catch { /* ignore */ } setScreen({ name: 'title' }); }} />;
   return <Title vorlds={boot.vorlds} version={boot.version} onOpen={open} onNew={() => setScreen({ name: 'onboarding' })} />;

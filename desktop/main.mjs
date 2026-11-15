@@ -28,6 +28,8 @@ else {
 }
 
 async function start() {
+  const icon = path.join(root, 'desktop/assets/icon.png');
+  app.setAboutPanelOptions({ applicationName: 'OpenVorld', applicationVersion: app.getVersion(), copyright: 'MIT License · DigitalDreams Lab and contributors', credits: 'Every project is a vorld.\nA local home for your AI crew.', website: 'https://github.com/DigitalDreams-Lab/OpenVorld', iconPath: icon });
   settings = readSettings(settingsFile);
   home = dataHome({ settings, root, development: !app.isPackaged });
   fs.mkdirSync(home, { recursive: true });
@@ -112,7 +114,7 @@ function installMenu() {
     { role: 'editMenu' },
     { label: 'View', submenu: [{ role: 'reload' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen' }, ...(!app.isPackaged ? [{ role: 'toggleDevTools' }] : [])] },
     { role: 'windowMenu' },
-    { label: 'Help', submenu: [{ label: 'Open Logs Folder', click: () => shell.openPath(app.getPath('logs')) }] },
+    { label: 'Help', submenu: [...(process.platform !== 'darwin' ? [{ label: 'About OpenVorld', click: () => app.showAboutPanel() }, { type: 'separator' }] : []), { label: 'Open Logs Folder', click: () => shell.openPath(app.getPath('logs')) }] },
   ]));
 }
 

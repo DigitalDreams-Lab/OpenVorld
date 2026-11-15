@@ -1,82 +1,111 @@
-# OpenVorld
+<p align="center">
+  <img src="desktop/assets/icon.svg" width="88" height="88" alt="OpenVorld icon" />
+</p>
 
-**Every project is a vorld.** A vorld is a project plus everyone working on it: the shared project folder, a crew of AI agents (each with a house, a vault and workbenches), the parties they form and work in together, and everything they've done so far. A project is just files; a vorld is the files plus the people and the work in progress.
+<h1 align="center">OpenVorld</h1>
 
-OpenVorld is the open-source home for vorlds. You see each vorld as a small pixel-art world where the crew lives, and you run it as the founder: you form the parties, and you give the approvals.
+<p align="center">
+  <strong>Every project is a vorld.</strong><br />
+  A living RPG world for your projects, your AI crew, and the work you do together.
+</p>
 
-```
-vorld "Lantern Tea"
-├── project folder     shared: every member reads it, changes need your writ
-├── crew               a companion + agents; each has a house, a vault and workbenches
-├── parties            named groups with a goal, chatting in one shared room
-└── history            every chat, writ and deed, in plain files
-```
+<p align="center">
+  <a href="#start">Get started</a> ·
+  <a href="https://github.com/DigitalDreams-Lab/OpenVorld/releases">Desktop releases</a> ·
+  <a href="docs/DESKTOP.md">Desktop guide</a> ·
+  <a href="CONTRIBUTING.md">Contribute</a>
+</p>
 
-- **Parties, like a group chat with bots.** A party is a name, a goal and one or more members. Open its chat at the **Party Hall** (the pillar in the plaza): the leader answers, hands work to a teammate by writing `@Name`, and the party keeps talking until the job is done. Every message shows who said it, and writ cards appear right in the room.
-- **Agents that feel like people.** Each member has a name, a job and a face. A party walks to the Party Hall when its chat starts, speech balloons pop up as they talk, and they go home when the job is done.
-- **One shared project, private workbenches.** The whole crew reads the vorld's project folder, and each member works on their own **workbenches** (folders you choose; several per member, and each chat starts on one). Anything more needs a **writ** (change the project, run one command, visit one site), and you answer once, for this session or always.
-- **A house and a vault for every member.** Each member has a private house that never moves and that no folder writ can reach. Its **vault** holds their API keys, OAuth tokens and the sign-ins you made for them. They see only the names, ask for a key right in the chat (a private paste box on the card, never a normal message), use it only with a writ, and values are hidden in chats.
-- **A browser for the crew.** Members that need the web browse in their own private Chrome, and you watch a live window in the game. Every site needs a writ, they never sign in or type passwords, and nothing on your computer or network can be reached. If a task needs a site you're logged in to, the chat shows a card where you sign in for that member yourself in a real window and approve a per-site writ, and anything that posts, sends, buys or deletes asks for your approval first. (Needs Google Chrome or Edge installed.)
-- **Bring your own brain.** Claude Code or Codex if they're on your computer, or any OpenAI-compatible API (OpenRouter, OpenAI, Ollama, LM Studio). You can pick a different brain for each member.
-- **Local and plain files.** Everything lives in `~/.openvorld`. Vorlds, parties and chats are YAML, JSON and JSONL that you can read. There's no account and no cloud.
+![An OpenVorld village with the Launch Studio crew working around the Party Hall and a task balloon above Mira.](docs/images/village.png)
+
+<p align="center"><sub>Real app captures from an illustrative demo world. Sample conversation and activity; no paid agent runs.</sub></p>
+
+## Make the work visible
+
+OpenVorld gives a project a place and its agents a presence. Your crew has names, roles, houses, and workbenches. They gather when there is work to do, show their activity above their heads, and return home afterward. You are the founder: set the direction, form the parties, and approve the access they need.
+
+Use a vorld for a software project, a company, a content studio, or an activity you want help running. The files remain real files. The world helps you see who is doing what.
+
+- **Assemble a crew.** Give each member a role, a personality, and a brain. Talk to them individually or bring them into a party.
+- **Work together in parties.** Give a group a goal. Members share a conversation, hand work to teammates with `@mentions`, and gather at the Party Hall.
+- **Follow the work.** Read task balloons, inspect tool activity, and watch a member's browser preview when they use the web.
+- **Keep the decisions.** A writ is an approval for access: a folder, a command, or a site. Members ask when they need more.
+- **Earn progress.** Finished work earns XP, levels, and deeds. Your profile adds your name and background while your founder character stays unique.
+
+## One room. Several minds.
+
+A party keeps the conversation and its handoffs in one place. Every reply belongs to a named member, and requests for access appear alongside the work.
+
+![The Launch crew sharing a release-planning conversation, with the village visible behind the party chat.](docs/images/party.png)
+
+## See what your crew makes
+
+Open HTML reports, images, Markdown, tables, and other supported files directly from a message. HTML previews are isolated from the app; PDFs, audio, and video use the browser's supported renderers.
+
+![An HTML launch brief opened directly from the party conversation in OpenVorld.](docs/images/preview.png)
+
+## Bring your own brain. Keep your own files.
+
+Use installed agent tools such as **Claude Code** or **Codex**, or connect an **OpenAI-compatible API** such as OpenRouter, OpenAI, Ollama, or LM Studio. Each crew member can use a different provider. A member with no brain uses a short scripted reply, so you can explore before connecting a model.
+
+Your vorld has one shared project folder and private workbenches for each member. Each member also has a private house and vault for credentials and saved sign-ins. Browser work uses a separate member profile and requires Chrome or Edge.
+
+Worlds and history live locally as YAML, JSON, and JSONL. There is no OpenVorld account or hosted backend. Connected model providers and websites receive the requests you choose to send them.
 
 ## Start
 
-For a desktop window with an automatically managed local engine, run `npm run desktop` after installing dependencies. On macOS, `npm run desktop:install` builds and installs OpenVorld into your Applications folder. See [desktop setup and installers](docs/DESKTOP.md).
-
-Requires Node 20+.
+Requires **Node.js 20+** and npm. The desktop shell supports **macOS, Windows, and Linux**; installer details are in the [desktop guide](docs/DESKTOP.md).
 
 ```bash
+git clone https://github.com/DigitalDreams-Lab/OpenVorld.git
+cd OpenVorld
 npm install
+npm run desktop
 ```
 
-```bash
-npm run dev
-```
+Prefer the browser? Run `npm run dev` and open the local address it prints.
 
-Open the address it prints and create a vorld: give it a name, point it at a project folder (an existing repo or folder, or a new one), and start from a template (Software, Content, Business or Blank). Then give each member a brain in their settings (⚙). A member without a brain answers with a short scripted line, so you can explore first.
+On macOS, build and install your own desktop copy with `npm run desktop:install`. For packaged builds, see the [releases page](https://github.com/DigitalDreams-Lab/OpenVorld/releases).
 
-To use another data folder:
+![The OpenVorld startup screen, with its gold V icon and the Launch Studio demo world.](docs/images/startup.png)
+
+### Your first vorld
+
+1. Create a vorld and choose a project folder. Start with a Software, Content, Business, or Blank template.
+2. Give your crew their brains in each member's settings.
+3. Form a party at the Party Hall, give it a goal, and start a shared task.
+4. Review access requests as they arrive and open the files your crew produces.
+
+Data lives in `~/.openvorld` by default, outside the app and repository. To choose another folder:
 
 ```bash
 OPENVORLD_HOME=~/my-vorlds npm run dev
 ```
 
-## How it plays
-
-1. **The crew.** There's one companion (Buzz the bee by default), who is your guide and helps you form parties, plus as many agents as you like. Each agent is just a name, a job title and a description of their job.
-2. **The Party Hall.** Form a party: give it a name, a goal and its members (the first one leads). Templates start you with one.
-3. **The room.** Write in the party's chat. The leader (or whoever you `@mention`) answers; a member who needs a teammate writes `@Name` and that teammate speaks next; a reply that mentions nobody ends the job. You see every member's text, tool calls and file changes. A member who needs access stops the room at a writ card, and it goes on when you answer.
-4. **Progress.** Finished work earns XP and levels. Chat earns a little XP, capped per day, so the game rewards finished jobs rather than talk. There are 15 deeds to unlock.
-
-## Updating
-
-Your data stays in `~/.openvorld`, outside the app and the repository, so updating never touches it. Older vorlds are migrated with a backup and newer ones are never changed. See [docs/UPGRADING.md](docs/UPGRADING.md) and the [CHANGELOG](CHANGELOG.md).
-
 ## Make it yours
 
-Everything the game shows is a **pack**: YAML files that tell the engine what to show. Put your own packs in `~/.openvorld/packs` (or `<vorld>/packs` for a single vorld) to add templates, roles, deeds, themes or brains without touching the code. See [docs/PACKS.md](docs/PACKS.md).
+Packs define templates, roles, themes, deeds, and provider settings. Add them in `~/.openvorld/packs`, or in a single vorld's `packs` folder. See the [pack guide](docs/PACKS.md).
+
+| Guide | What you will find |
+| --- | --- |
+| [Desktop](docs/DESKTOP.md) | Build, install, and run the app |
+| [Packs](docs/PACKS.md) | Customize a world without changing the engine |
+| [Architecture](docs/ARCHITECTURE.md) | How the engine, game, and agents fit together |
+| [Upgrading](docs/UPGRADING.md) | Data formats, backups, and safe updates |
+| [Changelog](CHANGELOG.md) | What changed between versions |
+
+## Build with us
+
+OpenVorld is under active development. Contributions that make agent work easier to understand and manage are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) before starting.
 
 ```bash
-npm run validate          # check every pack
-```
-
-```bash
-npm run ov -- providers   # agent CLIs found on this computer
-```
-
-## Develop
-
-```bash
-npm test                  # engine and client tests, no network
-```
-
-```bash
+npm test
 npm run typecheck
+npm run validate
 ```
 
-How the pieces fit together is in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md), and how to contribute is in [CONTRIBUTING.md](CONTRIBUTING.md).
+To regenerate the product screenshots with disposable demo data, run `npm run screenshots`. The [screenshot guide](docs/SCREENSHOTS.md) describes what is captured.
 
-## License
+---
 
-MIT
+[MIT licensed](LICENSE) · Built by DigitalDreams Lab and contributors.

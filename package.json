@@ -1,6 +1,6 @@
 {
   "name": "openvorld",
-  "version": "0.7.1",
+  "version": "0.8.0",
   "description": "Every project is a vorld: a shared project folder, a crew of AI agents with their own workspaces, and the quests they run together. Shown as a pixel-art world.",
   "license": "MIT",
   "type": "module",
@@ -19,7 +19,8 @@
     "desktop": "npm run build && node desktop/make-icons.mjs && node desktop/launch.mjs",
     "desktop:pack": "npm run build && node desktop/make-icons.mjs && electron-builder --dir",
     "desktop:dist": "npm run build && node desktop/make-icons.mjs && electron-builder",
-    "desktop:install": "npm run desktop:pack && node desktop/install-mac.mjs"
+    "desktop:install": "npm run desktop:pack && node desktop/install-mac.mjs",
+    "screenshots": "npm run build && node desktop/make-icons.mjs && node desktop/screenshots.mjs"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "5.3.0",
