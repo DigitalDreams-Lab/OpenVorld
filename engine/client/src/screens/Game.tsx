@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { api, artImage, connect } from '../api';
-import { emit, getState, on, setState, toast, useStore } from '../store';
+import { announceAsking, emit, getState, on, setOpenWrits, setState, toast, useStore } from '../store';
 import { play } from '../audio/sfx';
 import { VorldScene } from '../game/VorldScene';
 import { PANELS } from '../game/commands';
@@ -36,7 +36,8 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
         const w = await api(`/vorlds/${wid}/vorld`);
         if (dead) return;
         await loadGenerated(w.art.atlas, (name) => artImage(name));
-        setState({ vorldId: wid, vorld: w, talkingTo: null, modal: null, partyId: null, partyEdit: null, live: {}, browsers: {}, activityNotes: {} });
+        setState({ vorldId: wid, vorld: w, talkingTo: null, modal: null, partyId: null, partyEdit: null, live: {}, browsers: {}, activityNotes: {}, openWrits: [] });
+        void loadOpenWrits(wid);                    // requests for access that were waiting before this window opened
         // what each member's browser last showed (a window opened after they stopped browsing)
         for (const c of w.crew) api(`/vorlds/${wid}/browser/${c.id}`).then((f) => { if (!dead && f?.image) handleBrowser({ ...f, role: c.id, active: false }); }).catch(() => {});
         applyUiTheme(w.theme.palette);
@@ -60,7 +61,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
   useEffect(() => {
     const refreshVorld = () => api(`/vorlds/${wid}/vorld`).then(async (w) => { await loadGenerated(w.art.atlas, (name) => artImage(name)); setState({ vorld: w }); emit('vorld', w); });
     const close = connect(wid, (m) => {
-      if (m.type === 'connection.restored') { setState((s) => ({ threadsVersion: s.threadsVersion + 1, live: {} })); void refreshVorld(); }
+      if (m.type === 'connection.restored') { setState((s) => ({ threadsVersion: s.threadsVersion + 1, live: {} })); void refreshVorld(); void loadOpenWrits(wid); }
       if (m.type === 'vorld') void refreshVorld().catch((e) => toast({ kind: 'error', title: e.message }));
       if (m.type === 'thread.event') handleThreadEvent(m);
       if (m.type === 'browser') handleBrowser(m);
@@ -73,6 +74,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
     });
     const offs = [
       on('talk', (role) => setState({ talkingTo: role })),
+      on('scene-ready', announceAsking),          // a scene (re)started: tell it who is asking
       on('parties', () => setState({ modal: 'parties', partyEdit: null })),
     ];
     return () => { close(); offs.forEach((o) => o()); };
@@ -102,6 +104,9 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
     </div>
   );
 }
+
+/** Requests for access still waiting for the founder: their members walk over and ask. */
+const loadOpenWrits = (wid: string) => api(`/vorlds/${wid}/writs/open`).then((list) => setOpenWrits(() => list)).catch(() => {});
 
 /** A frame from a member's browser: keep the latest per member, and tell the map who is browsing right now. */
 function handleBrowser(m: any) {
@@ -135,7 +140,12 @@ function handleThreadEvent(m: any) {
     case 'plan': { const list = steps(), i = list.findIndex((s) => s.t === 'plan'); if (i >= 0) list[i] = { t: 'plan', items: ev.items }; else list.push({ t: 'plan', items: ev.items }); put({ steps: list }); break; }
     case 'tool': put({ steps: [...steps(), { t: 'tool', id: ev.id, kind: ev.kind, name: ev.name, target: ev.target, detail: ev.detail, status: 'running' }] }); react(ev.reaction); break;
     case 'tool_result': put({ steps: steps().map((s: any) => (s.t === 'tool' && s.id === ev.id ? { ...s, status: ev.ok ? 'ok' : 'error', output: ev.output, attachments: ev.attachments, ms: ev.ms, test: ev.test } : s)) }); react(ev.reaction); break;
-    case 'writ.request': react(ev.reaction); setState((s) => ({ threadsVersion: s.threadsVersion + 1 })); break;
+    case 'writ.request':
+      react(ev.reaction);
+      setOpenWrits((list) => (list.some((w) => w.id === ev.id) ? list : [...list, { id: ev.id, thread, role: ev.role ?? role, capability: ev.capability, scope: ev.scope, why: ev.why, risk: ev.risk, signin: !!ev.signin }]));
+      setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));
+      break;
+    case 'writ.answered': setOpenWrits((list) => list.filter((w) => w.id !== ev.id)); setState((s) => ({ threadsVersion: s.threadsVersion + 1 })); break;
     case 'turn.done':
       put({ working: false, steps: [] });
       if (role) setState(s => ({ activityNotes: { ...s.activityNotes, [role]: { text: lastActivityLine(ev.text) || ev.meta?.balloon || '', at: Date.now() } } }));

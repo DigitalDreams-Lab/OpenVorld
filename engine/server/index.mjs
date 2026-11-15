@@ -294,6 +294,11 @@ route('GET', '/api/vorlds/:id/threads/:tid/attachments/:aid', ({ p, q, res }) =>
 route('GET', '/api/vorlds/:id/threads/:tid/file', ({ p, q, res }) => sendFile(res, replyFile(W(p), p.tid, q.get('path')), q.has('download')));
 
 // writs
+// every request for access still waiting for the founder, across all threads: the crew walks over and asks in a balloon
+route('GET', '/api/vorlds/:id/writs/open', ({ p }) => {
+  const ctx = W(p);
+  return listThreads(ctx).flatMap((t) => openWrits(ctx, t.id).map((w) => ({ id: w.id, thread: t.id, role: w.role, capability: w.capability, scope: w.scope, why: w.why ?? '', risk: w.risk, signin: !!w.signin, at: w.at })));
+});
 route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
   const ctx = W(p), emit = emitTo(p.id), game = gameFor(ctx), b = await body(req);
   const events = readEvents(ctx, p.tid), ask = events.find((e) => e.type === 'writ.request' && e.id === p.wid);

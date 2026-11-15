@@ -5,6 +5,8 @@ export type Toast = { id: number; kind: 'deed' | 'level' | 'xp' | 'info' | 'erro
 export type Live = { role?: string; steps: any[]; working: boolean; error?: string | null; updatedAt?: number };
 export type BrowserFrame = { url?: string; title?: string; image?: string; active?: boolean; signed?: boolean; at?: number };
 export type ActivityNote = { text: string; at: number; error?: boolean };
+/** A request for access still waiting for the founder. The member walks over and asks in a balloon over their head. */
+export type OpenWrit = { id: string; thread: string; role: string; capability: string; scope: string; why?: string; risk?: string; signin?: boolean };
 export type Modal = null | 'parties' | 'deeds' | 'settings' | 'member' | 'add';
 
 type State = {
@@ -20,9 +22,10 @@ type State = {
   activityNotes: Record<string, ActivityNote>; // brief final lines, kept per member across party handoffs
   threadsVersion: number;             // bump to refetch thread lists
   following: string[];                // crew members walking with the founder right now (the map reports them)
+  openWrits: OpenWrit[];              // requests for access waiting for the founder
 };
 
-let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, partyId: null, partyEdit: null, toasts: [], live: {}, browsers: {}, activityNotes: {}, threadsVersion: 0, following: [] };
+let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, partyId: null, partyEdit: null, toasts: [], live: {}, browsers: {}, activityNotes: {}, threadsVersion: 0, following: [], openWrits: [] };
 const subs = new Set<() => void>();
 export const getState = () => state;
 export function setState(patch: Partial<State> | ((s: State) => Partial<State>)) {
@@ -58,3 +61,6 @@ const bus = new Map<string, Set<Handler>>();
 export const on = (ev: string, h: Handler) => { if (!bus.has(ev)) bus.set(ev, new Set()); bus.get(ev)!.add(h); return () => bus.get(ev)!.delete(h); };
 export const emit = (ev: string, payload?: any) => bus.get(ev)?.forEach((h) => h(payload));
 on('following', (ids: string[]) => setState({ following: ids }));   // the map says who is following the founder
+/** Tell the map who has a request waiting, so they walk over to the founder. */
+export const announceAsking = () => emit('asking', [...new Set(state.openWrits.map((w) => w.role))]);
+export function setOpenWrits(update: (list: OpenWrit[]) => OpenWrit[]) { setState((s) => ({ openWrits: update(s.openWrits) })); announceAsking(); }

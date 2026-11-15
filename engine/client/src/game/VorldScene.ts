@@ -17,7 +17,7 @@ const T = 16;                 // tile size in texture pixels
 const ZOOM = 3;
 
 type Mode = 'home' | 'summoned' | 'gather' | 'task';
-type Npc = { mode: Mode; target: { x: number; y: number } | null; rest: number; slot: number; look: string; id: string; sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text; mark?: Phaser.GameObjects.Text; building: Phaser.GameObjects.Container; built: boolean; sign: Phaser.GameObjects.Text; home: { x: number; y: number }; data: any; frame: number; dir: Direction; lastX: number; lastY: number; working: boolean; queue?: any[]; wait?: number; base?: Mode; autoHome?: boolean };
+type Npc = { homing?: boolean; askFrom?: Mode; mode: Mode; target: { x: number; y: number } | null; rest: number; slot: number; look: string; id: string; sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text; mark?: Phaser.GameObjects.Text; building: Phaser.GameObjects.Container; built: boolean; sign: Phaser.GameObjects.Text; home: { x: number; y: number }; data: any; frame: number; dir: Direction; lastX: number; lastY: number; working: boolean; queue?: any[]; wait?: number; base?: Mode; autoHome?: boolean };
 
 export class VorldScene extends Phaser.Scene {
   vorld: any;
@@ -47,6 +47,7 @@ export class VorldScene extends Phaser.Scene {
   companionDir: Direction = 'down';
   beeShadow?: Phaser.GameObjects.Ellipse; beeLastX = 0; beeLean = 0; beeBobT = 0; followersKey = '';
   browsing = new Set<string>();              // members whose browser is in use right now: a globe over their head
+  asking = new Set<string>();                // members with a request for access: they walk to the founder and wait
   attention = new Set<string>();             // members waiting for the founder (a seal or a writ): a "!" over their head
   atlasRev: string | null = null;
 
@@ -131,6 +132,7 @@ export class VorldScene extends Phaser.Scene {
         this.vorld = w; this.refresh();
       }),
       on('attention', (ids: string[]) => { this.attention = new Set(ids); this.refresh(); }),
+      on('asking', (ids: string[]) => this.setAsking(ids)),
       on('browsing', (ids: string[]) => { this.browsing = new Set(ids); this.refresh(); }),
       on('balloon', ({ role, text, ms }) => this.balloon(role, text, ms)),
       on('react', ({ role, reaction }) => this.react(role, reaction)),
@@ -157,6 +159,7 @@ export class VorldScene extends Phaser.Scene {
     const cleanup = () => { this.game.events.off('postrender', reportAnchors); emit('agent-anchors', null); this.unsub.forEach((u) => u()); this.unsub = []; };
     this.events.once('shutdown', cleanup); this.events.once('destroy', cleanup);
     this.refresh();
+    if (this.asking.size) this.setAsking([...this.asking]);
     emit('scene-ready');
   }
 
@@ -270,6 +273,15 @@ export class VorldScene extends Phaser.Scene {
         n.mark = this.add.text(n.sprite.x, n.sprite.y - 30, mark, { ...this.labelStyle(pal, 12), color: pal.gold ?? '#fc0' }).setOrigin(0.5).setDepth(19000);
         this.tweens.add({ targets: n.mark, y: n.mark.y - 4, duration: 420, yoyo: true, repeat: -1 });
       }
+    }
+  }
+
+  /** Members with a request for access walk over to the founder and wait there; once it is answered they go back to what they were doing. */
+  setAsking(ids: string[]) {
+    this.asking = new Set(ids);
+    for (const n of this.npcs.values()) {
+      if (this.asking.has(n.id) && !n.askFrom) { n.askFrom = n.mode === 'summoned' ? 'summoned' : 'home'; this.callOver([n.id], 'summoned'); }
+      else if (!this.asking.has(n.id) && n.askFrom) { const stay = n.askFrom === 'summoned'; n.askFrom = undefined; if (!stay) this.sendHome([n.id]); }
     }
   }
 
@@ -400,7 +412,7 @@ export class VorldScene extends Phaser.Scene {
   }
   /** Members go back to their homes (the town terminal's "send home", and the companion's send_home command). */
   sendHome(ids?: string[]) {
-    for (const n of this.npcs.values()) if (!ids || ids.includes(n.id)) { n.mode = 'home'; n.queue = []; n.base = undefined; n.target = { x: n.home.x, y: n.home.y }; }
+    for (const n of this.npcs.values()) if (!ids || ids.includes(n.id)) { n.mode = 'home'; n.queue = []; n.base = undefined; n.homing = true; n.target = { x: n.home.x, y: n.home.y }; }
   }
 
   // ---- game commands: what members DO on the map (checked and spelled out by the server, see packs/core/commands.yaml) ----
@@ -614,7 +626,7 @@ export class VorldScene extends Phaser.Scene {
     let best: string | null = null, bestD = 26;
     for (const n of this.npcs.values()) {
       const dp = Phaser.Math.Distance.Between(this.player.x, this.player.y, n.sprite.x, n.sprite.y);
-      const busy = n.working || (n.mode === 'home' && dp < 30);
+      const busy = n.working || (n.mode === 'home' && dp < 30 && !n.homing);   // standing by the founder, unless sent home
       if (n.queue?.length || n.mode === 'task') this.tickTask(n, dt);
       if (n.mode === 'summoned' && dp > 40) n.target = this.spotFor(n);       // keep up with the founder
       if (!n.target && n.mode === 'home' && !busy) { n.rest -= dt; if (n.rest <= 0) { n.target = this.wanderTarget(n); n.rest = 2500 + Math.random() * 4500; } }
@@ -622,6 +634,7 @@ export class VorldScene extends Phaser.Scene {
         const speed = (n.mode === 'home' ? 26 : 62) * dt / 1000;
         this.moveMember(n, speed);
       }
+      if (n.homing && !n.target) n.homing = false;
       const mx = n.sprite.x - n.lastX, my = n.sprite.y - n.lastY;
       const walking = Math.hypot(mx, my) > 0.01;
       n.dir = walking ? movementDirection(mx, my, n.dir) : dp < 30 ? movementDirection(this.player.x - n.sprite.x, this.player.y - n.sprite.y, n.dir) : n.dir;
