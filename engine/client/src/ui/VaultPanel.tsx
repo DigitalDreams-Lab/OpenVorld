@@ -19,7 +19,7 @@ export function VaultPanel({ id }: { id: string }) {
   const sites = v.signin?.sites ?? [];
   return (
     <section className="project-folder vault">
-      <b>Vault</b>
+      <h3 className="section-title">Vault</h3>
       <p className="muted small">{c.name}'s private keys and sign-ins, kept in their house on this computer. When {c.name} needs a key or a sign-in, they ask in the chat and you do it there. Values are hidden in chats.</p>
       {v.secrets.length === 0 && sites.length === 0 && <p className="muted small">Nothing kept yet.</p>}
       {v.secrets.map((s: any) => (

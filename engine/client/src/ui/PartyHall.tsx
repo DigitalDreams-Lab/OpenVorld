@@ -1,5 +1,6 @@
 // The Party Hall: your parties. A party is a name, a goal and one or more crew members who work together in one shared
 // chat. The first member leads: they answer first, and hand work to the others.
+import { IconButton } from './IconButton';
 import { useState } from 'react';
 import { api } from '../api';
 import { emit, setState, toast, useStore } from '../store';
@@ -22,7 +23,7 @@ export function PartyHall() {
           <h2>{editing ? (editing.id ? 'Edit party' : 'New party') : 'Party Hall'}</h2>
           <span className="row">
             {editing && <button className="btn small" onClick={() => setState({ partyEdit: null })}>← All parties</button>}
-            <button className="x" onClick={close} aria-label="Close">✕</button>
+            <IconButton icon="close" title="Close" onClick={close} />
           </span>
         </header>
         {editing

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { emit, memberOf, setState, str, toast, useStore } from '../store';
+import { IconButton } from './IconButton';
 import { play } from '../audio/sfx';
 import { Portrait } from './Portrait';
 import { ThreadView } from './Thread';
@@ -40,9 +41,9 @@ export function MemberPanel({ id }: { id: string }) {
           <div className="cp-meta"><span className="brain">{m.brain_label ?? 'no brain yet'}</span></div>
         </div>
         <div className="cp-actions">
-          <button className="x" title={`Call ${m.name} over`} onClick={() => { play('ui.click'); emit('summon', { ids: [id] }); }}>⇲</button>
-          <button className="x" title="Settings" onClick={() => { play('ui.open'); setState({ modal: 'member' }); }}>⚙</button>
-          <button className="x" onClick={() => setState({ talkingTo: null })} aria-label="Close">✕</button>
+          <IconButton icon="call" title={`Call ${m.name} over`} onClick={() => { play('ui.click'); emit('summon', { ids: [id] }); }} />
+          <IconButton icon="gear" title="Settings" onClick={() => { play('ui.open'); setState({ modal: 'member' }); }} />
+          <IconButton icon="close" title="Close" onClick={() => setState({ talkingTo: null })} />
         </div>
       </header>
       {!m.brain_label && <p className="no-brain">{m.name} has no brain yet. <button className="link" onClick={() => setState({ modal: 'member' })}>Pick one</button> (Claude Code, Codex, Antigravity, OpenCode or an API model).</p>}

@@ -30,24 +30,31 @@ export function Workbenches({ id }: { id: string }) {
     const w = await api(`/vorlds/${wid}/crew/${id}/benches`, { body: { name: adding!.name, path: adding!.path } });
     setAdding(null); setTyping(null); return w;
   });
+  const benches: any[] = c.benches ?? [];
+  const home = benches.find((b) => b.id === 'main'), others = benches.filter((b) => b.id !== 'main'), start = benches.find((b) => b.default);
+  const put = (bid: string, body: any) => run(() => api(`/vorlds/${wid}/crew/${id}/benches/${bid}`, { method: 'PUT', body }));
   return (
     <section className="project-folder workbenches">
-      <b>Workbenches</b>
-      <p className="muted small">The folders {c.name} works in. Each chat starts on one and stays there. {c.name} can read and change files on a workbench, and read the project folder; anything else needs a writ.</p>
-      {c.benches.map((b: any) => (
+      <h3 className="section-title">Workbenches</h3>
+      <p className="muted section-note">
+        The folders {c.name} works in: they can read and change files on a workbench, and read the project folder; anything else needs a writ.
+        {home && <> {c.name} always has a home workbench{home.chosen ? '' : ' of their own'}, <code title={home.path}>{tail(home.path)}</code> (<button className="link-btn" onClick={() => move(home)}>change folder</button>{home.chosen && <>, <button className="link-btn" onClick={() => put('main', { path: null })}>use the default place</button></>}).</>}
+        {' '}Every chat starts on {start && start.id !== 'main' ? <><b>{start.name}</b> (<button className="link-btn" onClick={() => put('main', { default: true })}>start at home instead</button>)</> : 'the home workbench'} and stays there.
+      </p>
+      {home && typing === home.id && <TypedFolder initial={home.path} onUse={(p) => { setTyping(null); void put('main', { path: p }); }} onCancel={() => setTyping(null)} />}
+      {others.map((b: any) => (
         <div key={b.id} className="bench">
-          <div className="pf-row">
+          <div className="bench-head">
             <b className="bench-name">{b.name}</b>
             {b.default && <span className="chip">default</span>}
-            <code className="pf-path" title={b.path}>{tail(b.path)}</code>
           </div>
-          <div className="row">
+          <code className="pf-path" title={b.path}>{tail(b.path)}</code>
+          <div className="row bench-actions">
             <button className="btn small" onClick={() => move(b)}>Change folder</button>
-            {b.id === 'main' && b.chosen && <button className="btn small" onClick={() => run(() => api(`/vorlds/${wid}/crew/${id}/benches/main`, { method: 'PUT', body: { path: null } }))}>Use the default place</button>}
-            {!b.default && <button className="btn small" onClick={() => run(() => api(`/vorlds/${wid}/crew/${id}/benches/${b.id}`, { method: 'PUT', body: { default: true } }))}>Make default</button>}
-            {b.id !== 'main' && <button className="btn small" onClick={() => run(() => api(`/vorlds/${wid}/crew/${id}/benches/${b.id}`, { method: 'DELETE' }))}>Remove</button>}
+            {!b.default && <button className="btn small" onClick={() => put(b.id, { default: true })}>Make default</button>}
+            <button className="btn small" onClick={() => run(() => api(`/vorlds/${wid}/crew/${id}/benches/${b.id}`, { method: 'DELETE' }))}>Remove</button>
           </div>
-          {typing === b.id && <TypedFolder initial={b.path} onUse={(p) => { setTyping(null); void run(() => api(`/vorlds/${wid}/crew/${id}/benches/${b.id}`, { method: 'PUT', body: { path: p } })); }} onCancel={() => setTyping(null)} />}
+          {typing === b.id && <TypedFolder initial={b.path} onUse={(p) => { setTyping(null); void put(b.id, { path: p }); }} onCancel={() => setTyping(null)} />}
         </div>
       ))}
       {!adding && typing !== '+' && <button className="btn small" onClick={() => setAdding({ name: '', path: '' })}>+ Add a workbench</button>}

@@ -1,5 +1,6 @@
 // Settings of one crew member: name, job title, job description, personality, the brain they think with, their
 // workbenches and their vault.
+import { IconButton } from './IconButton';
 import { useEffect, useState } from 'react';
 import { api, artImage } from '../api';
 import { emit, memberOf, setState, toast, useStore } from '../store';
@@ -65,7 +66,7 @@ export function MemberSettings({ id }: { id: string }) {
   return (
     <div className="modal-bg" onPointerDown={(e) => e.stopPropagation()} onClick={close}>
       <div className="modal panel member-settings" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-        <header className="row between"><h2>{f.name} <small>{c.role === 'companion' ? 'companion' : 'agent'}</small></h2><button className="x" onClick={close}>✕</button></header>
+        <header className="row between"><h2>{f.name} <small>{c.role === 'companion' ? 'companion' : 'agent'}</small></h2><IconButton icon="close" title="Close" onClick={close} /></header>
         <div className="cs-grid">
           <div className="cs-preview">
             <Portrait role={id} avatar={c.role === 'agent' ? f.avatar : undefined} size={96} />
@@ -97,7 +98,7 @@ export function MemberSettings({ id }: { id: string }) {
             <VaultPanel id={id} />
           </div>
         </div>
-        <div className="row between">
+        <div className="row between modal-foot">
           {c.role === 'agent' ? <button className="btn danger" onClick={remove}>Remove from crew</button> : <span />}
           <span className="row"><button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={save}>Save</button></span>
         </div>

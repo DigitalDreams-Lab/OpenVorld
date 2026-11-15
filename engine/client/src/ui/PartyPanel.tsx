@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { memberOf, setState, toast, useStore } from '../store';
+import { IconButton } from './IconButton';
 import { play } from '../audio/sfx';
 import { Portrait } from './Portrait';
 import { ThreadView } from './Thread';
@@ -39,8 +40,8 @@ export function PartyPanel({ id }: { id: string }) {
           {party.goal && <div className="cp-goal muted">{party.goal}</div>}
         </div>
         <div className="cp-actions">
-          <button className="x" title="Edit the party" onClick={() => { play('ui.open'); setState({ modal: 'parties', partyEdit: id }); }}>⚙</button>
-          <button className="x" onClick={() => setState({ partyId: null })} aria-label="Close">✕</button>
+          <IconButton icon="edit" title="Edit the party" onClick={() => { play('ui.open'); setState({ modal: 'parties', partyEdit: id }); }} />
+          <IconButton icon="close" title="Close" onClick={() => setState({ partyId: null })} />
         </div>
       </header>
       <div className="thread-tabs">

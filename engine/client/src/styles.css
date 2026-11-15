@@ -3,7 +3,8 @@
   --ink: #1b1622; --parchment: #f1e2bf; --gold: #d9a441; --lapis: #2c4f9e; --turquoise: #3fb5a8; --clay: #b5653b; --danger: #b8322a;
   /* body text must be easy to read; the pixel font is for titles and names only (fonts.css) */
   --font: Lexend, system-ui, -apple-system, "Segoe UI", sans-serif;
-  --display: Tiny5, var(--font); --display-weight: 400; --display-scale: 1.15;
+  --display: var(--font); --display-weight: 600; --display-scale: 1;   /* headings in Lexend; the pixel font (Tiny5) is kept for the logo only */
+  --logo-font: Tiny5, var(--font);
   --mono: "JetBrains Mono", ui-monospace, monospace;
   --code: "JetBrains Mono", ui-monospace, Menlo, monospace; --code-scale: 1;
   --text: 15px;
@@ -12,7 +13,8 @@
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; height: 100%; background: var(--ink); color: var(--ink); font-family: var(--font); font-size: var(--text); line-height: 1.45; overflow: hidden; -webkit-font-smoothing: antialiased; }
 /* titles, names and numbers keep the pixel look */
-.logo, .vorld-name, .hud-title, .lv, .cp-name, .toast-title, .modal h2, .deed-name, h1, h2, h3  { font-family: var(--display); font-weight: var(--display-weight) !important; letter-spacing: .02em; }
+.logo, .vorld-name, .hud-title, .lv, .cp-name, .toast-title, .modal h2, .deed-name, h1, h2, h3  { font-family: var(--display); font-weight: var(--display-weight) !important; letter-spacing: -.005em; }
+.logo { font-family: var(--logo-font); font-weight: 400 !important; letter-spacing: .02em; }
 .btn, .option, .thread-tab, .chip { font-weight: 700; }
 button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .fatal { color: var(--parchment); padding: 40px; font-size: 18px; }
@@ -40,7 +42,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 /* title */
 .title-screen { height: 100%; display: grid; place-items: center; background: radial-gradient(ellipse at 50% 30%, color-mix(in srgb, var(--lapis) 60%, var(--ink)), var(--ink)); }
 .title-card { width: min(460px, 92vw); padding: 28px; text-align: center; }
-.logo { font-size: calc(44px * var(--display-scale)); margin: 0; letter-spacing: 1px; color: var(--ink); text-shadow: 3px 3px 0 var(--gold); }
+.logo { font-size: calc(44px * 1.15); margin: 0; letter-spacing: 1px; color: var(--ink); text-shadow: 3px 3px 0 var(--gold); }
 .tagline { margin: 4px 0 20px; }
 .vorld-list { display: grid; gap: 8px; margin-bottom: 16px; max-height: 40vh; overflow: auto; }
 .vorld-item { display: grid; text-align: left; padding: 10px 12px; border: 2px solid var(--ink); background: #fffaf0; cursor: pointer; }
@@ -357,7 +359,7 @@ select.field.small { padding-right: 26px; }
 .onboarding { overflow-y: auto; align-items: start; padding: 24px 0; }
 .ob-form { width: min(760px, 94vw); text-align: left; display: grid; gap: 14px; } .ob-form .btn.big { width: auto; } .ob-form section > .btn { justify-self: start; }
 .ob-form section { display: grid; gap: 8px; } .ob-form h3 { margin: 4px 0 0; }
-.logo.small { font-size: calc(30px * var(--display-scale)); text-align: center; }
+.logo.small { font-size: calc(30px * 1.15); text-align: center; }
 .ob-templates { display: grid; grid-template-columns: repeat(auto-fill, minmax(165px, 1fr)); gap: 8px; }
 .ob-template { display: grid; gap: 4px; text-align: left; border: 2px solid var(--ink); background: #fffaf0; padding: 8px 10px; cursor: pointer; color: var(--ink); font-size: 13px; }
 .ob-template b { font-size: 15px; } .ob-template small { opacity: .7; } .ob-template.on { background: var(--gold); box-shadow: inset 0 0 0 2px var(--ink); }
@@ -401,3 +403,30 @@ select.field.small { padding-right: 26px; }
 .party-pick .chip.on { background: var(--gold); font-weight: 700; }
 .party-panel .cp-head { grid-template-columns: minmax(0, 1fr) auto; } .party-panel .cp-goal { font-size: 13px; line-height: 1.4; margin: 4px 0 0; overflow-wrap: anywhere; } .party-panel .party-crew { margin-top: 4px; }
 .party-speaking { font-size: 12px; padding: 2px 10px; color: color-mix(in srgb, var(--ink) 70%, transparent); }
+
+/* ---- member settings: room to breathe ---- */
+.member-settings { padding: 22px 26px; }
+.member-settings header h2 { font-size: 24px; letter-spacing: -.01em; } .member-settings header h2 small { font-size: 13px; font-weight: 500; margin-left: 6px; text-transform: uppercase; letter-spacing: .06em; }
+.member-settings .cs-grid { gap: 28px; margin-top: 18px; margin-bottom: 4px; }
+.cs-fields { gap: 16px; }
+.cs-fields label { gap: 6px; font-size: 14px; font-weight: 500; }
+.cs-fields .row { gap: 14px; align-items: start; }
+.cs-fields .project-folder { border-bottom: 0; border-top: 2px solid color-mix(in srgb, var(--ink) 22%, transparent); padding: 18px 0 0; gap: 10px; }
+.modal .section-title { margin: 0; font-size: 17px; }
+.section-note { font-size: 13px; line-height: 1.6; margin: 0; }
+.section-note b { font-weight: 600; }
+.link-btn { all: unset; cursor: pointer; color: var(--lapis); text-decoration: underline; text-underline-offset: 2px; }
+.link-btn:hover { color: var(--ink); } .link-btn:focus-visible { outline: 2px solid var(--lapis); outline-offset: 2px; }
+.workbenches .bench { gap: 10px; padding: 14px 0 4px; border-top: 1px dashed color-mix(in srgb, var(--ink) 35%, transparent); }
+.bench-head { display: flex; align-items: center; gap: 10px; } .bench-name { font-size: 15px; }
+.workbenches .pf-path { display: block; flex: none; padding: 6px 9px; background: #fffaf0; border: 1px solid color-mix(in srgb, var(--ink) 25%, transparent); font-size: 12.5px; }
+.bench-actions { gap: 8px; flex-wrap: wrap; }
+.workbenches > .btn { margin-top: 6px; }
+.member-settings .modal-foot { margin-top: 22px; padding-top: 16px; border-top: 2px solid color-mix(in srgb, var(--ink) 22%, transparent); }
+.member-settings .modal-foot .row { gap: 10px; }
+
+/* ---- panel header icon buttons ---- */
+.icon-btn { display: grid; place-items: center; width: 32px; height: 32px; padding: 0; background: transparent; color: var(--ink); border: 2px solid transparent; border-radius: 4px; cursor: pointer; transition: background .12s, border-color .12s; }
+.icon-btn:hover { background: color-mix(in srgb, var(--gold) 35%, transparent); border-color: var(--ink); }
+.icon-btn:active { transform: translateY(1px); } .icon-btn:focus-visible { outline: 2px solid var(--lapis); outline-offset: 1px; }
+.cp-actions { flex-direction: row; gap: 2px; align-items: center; margin: -4px -4px 0 0; }

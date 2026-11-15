@@ -1,5 +1,6 @@
 // Vorld settings: name and purpose, model endpoints (OpenAI-compatible; the key is read from an environment variable
 // you name, never stored), the project folder, the workbenches folder, the writs you granted, and sound.
+import { IconButton } from './IconButton';
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { emit, setState, toast, useStore } from '../store';
@@ -35,7 +36,7 @@ export function Settings() {
   return (
     <div className="modal-bg" onPointerDown={(e) => e.stopPropagation()} onClick={close}>
       <div className="modal panel settings" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-        <header className="row between"><h2>Settings</h2><button className="x" onClick={close}>✕</button></header>
+        <header className="row between"><h2>Settings</h2><IconButton icon="close" title="Close" onClick={close} /></header>
         <h3>Vorld</h3>
         <label>Name<input className="field" value={w.name} maxLength={60} onChange={(e) => setW({ ...w, name: e.target.value })} /></label>
         <label>What it is for<textarea className="field" rows={2} value={w.about} maxLength={400} placeholder="The project, company or activity this vorld runs. Every crew member reads this." onChange={(e) => setW({ ...w, about: e.target.value })} /></label>

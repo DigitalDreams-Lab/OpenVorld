@@ -1,4 +1,5 @@
 // Every crew member at a glance: portrait, working / waiting-for-you marks, and "+" to add an agent.
+import { IconButton } from './IconButton';
 import { useState } from 'react';
 import { api, artImage } from '../api';
 import { emit, setState, toast, useStore } from '../store';
@@ -77,7 +78,7 @@ function AddAgent({ onClose }: { onClose: () => void }) {
   return (
     <div className="modal-bg" onPointerDown={(e) => e.stopPropagation()} onClick={onClose}>
       <form className="modal panel add-agent" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void add(); }}>
-        <header className="row between"><h2>New agent</h2><button type="button" className="x" onClick={onClose}>✕</button></header>
+        <header className="row between"><h2>New agent</h2><IconButton icon="close" title="Close" onClick={onClose} /></header>
         <p className="muted">An agent is a name, a job title and a job description. It uses your companion's brain and Main bench unless you pick another folder.</p>
         <div className="add-agent-face-row">
           <div className="add-agent-preview">
