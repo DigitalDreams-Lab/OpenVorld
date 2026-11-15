@@ -7,7 +7,7 @@ import { emit, on } from '../store';
 import { play } from '../audio/sfx';
 import { TEX, CHAR_TEX, BEE_SCALE } from './pixels';
 import { makeBuilding, makeMember, makePillar, makeWorldArt } from './sprites';
-import { companionOf, generatedRevision, movementDirection, type Direction } from './pixels';
+import { companionOf, generatedRevision, movementDirection, walkFrame, IDLE_FRAME, type Direction } from './pixels';
 import { homeGeometry, propGeometry } from './geometry';
 import { clearWalk, walkingPath } from './navigation';
 import { BODY_FONT } from '../theme';
@@ -514,7 +514,7 @@ export class VorldScene extends Phaser.Scene {
   animateBee(dt: number, travelling: boolean) {
     this.beeBobT += dt;
     const flapMs = travelling ? 55 : 85;
-    const frame = [0, 1, 2, 1][Math.floor(this.beeBobT / flapMs) % 4];
+    const frame = walkFrame(this.beeBobT, flapMs);        // the four frames are a wing flap: up, halfway down, down, halfway up
     const bob = Math.sin(this.beeBobT / (travelling ? 170 : 300)) * (travelling ? 0.9 : 1.7);       // world pixels
     const vx = (this.bee.x - this.beeLastX) / Math.max(dt, 1) * 1000;                              // world px per second
     this.beeLastX = this.bee.x;
@@ -523,7 +523,7 @@ export class VorldScene extends Phaser.Scene {
     this.bee.setTexture(`companion-${this.companionDir}-${frame}`).setDepth(this.bee.y);
     this.bee.setOrigin(0.5, 1 + bob / Math.max(1, this.bee.displayHeight)).setAngle(this.beeLean);
     // squash and stretch with the flap, so he feels light
-    const base = this.charScale / CHAR_TEX * BEE_SCALE, sq = 1 + (frame === 1 ? 0.03 : frame === 2 ? -0.025 : 0.01);
+    const base = this.charScale / CHAR_TEX * BEE_SCALE, sq = 1 + [0.01, 0.03, -0.025, 0][frame];
     this.bee.setScale(base / sq, base * sq);
     const sh = this.beeShadow;
     if (sh) { const lift = 1 - Math.min(1, (bob + 2) / 8) * 0.12; sh.setPosition(this.bee.x, this.bee.y + 21).setScale(lift).setAlpha(0.26 - bob * 0.015).setDepth(this.bee.y - 1); }
@@ -578,7 +578,7 @@ export class VorldScene extends Phaser.Scene {
     this.playerDir = movementDirection(vx, vy, this.playerDir);
     this.walkT += dt;
     const moving = vx || vy;
-    this.player.setTexture(`founder-${this.playerDir}-${moving ? [0, 2, 1, 2][Math.floor(this.walkT / 140) % 4] : 2}`);
+    this.player.setTexture(`founder-${this.playerDir}-${moving ? walkFrame(this.walkT, 120) : IDLE_FRAME}`);
     this.player.setDepth(this.player.y);
 
     // companion floats behind the founder
@@ -594,7 +594,7 @@ export class VorldScene extends Phaser.Scene {
       else { this.beeReturn = false; const ease = 1 - Math.exp(-dt / 160); this.bee.x += dx * ease; this.bee.y += dy * ease; }
     }
     if (floating) this.animateBee(dt, following);
-    else this.bee.setTexture(`companion-${this.companionDir}-${following ? [0, 2, 1, 2][Math.floor(this.walkT / 140) % 4] : 2}`).setDepth(this.bee.y);
+    else this.bee.setTexture(`companion-${this.companionDir}-${following ? walkFrame(this.walkT, 120) : IDLE_FRAME}`).setDepth(this.bee.y);
 
     // members potter about their homes, come when called, and face the founder when close
     let best: string | null = null, bestD = 26;
@@ -611,7 +611,7 @@ export class VorldScene extends Phaser.Scene {
       const mx = n.sprite.x - n.lastX, my = n.sprite.y - n.lastY;
       const walking = Math.hypot(mx, my) > 0.01;
       n.dir = walking ? movementDirection(mx, my, n.dir) : dp < 30 ? movementDirection(this.player.x - n.sprite.x, this.player.y - n.sprite.y, n.dir) : n.dir;
-      const f = n.working || walking ? [0, 2, 1, 2][Math.floor(this.walkT / 160) % 4] : 2;
+      const f = n.working || walking ? walkFrame(this.walkT, 140) : IDLE_FRAME;
       n.frame = f; n.sprite.setTexture(`npc-${n.id}-${n.dir}-${f}`).setDepth(n.sprite.y);
       n.lastX = n.sprite.x; n.lastY = n.sprite.y;
       // followers walk in a tight group: their names would overlap, and the nearest one is named by the prompt;

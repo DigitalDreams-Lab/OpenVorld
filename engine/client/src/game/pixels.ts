@@ -3,15 +3,25 @@
 // tile); an object bigger than a tile is composed from several sprites (composeObject).
 import { propGrid, propSprites, landmarkSprites } from '../../../../tools/lib/props.mjs';
 export type Pal = Record<string, string>;
-export const DIRECTIONS = ['down', 'up', 'left', 'right'] as const;
+// Eight directions, clockwise from down. A character has WALK_FRAMES frames in each: 0 and 2 are the contact poses (a leg and the
+// opposite arm forward), 1 and 3 the passing poses; frame IDLE_FRAME is the standing-still pose. (The companion's frames are a wing flap.)
+export const DIRECTIONS = ['down', 'down_left', 'left', 'up_left', 'up', 'up_right', 'right', 'down_right'] as const;
 export type Direction = typeof DIRECTIONS[number];
+export const WALK_FRAMES = 4, IDLE_FRAME = 1;
+/** The frame to show `t` ms into a walk, one frame every `step` ms. */
+export const walkFrame = (t: number, step = 125) => Math.floor(t / step) % WALK_FRAMES;
 
+// angle of each direction in screen space (x right, y down), in degrees
+const ANGLE: Record<Direction, number> = { right: 0, down_right: 45, down: 90, down_left: 135, left: 180, up_left: -135, up: -90, up_right: -45 };
+/** The direction of a movement; keeps `last` while the movement stays within a little more than its sector, so a path that wobbles does not flicker between two directions. */
 export function movementDirection(vx: number, vy: number, last: Direction = 'down'): Direction {
   if (!vx && !vy) return last;
-  return Math.abs(vx) > Math.abs(vy) ? (vx < 0 ? 'left' : 'right') : (vy < 0 ? 'up' : 'down');
+  const a = Math.atan2(vy, vx) * 180 / Math.PI, off = (d: Direction) => Math.abs(((a - ANGLE[d] + 540) % 360) - 180);
+  if (off(last) <= 28) return last;
+  return DIRECTIONS.reduce((best, d) => (off(d) < off(best) ? d : best), last);
 }
 
-type GenFrame = { img: HTMLImageElement; x: number; y: number; w: number; h: number; art: { x: number; y: number; w: number; h: number }; kind: string; anchor: string };
+type GenFrame = { img: HTMLImageElement; x: number; y: number; w: number; h: number; art: { x: number; y: number; w: number; h: number }; kind: string; anchor: string; flip?: boolean };
 let GEN: Map<string, GenFrame> | null = null, genRevision: string | null = null, genLoad = 0;
 /** Texture pixels per world pixel: sprites are baked at this multiple of the world tile and drawn scaled down by it, so the
  * camera zoom shows them smoothly instead of as enlarged pixels. */
@@ -60,6 +70,7 @@ export function generatedCanvas(name: string, size?: number): HTMLCanvasElement 
   c.width = c.height = size ?? f.w;
   const g = c.getContext('2d')!;
   g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+  if (f.flip) { g.translate(c.width, 0); g.scale(-1, 1); }      // a mirrored direction: the same cell, flipped
   g.drawImage(f.img, f.x, f.y, f.w, f.h, 0, 0, c.width, c.height);
   canvasCache.set(key, c);
   return c;
@@ -118,9 +129,10 @@ export const companionOf = (vorld: any) => vorld?.crew?.find((c: any) => c.role 
 /** A crew member's 4x3 walk cycle: twelve whole square cells (`size` pixels each, the sheet's own size by default). */
 export function generatedCharacter(memberId: string, size?: number) {
   const k = `c_${artKey(memberId)}`;
-  const names = DIRECTIONS.flatMap((d) => [0, 1, 2].map((f) => `${k}_${d}_${f}`));
+  const idx = Array.from({ length: WALK_FRAMES }, (_, f) => f);
+  const names = DIRECTIONS.flatMap((d) => idx.map((f) => `${k}_${d}_${f}`));
   if (!GEN || !names.every((n) => GEN!.has(n))) return null;
-  const frames = Object.fromEntries(DIRECTIONS.map((d) => [d, [0, 1, 2].map((f) => generatedCanvas(`${k}_${d}_${f}`, size)!)])) as Record<Direction, HTMLCanvasElement[]>;
-  const w = frames.down[2].width;
+  const frames = Object.fromEntries(DIRECTIONS.map((d) => [d, idx.map((f) => generatedCanvas(`${k}_${d}_${f}`, size)!)])) as Record<Direction, HTMLCanvasElement[]>;
+  const w = frames.down[IDLE_FRAME].width;
   return { w, h: w, frames, portrait: generatedCanvas(`${k}_portrait`, size) };
 }

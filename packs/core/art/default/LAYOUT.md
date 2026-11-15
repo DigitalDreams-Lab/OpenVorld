@@ -3,14 +3,18 @@
 Every sprite is a **square**. Movement frames and avatar portraits are separate sheets and may use higher source resolutions.
 World, building and UI cells share one tile size (128 px per cell: redrawn at four times the original detail with Codex image generation, `node tools/redraw-art.mjs`; the game bakes them at 64 px). Cells are read left to right, top to bottom. A bigger object
 (a tree, a well, a house) is several sprites side by side: draw each part so it joins its neighbours edge to edge.
-Leave empty cells transparent. Transparent PNG (RGBA). Files: `packs/core/art/default/<sheet>.png`; the *-guide.png images
+Leave empty cells transparent. Transparent PNG (RGBA). Files: `packs/core/art/default/<sheet>.png`; the *-guide.png images (except for characters: its table is below)
 show the same grids with every cell named.
 
-## characters.png  (12 x 16 cells = 3072 x 4096, 256 px per cell)
+## characters.png  (20 x 16 cells = 5120 x 4096, 256 px per cell)
 
-One row per character, 12 cells per row: down 0, down 1, down 2, up 0, up 1, up 2, left 0, left 1, left 2, right 0, right 1, right 2.
-Frames 0 and 1 are the two walking strides (feet alternate), frame 2 is standing still. Down faces the viewer, up shows the back (no face), left and right are profiles.
-The character stands on the bottom edge of the cell, centred, the same size and foot line in all 12 frame cells.
+One row per character, 20 cells per row: five directions of four frames each, side by side: down 0-3, down_right 0-3, right 0-3, up_right 0-3, up 0-3.
+The game flips right, down_right and up_right to get left, down_left and up_left (`mirror` in default-art.yaml), so it has all eight directions. A pack may list all eight in `dirs` instead.
+
+The four frames are a walk cycle: frames 0 and 2 are the contact poses (one leg and the opposite arm forward, then the other pair), frames 1 and 3 are the passing poses (legs together, standing neutral).
+Frame 1 is also the standing-still pose. The game plays 0, 1, 2, 3 in a loop while a character walks. For the companion the four frames are a wing-flap cycle (wings up, halfway down, down, halfway up).
+Down faces the viewer, up shows the back, right is a profile, down_right and up_right are three-quarter views.
+The character stands on the bottom edge of the cell, centred, the same size and foot line in every cell.
 
 | row | id | used by |
 | --- | --- | --- |

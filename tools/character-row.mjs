@@ -1,5 +1,7 @@
 #!/usr/bin/env node
-// Put a freshly drawn character into one row of characters.png.
+// (Older tool for the 4-direction, 3-frame sheet. The current 8-direction walk-cycle sheet is made by tools/character-walk.mjs, which
+// reuses plan() from here to write the reference pictures.)
+// Put a freshly drawn character into one row of the old 12-column characters.png.
 //   node tools/character-row.mjs row <characters.png> <row> <drawn.png> [--cell 128]
 //   node tools/character-row.mjs plan|run|build ...   redraw every character of the sheet with Codex image generation
 // <drawn.png> is a 1024x1024 picture on flat magenta: a 4x4 grid of 256 px cells, one row per view (front, back, left,

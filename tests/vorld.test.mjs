@@ -49,11 +49,15 @@ test('every crew member has sprites on the default sheets', () => {
   const frames = Object.assign({}, ...atlas.sheets.map((s) => s.frames));
   for (const id of ['founder', ...ctx.crew.map((c) => c.id)]) {
     assert.ok(frames[`c_${id.replace(/-/g, '_')}_down_2`], `${id} can walk`);
+    for (const d of ['down', 'down_right', 'right', 'up_right', 'up', 'up_left', 'left', 'down_left']) for (let f = 0; f < 4; f++) assert.ok(frames[`c_${id.replace(/-/g, '_')}_${d}_${f}`], `${id} walks ${d} frame ${f}`);
     assert.ok(frames[`c_${id.replace(/-/g, '_')}_portrait`], `${id} has a portrait`);
   }
   for (let i = 1; i <= 14; i++) {
     assert.ok(frames[`portrait_agent_${i}`], `portrait_agent_${i} exists in atlas`);
   }
+  const mirrored = frames.c_ada_left_1, source = frames.c_ada_right_1;
+  assert.ok(mirrored.flip && !source.flip, 'left is the flipped right');
+  assert.deepEqual({ ...mirrored, flip: undefined }, { ...source, flip: undefined }, 'a mirrored direction shares its source cell');
   assert.deepEqual(frames.c_ada_portrait, frames.portrait_agent_5, 'Ada assigned agent_5 matches portrait_agent_5 frame');
   assert.ok(frames.t_ground_0 && frames.p_tree_0_0 && frames.i_trophy, 'tiles, props and icons');
 });

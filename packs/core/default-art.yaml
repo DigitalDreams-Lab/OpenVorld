@@ -16,15 +16,17 @@ version: 1
 
 characters:
   file: art/default/characters.png
-  dirs: [down, up, left, right]
-  frames: 3
+  dirs: [down, down_right, right, up_right, up]
+  mirror: { up_left: up_right, left: right, down_left: down_right }   # these three are the flipped pictures of the ones named, so the game has all eight directions
+  frames: 4
   portrait: false    # avatars are in the separate portraits.png sheet
-  # One row per character, `dirs x frames` cells left to right:
-  #   down_0 down_1 down_2  up_0 up_1 up_2  left_0 left_1 left_2  right_0 right_1 right_2
-  # frames 0 and 1 are the two strides, frame 2 is standing still. The character stands on the bottom edge of its
-  # cell, centred. `for` says who uses the row: the founder, the companion, or `agent`: the agent rows are given to the
-  # crew's agents in order (the 1st agent gets the 1st agent row, and so on; every agent is the same kind of character, each row
-  # is just another face).
+  # One row per character, `dirs x frames` = 20 cells left to right (four frames of each drawn direction side by side):
+  #   down_0..3  down_right_0..3  right_0..3  up_right_0..3  up_0..3
+  # frames 0 and 2 are the contact poses (a leg and the opposite arm forward), frames 1 and 3 are the passing poses
+  # (standing neutral: frame 1 is the standing-still pose). The character stands on the bottom edge of its cell, centred.
+  # For the companion the four frames are a wing-flap cycle. `for` says who uses the row: the founder, the companion, or
+  # `agent`: the agent rows are given to the crew's agents in order (the 1st agent gets the 1st agent row, and so on; every
+  # agent is the same kind of character, each row is just another face).
   rows:
     - { id: founder,      for: founder,      note: "the player: always the first row" }
     - { id: companion,    for: companion,    note: "the guide / pet: a small creature, robot or person" }

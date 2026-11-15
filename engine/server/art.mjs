@@ -51,11 +51,13 @@ export function atlasFor(ctx) {
   const sig = [];
   const size = sizeOf('characters');
   if (ch && size) {
-    const cols = ch.dirs.length * ch.frames + (ch.portrait ? 1 : 0), cell = size.width / cols, frames = {};
+    const cells = ch.dirs.length * ch.frames, cols = cells + (ch.portrait ? 1 : 0), cell = size.width / cols, frames = {};
     for (const m of people) {
       const y = rowOf(m) * cell, key = `c_${keyOf(m.id)}`;
       ch.dirs.forEach((d, di) => { for (let f = 0; f < ch.frames; f++) frames[`${key}_${d}_${f}`] = { x: (di * ch.frames + f) * cell, y, w: cell, h: cell, kind: 'sprite' }; });
-      if (ch.portrait) frames[`${key}_portrait`] = { x: ch.dirs.length * ch.frames * cell, y, w: cell, h: cell, kind: 'sprite' };
+      // `mirror: { left: right }` draws a direction as the flipped picture of another, so the sheet only holds one of each pair
+      for (const [d, src] of Object.entries(ch.mirror ?? {})) for (let f = 0; f < ch.frames; f++) if (frames[`${key}_${src}_${f}`]) frames[`${key}_${d}_${f}`] = { ...frames[`${key}_${src}_${f}`], flip: true };
+      if (ch.portrait) frames[`${key}_portrait`] = { x: cells * cell, y, w: cell, h: cell, kind: 'sprite' };
     }
     sheets.push({ group: 'characters', image: 'characters', frames });
   }
