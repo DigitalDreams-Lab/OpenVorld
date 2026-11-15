@@ -297,23 +297,11 @@ export class VorldScene extends Phaser.Scene {
     else if (Phaser.Math.Distance.Between(this.player.x, this.player.y, this.bee.x, this.bee.y) < 30) emit('talk', this.companionId);
   }
 
-  balloonAt(x: number, y: number, text: string, ms = 2600) {
-    const pal = this.vorld.theme.palette ?? {};
-    const t = this.add.text(0, 0, text, { fontFamily: bodyFont(), fontStyle: '600', fontSize: '7px', color: pal.ink ?? '#000', resolution: ZOOM * window.devicePixelRatio * 1.5, wordWrap: { width: 110 }, align: 'center', lineSpacing: 1 }).setOrigin(0.5);
-    const w = t.width + 8, h = t.height + 6;
-    const g = this.add.graphics();
-    g.fillStyle(Phaser.Display.Color.HexStringToColor(pal.parchment ?? '#fff').color).fillRoundedRect(-w / 2, -h / 2, w, h, 3);
-    g.lineStyle(1, Phaser.Display.Color.HexStringToColor(pal.ink ?? '#000').color).strokeRoundedRect(-w / 2, -h / 2, w, h, 3);
-    g.fillStyle(Phaser.Display.Color.HexStringToColor(pal.parchment ?? '#fff').color).fillTriangle(-3, h / 2 - 1, 3, h / 2 - 1, 0, h / 2 + 4);
-    const box = this.add.container(x, y - h / 2 - 6, [g, t]).setDepth(20000).setScale(0.6).setAlpha(0);
-    this.tweens.add({ targets: box, scale: 1, alpha: 1, duration: 140, ease: 'Back.out' });
-    this.time.delayedCall(ms, () => this.tweens.add({ targets: box, alpha: 0, y: box.y - 6, duration: 250, onComplete: () => box.destroy() }));
-  }
+  /** What a character says out loud is a balloon over its head, drawn with the other balloons (ui/AgentBalloons) so they stack instead of covering each other. */
   balloon(role: string, text: string, ms = 2600) {
     if (!text) return;
-    if (role === this.companionId) return this.balloonAt(this.bee.x, this.bee.y - 14, text, ms);
-    const n = this.npcs.get(role);
-    if (n && n.sprite.visible) this.balloonAt(n.sprite.x, n.sprite.y - n.sprite.displayHeight - 2, text, ms);
+    const visible = role === this.companionId ? this.bee.visible : !!this.npcs.get(role)?.sprite.visible;
+    if (visible) emit('speech', { role, text, ms });
   }
 
   particles(x: number, y: number, color: number, count = 8, spread = 14) {

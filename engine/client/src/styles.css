@@ -506,3 +506,9 @@ select.field.small { padding-right: 26px; }
 /* the API key box of a model endpoint: masked while it holds a key, with a way to forget a saved one */
 .key-box { display: grid; gap: 2px; min-width: 0; }
 .key-box .link { justify-self: start; font-size: 12px; }
+
+/* what a character says out loud: a small balloon in the stack above its job balloon (newest highest), never under it */
+.agent-balloon.speech { width: auto; max-width: min(200px, calc(100% - 16px)); display: block; padding: 5px 10px; text-align: center; font-weight: 600; font-size: 13px; cursor: default; pointer-events: none; animation: speech-in .16s ease-out; }
+.agent-balloon.speech:hover { outline: none; }
+@keyframes speech-in { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .agent-balloon.speech { animation: none; } }

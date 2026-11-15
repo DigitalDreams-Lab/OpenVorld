@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.6.2 - 2026-11-15
+
+- Speech balloons (a call over, a line a character says) are drawn with the job balloons and stack above them, newest on top, each joined to its character, instead of hiding under the job balloon; a tall stack keeps the newest lines
+
 ## 0.6.1 - 2026-11-15
 
 - The desktop workflow publishes a GitHub release for the version (tag v<version>, files named OpenVorld-<version>-<os>-<arch>, SHA256SUMS.txt, the changelog entry as notes) every time it is run; a pushed tag must match the version
