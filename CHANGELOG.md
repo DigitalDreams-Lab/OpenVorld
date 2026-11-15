@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.7.1 - 2026-11-15
+
+- The model-endpoint row in Settings lines up: the key box and the 'Forget key' button sit on one line next to the address, apart from the endpoint's own Remove
+
 ## 0.7.0 - 2026-11-16
 
 - Add shared founder name and About me settings, with the main character kept fixed

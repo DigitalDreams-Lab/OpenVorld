@@ -65,10 +65,10 @@ export function Settings() {
             <b>{p.name}</b>
             <input className="field" placeholder="base URL" value={p.base_url ?? ''} onChange={(e) => setEndpoint(p, { base_url: e.target.value })} />
             <span className="key-box">
-              <input className="field" type={looksLikeEnvName(p.key_input ?? p.api_key_env ?? '') ? 'text' : 'password'} autoComplete="off" spellCheck={false}
-                placeholder={p.has_key && p.key_input === undefined ? 'Key saved ✓ (paste to replace)' : 'API key, or env var name'}
+              <input className="field" type={looksLikeEnvName(p.key_input ?? p.api_key_env ?? '') ? 'text' : 'password'} autoComplete="off" spellCheck={false} title="Paste a key or an environment variable name. A saved key is never shown; paste a new one to replace it."
+                placeholder={p.has_key && p.key_input === undefined ? 'Key saved ✓' : 'API key, or env var name'}
                 value={p.key_input ?? (p.has_key ? '' : p.api_key_env ?? '')} onChange={(e) => setEndpoint(p, { key_input: e.target.value })} />
-              {p.has_key && p.key_input === undefined && <button type="button" className="link" onClick={() => setEndpoint(p, { key_input: '' })}>Remove saved key</button>}
+              {p.has_key && p.key_input === undefined && <button type="button" className="btn small" title="Forget the key saved on this computer" onClick={() => setEndpoint(p, { key_input: '' })}>Forget key</button>}
             </span>
             <button className="btn small" onClick={() => setS((x: any) => ({ ...x, providers: x.providers.filter((q: any) => q !== p) }))}>Remove</button>
           </div>
