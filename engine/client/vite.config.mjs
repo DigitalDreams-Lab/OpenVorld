@@ -1,5 +1,6 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 
 const SERVER = `http://127.0.0.1:${process.env.OV_PORT ?? 4317}`;
 // Dev only: inject the per-launch token the same way the server does for the built client.
@@ -10,7 +11,7 @@ const token = () => ({
 });
 
 export default defineConfig({
-  root: new URL('.', import.meta.url).pathname,
+  root: fileURLToPath(new URL('.', import.meta.url)),
   plugins: [react(), token()],
   server: {
     host: '127.0.0.1',

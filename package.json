@@ -14,7 +14,11 @@
     "ov": "node tools/ov.mjs",
     "validate": "node tools/ov.mjs validate",
     "typecheck": "tsc -p engine/client/tsconfig.json --noEmit",
-    "test": "node --test tests/*.test.mjs"
+    "test": "node --test tests/*.test.mjs",
+    "desktop": "npm run build && node desktop/make-icons.mjs && node desktop/launch.mjs",
+    "desktop:pack": "npm run build && node desktop/make-icons.mjs && electron-builder --dir",
+    "desktop:dist": "npm run build && node desktop/make-icons.mjs && electron-builder",
+    "desktop:install": "npm run desktop:pack && node desktop/install-mac.mjs"
   },
   "dependencies": {
     "@fontsource/jetbrains-mono": "5.3.0",
@@ -34,6 +38,8 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.3.0",
+    "electron": "45.3.2",
+    "electron-builder": "26.18.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.8"
   },
@@ -47,5 +53,6 @@
     "opencode",
     "gamification",
     "phaser"
-  ]
+  ],
+  "main": "desktop/main.mjs"
 }

@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { api, artImage, connect } from '../api';
-import { emit, getState, on, setState, str, toast, useStore } from '../store';
+import { emit, getState, on, setState, toast, useStore } from '../store';
 import { play } from '../audio/sfx';
 import { VorldScene } from '../game/VorldScene';
 import { PANELS } from '../game/commands';
@@ -17,7 +17,8 @@ import { PartyPanel } from '../ui/PartyPanel';
 import { Deeds } from '../ui/Deeds';
 import { Settings } from '../ui/Settings';
 import { Toasts } from '../ui/Toasts';
-import { BrowserDock } from '../ui/BrowserDock';
+import { AgentBalloons } from '../ui/AgentBalloons';
+import { lastActivityLine } from '../activity';
 
 export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
   const host = useRef<HTMLDivElement>(null);
@@ -35,7 +36,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
         const w = await api(`/vorlds/${wid}/vorld`);
         if (dead) return;
         await loadGenerated(w.art.atlas, (name) => artImage(name));
-        setState({ vorldId: wid, vorld: w, talkingTo: null, modal: null, partyId: null, partyEdit: null, live: {}, browsers: {} });
+        setState({ vorldId: wid, vorld: w, talkingTo: null, modal: null, partyId: null, partyEdit: null, live: {}, browsers: {}, activityNotes: {} });
         // what each member's browser last showed (a window opened after they stopped browsing)
         for (const c of w.crew) api(`/vorlds/${wid}/browser/${c.id}`).then((f) => { if (!dead && f?.image) handleBrowser({ ...f, role: c.id, active: false }); }).catch(() => {});
         applyUiTheme(w.theme.palette);
@@ -89,7 +90,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
       <div ref={host} className="phaser-host" />
       {vorld && <Hud onExit={onExit} />}
       {vorld && <CrewBar />}
-      {vorld && <BrowserDock />}
+      {vorld && <AgentBalloons />}
       {vorld && talkingTo && <MemberPanel key={`${wid}:${talkingTo}`} id={talkingTo} />}
       {vorld && !talkingTo && partyId && <PartyPanel key={`${wid}:${partyId}`} id={partyId} />}
       {vorld && modal === 'parties' && <PartyHall />}
@@ -115,10 +116,9 @@ function handleBrowser(m: any) {
 }
 
 let letterTick = 0;
-const shortLine = (t: string) => { const one = String(t ?? '').replace(/\s+/g, ' ').trim(); return one.length > 64 ? one.slice(0, 61) + '…' : one; };
 function handleThreadEvent(m: any) {
   const { thread, role, ev } = m;
-  const put = (patch: any) => setState((s) => ({ live: { ...s.live, [thread]: { ...(s.live[thread] ?? { steps: [], working: false }), role, ...patch } } }));
+  const put = (patch: any) => setState((s) => ({ live: { ...s.live, [thread]: { ...(s.live[thread] ?? { steps: [], working: false }), role, updatedAt: Date.now(), ...patch } } }));
   const steps = () => [...(getState().live[thread]?.steps ?? [])];
   // steps grow in place: text and thinking append to the last step of their kind, tools update by id
   const grow = (type: 'text' | 'thinking', text: string) => {
@@ -126,7 +126,8 @@ function handleThreadEvent(m: any) {
     if (last?.t === type) list[list.length - 1] = { ...last, text: last.text + text }; else list.push({ t: type, text });
     put({ steps: list });
   };
-  const react = (reaction: any) => { if (!reaction) return; play(reaction.sfx); emit('react', { role, reaction: { ...reaction, balloonText: reaction.balloon ? str(reaction.balloon, {}, '') : '' } }); };
+  // The activity balloon owns work text; keep animations without stacking a second speech bubble.
+  const react = (reaction: any) => { if (!reaction) return; play(reaction.sfx); emit('react', { role, reaction: { ...reaction, balloon: undefined } }); };
   switch (ev.type) {
     case 'turn.start': put({ steps: [], working: true, error: null }); emit('working', { role, working: true }); react(ev.reaction); break;
     case 'delta': grow('text', ev.text); if (letterTick++ % 4 === 0) play('chat.letter'); break;
@@ -137,13 +138,14 @@ function handleThreadEvent(m: any) {
     case 'writ.request': react(ev.reaction); setState((s) => ({ threadsVersion: s.threadsVersion + 1 })); break;
     case 'turn.done':
       put({ working: false, steps: [] });
+      if (role) setState(s => ({ activityNotes: { ...s.activityNotes, [role]: { text: lastActivityLine(ev.text) || ev.meta?.balloon || '', at: Date.now() } } }));
       emit('working', { role, working: false });
-      if (ev.meta?.balloon || ev.thread?.kind === 'party') emit('balloon', { role, text: ev.meta?.balloon || shortLine(ev.text), ms: 4200 });
       setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));
       play('ui.click');
       break;
     case 'turn.error':
       put({ working: false, error: ev.message });
+      if (role) setState(s => ({ activityNotes: { ...s.activityNotes, [role]: { text: ev.message || 'Something went wrong.', at: Date.now(), error: true } } }));
       emit('working', { role, working: false }); react(ev.reaction ?? { anim: 'faint' });
       setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));
       break;

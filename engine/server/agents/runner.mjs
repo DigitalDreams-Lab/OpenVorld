@@ -24,6 +24,12 @@ import { attachmentPrompt, publicFiles, threadAttachments, getAttachment, saveAt
 const active = new Map(); // threadId -> AbortController
 export const isWorking = (id) => active.has(id);
 export const stopTurn = (threadId) => active.get(threadId)?.abort();
+export const activeTurnCount = () => active.size;
+export async function stopAllTurns() {
+  for (const controller of active.values()) controller.abort();
+  const deadline = Date.now() + 3000;
+  while (active.size && Date.now() < deadline) await new Promise(resolve => setTimeout(resolve, 25));
+}
 const TEST_RE = /\b(test|tests|vitest|jest|pytest|mocha|go test|cargo test|xcodebuild test|gradlew test)\b/;
 
 /** The brain a member thinks with: { provider, driver, model, cfg, label }, or the scripted stand-in. */

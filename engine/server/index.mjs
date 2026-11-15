@@ -10,8 +10,8 @@ import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMemb
 import { atlasFor, sheetFiles } from './art.mjs';
 import { gameFor } from './game.mjs';
 import { listThreads, createThread, getThread, readEvents, appendEvent } from './threads.mjs';
-import { runTurn, stopTurn, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
-import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, partyBusy } from './parties.mjs';
+import { runTurn, stopTurn, stopAllTurns, activeTurnCount, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
+import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, stopAllParties, partyBusy } from './parties.mjs';
 import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, addReferences } from './attachments.mjs';
 import { listGrants, grant, revoke, checkFolder, checkScope, deny, holds } from './gate.mjs';
 import { browseFolder, pickNative, nativeDialog, browseConfig } from './browse.mjs';
@@ -21,7 +21,7 @@ import { listModels } from './models.mjs';
 import * as browse from './browser.mjs';
 import { REPO, resolveTheme } from '../../tools/lib/packs.mjs';
 
-const PORT = Number(process.env.OV_PORT ?? 4317);
+let PORT = Number(process.env.OV_PORT ?? 4317);
 const TOKEN = process.env.OV_TOKEN || crypto.randomBytes(24).toString('hex');
 process.env.OV_TOKEN = TOKEN; process.env.OV_PORT = String(PORT);   // the browser bridge (a child of Claude Code or Codex) calls back with these
 const DIST = path.join(REPO, 'engine', 'client', 'dist');
@@ -414,6 +414,34 @@ server.on('upgrade', (req, socket, head) => {
 });
 
 server.listen(PORT, '127.0.0.1', () => {
+  // Desktop asks the OS for a free port, leaving a running browser-mode server alone.
+  PORT = server.address?.()?.port ?? PORT;
+  process.env.OV_PORT = String(PORT);
+  LOCAL_HOSTS.add(`127.0.0.1:${PORT}`); LOCAL_HOSTS.add(`localhost:${PORT}`);
   console.log(`OpenVorld server on http://127.0.0.1:${PORT}  (home: ${HOME})`);
   if (!process.env.OV_TOKEN) console.log(`Open http://127.0.0.1:${PORT}/`);
+  if (process.env.OV_DESKTOP === '1') process.send?.({ type: 'desktop:ready', port: PORT });
 });
+
+if (process.env.OV_DESKTOP === '1') {
+  let stopping = false;
+  const shutdown = async () => {
+    if (stopping) return;
+    stopping = true;
+    const timeout = setTimeout(() => process.exit(1), 7000);
+    stopAllParties();
+    await stopAllTurns();
+    await browse.closeAll();
+    for (const ws of wss.clients) ws.terminate();
+    server.closeAllConnections();
+    await new Promise(resolve => server.close(resolve));
+    clearTimeout(timeout); process.exit(0);
+  };
+  process.on('message', message => {
+    if (message?.type === 'desktop:status') process.send?.({ type: 'desktop:status', active: activeTurnCount() });
+    if (message?.type === 'desktop:shutdown') shutdown().catch(error => { console.error(error); process.exit(1); });
+  });
+  process.on('disconnect', shutdown);
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
+}

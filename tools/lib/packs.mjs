@@ -4,9 +4,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
+import { fileURLToPath } from 'node:url';
 import YAML from 'yaml';
 
-export const REPO = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', '..');
+export const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SINGLETONS = new Set(['achievements', 'permissions', 'providers', 'defaults', 'interactions', 'default_art', 'icons', 'scenery', 'game_commands']);
 
 export function expandHome(p) {

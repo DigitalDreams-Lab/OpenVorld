@@ -140,7 +140,21 @@ export class VorldScene extends Phaser.Scene {
       on('command', ({ role, commands }: { role: string; commands: any[] }) => this.runCommands(role, commands)),
       on('dismiss', ({ ids }: { ids?: string[] }) => this.sendHome(ids)),
     );
-    const cleanup = () => { this.unsub.forEach((u) => u()); this.unsub = []; };
+    const reportAnchors = () => {
+      const camera = this.cameras.main;
+      const positions: Record<string, { x: number; y: number }> = {};
+      const sx = this.scale.displaySize.width / this.scale.gameSize.width, sy = this.scale.displaySize.height / this.scale.gameSize.height;
+      const anchor = (role: string, sprite: Phaser.GameObjects.Sprite) => {
+        if (!sprite?.visible) return;
+        const point = camera.matrixCombined.transformPoint(sprite.x, sprite.y - sprite.displayHeight - 3);
+        positions[role] = { x: point.x * sx, y: point.y * sy };
+      };
+      anchor(this.companionId, this.bee);
+      for (const member of this.npcs.values()) anchor(member.id, member.sprite);
+      emit('agent-anchors', { width: this.scale.displaySize.width, height: this.scale.displaySize.height, positions });
+    };
+    this.game.events.on('postrender', reportAnchors);
+    const cleanup = () => { this.game.events.off('postrender', reportAnchors); emit('agent-anchors', null); this.unsub.forEach((u) => u()); this.unsub = []; };
     this.events.once('shutdown', cleanup); this.events.once('destroy', cleanup);
     this.refresh();
     emit('scene-ready');

@@ -5,9 +5,10 @@ import { spawn } from 'node:child_process';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import fs from 'node:fs';
+import { fileURLToPath } from 'node:url';
 
 const i = process.argv.indexOf('--home');
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 let local = {};
 try { local = JSON.parse(fs.readFileSync(path.join(root, '.openvorld-dev.json'), 'utf8')); }
 catch (e) { if (e.code !== 'ENOENT') throw e; }

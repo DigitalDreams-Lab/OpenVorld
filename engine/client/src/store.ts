@@ -2,8 +2,9 @@
 import { useSyncExternalStore } from 'react';
 
 export type Toast = { id: number; kind: 'deed' | 'level' | 'xp' | 'info' | 'error'; title: string; body?: string; xp?: number; icon?: string };
-export type Live = { role?: string; steps: any[]; working: boolean; error?: string | null };
+export type Live = { role?: string; steps: any[]; working: boolean; error?: string | null; updatedAt?: number };
 export type BrowserFrame = { url?: string; title?: string; image?: string; active?: boolean; signed?: boolean; at?: number };
+export type ActivityNote = { text: string; at: number; error?: boolean };
 export type Modal = null | 'parties' | 'deeds' | 'settings' | 'member' | 'add';
 
 type State = {
@@ -16,11 +17,12 @@ type State = {
   toasts: Toast[];
   live: Record<string, Live>;         // threadId -> streaming turn
   browsers: Record<string, BrowserFrame>;   // crew member id -> what their browser last showed
+  activityNotes: Record<string, ActivityNote>; // brief final lines, kept per member across party handoffs
   threadsVersion: number;             // bump to refetch thread lists
   following: string[];                // crew members walking with the founder right now (the map reports them)
 };
 
-let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, partyId: null, partyEdit: null, toasts: [], live: {}, browsers: {}, threadsVersion: 0, following: [] };
+let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, partyId: null, partyEdit: null, toasts: [], live: {}, browsers: {}, activityNotes: {}, threadsVersion: 0, following: [] };
 const subs = new Set<() => void>();
 export const getState = () => state;
 export function setState(patch: Partial<State> | ((s: State) => Partial<State>)) {

@@ -77,6 +77,7 @@ const chains = new Set();            // party chats whose job is running now
 const stopped = new Set();
 export const partyBusy = (tid) => chains.has(tid) || isWorking(tid);
 export function stopParty(tid) { if (chains.has(tid)) stopped.add(tid); stopTurn(tid); }
+export function stopAllParties() { for (const tid of chains) stopParty(tid); }
 
 const cfg = (ctx) => ({ max_turns: 12, message_chars: 2500, room_events: 40, ...(ctx.interactions.party ?? {}) });
 const nameOf = (ctx, id) => ctx.member(id)?.name ?? id;

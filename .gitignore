@@ -9,3 +9,7 @@ worlds/
 .openvorld-dev.json
 .claude/
 engine/client/dist/
+release/
+desktop/assets/icon.png
+desktop/assets/icon.ico
+desktop/assets/icon.icns

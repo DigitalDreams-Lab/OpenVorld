@@ -22,6 +22,8 @@ vorld "Lantern Tea"
 
 ## Start
 
+For a desktop window with an automatically managed local engine, run `npm run desktop` after installing dependencies. On macOS, `npm run desktop:install` builds and installs OpenVorld into your Applications folder. See [desktop setup and installers](docs/DESKTOP.md).
+
 Requires Node 20+.
 
 ```bash

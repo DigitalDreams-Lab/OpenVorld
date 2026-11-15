@@ -60,6 +60,8 @@ vorlds/<id>/
 
 ## Client (`engine/client/src`)
 
+`ui/AgentBalloons.tsx` shows each member's current action or latest response line above their map avatar, including a compact live preview while browsing. The scene reports camera-projected anchors after rendering, so balloons follow movement and zoom without updating the React store on every frame. Final lines persist briefly per member across party handoffs; restored idle browser frames do not reopen a window.
+
 - `screens/`: Title (choose a vorld), Onboarding (found one) and Game.
 - `game/VorldScene.ts`: the Phaser map, with houses, the plaza with the Party Hall, members walking, speech balloons and the "!" markers.
 - `ui/`: React panels. `PartyHall.tsx` + `PartyPanel.tsx`, `MemberPanel.tsx` + `Thread.tsx` (one conversation), `WritCard.tsx`, `Settings.tsx`, `MemberSettings.tsx`, `CrewBar.tsx`, `Hud.tsx`, `Deeds.tsx`.

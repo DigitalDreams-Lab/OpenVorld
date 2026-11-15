@@ -1,0 +1,41 @@
+appId: org.openvorld.desktop
+productName: OpenVorld
+asar: false
+directories:
+  output: release
+files:
+  - desktop/main.mjs
+  - desktop/runtime.mjs
+  - desktop/assets/icon.png
+  - engine/server/**
+  - engine/client/dist/**
+  - tools/lib/**
+  - packs/**
+  - package.json
+  - LICENSE
+  - '!**/*-guide.png'
+  - '!**/node_modules/playwright-core/.local-browsers/**'
+npmRebuild: false
+mac:
+  category: public.app-category.productivity
+  icon: desktop/assets/icon.icns
+  identity: '-'
+  target:
+    - dmg
+    - zip
+  extendInfo:
+    NSMicrophoneUsageDescription: OpenVorld uses the microphone when you choose voice input.
+win:
+  icon: desktop/assets/icon.ico
+  target:
+    - nsis
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+linux:
+  icon: desktop/assets/icon.png
+  category: Office
+  target:
+    - AppImage
+artifactName: '${productName}-${version}-${os}-${arch}.${ext}'

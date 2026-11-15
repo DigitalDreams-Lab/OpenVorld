@@ -15,8 +15,9 @@ export function browserFor(ctx, role, threadId, { emit, onRequest }) {
   return {
     call: (name, args) => hub.callTool(ctx, role, name, args, { emit, onRequest }),
     mcp: {
-      name: BROWSER_SERVER, command: process.execPath, args: [BRIDGE],
-      env: { OV_URL: `http://127.0.0.1:${process.env.OV_PORT ?? 4317}`, OV_TOKEN: process.env.OV_TOKEN ?? '', OV_VORLD: ctx.id, OV_ROLE: role, OV_THREAD: threadId },
+      name: BROWSER_SERVER, command: process.env.OV_NODE_EXECUTABLE || process.execPath, args: [BRIDGE],
+      env: { OV_URL: `http://127.0.0.1:${process.env.OV_PORT ?? 4317}`, OV_TOKEN: process.env.OV_TOKEN ?? '', OV_VORLD: ctx.id, OV_ROLE: role, OV_THREAD: threadId,
+        ...(process.env.OV_DESKTOP === '1' ? { ELECTRON_RUN_AS_NODE: '1' } : {}) },
     },
     allowed: [`mcp__${BROWSER_SERVER}`],
   };

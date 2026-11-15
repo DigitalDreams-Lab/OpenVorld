@@ -4,6 +4,10 @@ import { spawn } from 'node:child_process';
 
 export function cleanEnv() {
   const env = { ...process.env };
+  // The desktop engine uses Electron's bundled Node, but agent CLIs must launch normally.
+  delete env.ELECTRON_RUN_AS_NODE;
+  delete env.OV_NODE_EXECUTABLE;
+  delete env.OV_DESKTOP;
   for (const k of Object.keys(env)) if (k === 'CLAUDECODE' || (k.startsWith('CLAUDE_CODE_') && k !== 'CLAUDE_CODE_OAUTH_TOKEN') || k.startsWith('CODEX_SANDBOX')) delete env[k];
   return env;
 }
