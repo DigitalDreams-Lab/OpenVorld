@@ -53,7 +53,7 @@ function AddAgent({ onClose }: { onClose: () => void }) {
   const [typing, setTyping] = useState(false);
   const [busy, setBusy] = useState(false);
   const { native, choose } = useFolderDialog('fs.write');
-  const { opts, choices, label } = useBrainChoices(wid);
+  const { opts, choices, label, failed } = useBrainChoices(wid);
   const brainValue = `${f.brain.provider}${f.brain.name ? '#' + f.brain.name : ''}`;
   if (opts && !choices.some((p) => p.value === brainValue)) choices.push({ value: brainValue, label: `${label(f.brain.provider)} (not found here)` });
   const defaultWs = `${vorld.benches?.base ?? ''}/${slug(f.name)}`;
@@ -99,7 +99,7 @@ function AddAgent({ onClose }: { onClose: () => void }) {
         <label>Job description<textarea className="field" rows={3} value={f.function} maxLength={400} placeholder="What they do for you" onChange={(e) => setF({ ...f, function: e.target.value })} /></label>
         <div className="row">
           <label className="grow">Brain<select className="field" value={brainValue} onChange={(e) => { const [provider, name] = e.target.value.split('#'); setF({ ...f, brain: { provider, name: name || undefined, model: '' } }); }}>
-            {choices.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></label>
+            {choices.length ? choices.map((p) => <option key={p.value} value={p.value}>{p.label}</option>) : <option value={brainValue}>{failed ? 'Cannot reach the server, retrying…' : 'Loading…'}</option>}</select></label>
           <label className="grow">Model<ModelPicker wid={wid} provider={f.brain.provider} name={f.brain.name} tier="balanced" value={f.brain.model || undefined} onChange={(model) => setF({ ...f, brain: { ...f.brain, model: model ?? '' } })} /></label>
         </div>
         <section className="project-folder">

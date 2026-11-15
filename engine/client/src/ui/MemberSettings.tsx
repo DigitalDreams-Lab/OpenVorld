@@ -15,12 +15,22 @@ import { VaultPanel } from './VaultPanel';
 /** The brains this vorld can use: detected CLIs plus the API endpoints set up in Settings. */
 export function useBrainChoices(wid: string) {
   const [opts, setOpts] = useState<any>(null);
-  useEffect(() => { api(`/vorlds/${wid}/settings`).then(setOpts).catch(() => {}); }, [wid]);
+  const [failed, setFailed] = useState(false);
+  // the server may be restarting (development) or slow: keep trying instead of leaving the list empty for good
+  useEffect(() => {
+    let stop = false, timer: any, tries = 0;
+    const load = () => api(`/vorlds/${wid}/settings`).then((o) => { if (!stop) { setOpts(o); setFailed(false); } }).catch(() => {
+      if (stop) return;
+      setFailed(true); if (++tries < 20) timer = setTimeout(load, Math.min(500 * tries, 3000));
+    });
+    load();
+    return () => { stop = true; clearTimeout(timer); };
+  }, [wid]);
   const label = (id: string) => opts?.catalog.find((x: any) => x.id === id)?.label ?? id;
   const choices = opts ? [{ value: 'none', label: 'No brain yet' },
     ...opts.detected.map((d: any) => ({ value: d.id, label: d.label })),
     ...opts.providers.map((p: any) => ({ value: `${p.id}#${p.name ?? ''}`, label: `${label(p.id)}${p.name ? ' · ' + p.name : ''}` }))] : [];
-  return { opts, choices, label };
+  return { opts, choices, label, failed };
 }
 
 export function MemberSettings({ id }: { id: string }) {
@@ -31,7 +41,7 @@ export function MemberSettings({ id }: { id: string }) {
   const agentIdx = agents.findIndex((m: any) => m.id === id);
   const fallbackAvatar = `agent_${((agentIdx >= 0 ? agentIdx : 0) % 14) + 1}`;
   const [f, setF] = useState<any>(() => ({ name: c.name, job: c.job ?? '', function: c.function ?? '', personality: c.personality ?? '', avatar: c.avatar || fallbackAvatar, form: c.look?.form ?? 'creature', brain: { provider: c.brain?.provider ?? 'none', name: c.brain?.name, model: c.brain?.model ?? '' } }));
-  const { opts, choices, label } = useBrainChoices(wid);
+  const { opts, choices, label, failed } = useBrainChoices(wid);
   const [confirm, dialog] = useConfirm();
   const close = () => setState({ modal: null });
   const brainValue = `${f.brain.provider}${f.brain.name ? '#' + f.brain.name : ''}`;
@@ -80,7 +90,7 @@ export function MemberSettings({ id }: { id: string }) {
             {c.role === 'companion' && <label>Looks like<select className="field" value={f.form} onChange={(e) => setF({ ...f, form: e.target.value })}><option value="creature">a bee</option><option value="robot">a robot</option><option value="person">a person</option></select></label>}
             <div className="row">
               <label className="grow">Brain<select className="field" value={brainValue} onChange={(e) => { const [provider, name] = e.target.value.split('#'); setF({ ...f, brain: { provider, name: name || undefined, model: '' } }); }}>
-                {choices.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}</select></label>
+                {choices.length ? choices.map((p) => <option key={p.value} value={p.value}>{p.label}</option>) : <option value={brainValue}>{failed ? 'Cannot reach the server, retrying…' : 'Loading…'}</option>}</select></label>
               <label className="grow">Model<ModelPicker wid={wid} provider={f.brain.provider} name={f.brain.name} tier="balanced" value={f.brain.model || undefined} onChange={(model) => setF({ ...f, brain: { ...f.brain, model: model ?? '' } })} /></label>
             </div>
             <Workbenches id={id} />
