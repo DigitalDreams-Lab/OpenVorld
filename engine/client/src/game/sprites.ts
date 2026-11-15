@@ -7,6 +7,7 @@ import { DIRECTIONS, TEX, artKey, generatedCanvas, generatedCharacter, propCanva
 import { propGrid } from '../../../../tools/lib/props.mjs';
 
 const TILE_PX = 16;
+const MAX_TEXTURE = 4096;
 import { DEFAULT_HOME, type HomeSize } from './geometry';
 import { planHouse, houseBlocks } from '../../../../tools/lib/houses.mjs';
 import { roadConnections, paintRoadTile } from './terrain';
@@ -31,20 +32,23 @@ const TILE: Record<string, string> = { '0': 't_ground_0', '1': 't_ground_1', '2'
 export function makeWorldArt(scene: Phaser.Scene, plan: any, art: any) {
   const defs = art.scenery;
   const world = defs.size?.tile ?? 16, tile = world * TEX;      // sprites are baked at TEX x the world tile (drawn scaled down: smooth, not enlarged pixels)
+  // the ground is one big texture: keep it inside what every GPU accepts (4096 px), at the cost of a little sharpness on very large maps
+  const gtile = Math.min(tile, Math.floor(MAX_TEXTURE / Math.max(plan.w, plan.h)));
   const ground = document.createElement('canvas');
-  ground.width = plan.w * tile; ground.height = plan.h * tile;
+  ground.width = plan.w * gtile; ground.height = plan.h * gtile;
   const ctx = ground.getContext('2d')!;
   ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
   for (let y = 0; y < plan.h; y++) for (let x = 0; x < plan.w; x++) {
-    const ch = plan.ground[y][x], img = generatedCanvas(TILE[ch] ?? TILE.V, tile);
+    const ch = plan.ground[y][x], img = generatedCanvas(TILE[ch] ?? TILE.V, gtile);
     if (!img) continue;
-    if (ch === 'p') paintRoadTile(ctx, img, x * tile, y * tile, tile, roadConnections(plan, x, y));
+    if (ch === 'p') paintRoadTile(ctx, img, x * gtile, y * gtile, gtile, roadConnections(plan, x, y));
     else if (ch === 'b' && (roadConnections(plan, x, y).east || roadConnections(plan, x, y).west)) {
-      ctx.save(); ctx.translate((x + 0.5) * tile, (y + 0.5) * tile); ctx.rotate(Math.PI / 2);
-      ctx.drawImage(img, -tile / 2, -tile / 2, tile, tile); ctx.restore();
-    } else ctx.drawImage(img, x * tile, y * tile, tile, tile);
+      ctx.save(); ctx.translate((x + 0.5) * gtile, (y + 0.5) * gtile); ctx.rotate(Math.PI / 2);
+      ctx.drawImage(img, -gtile / 2, -gtile / 2, gtile, gtile); ctx.restore();
+    } else ctx.drawImage(img, x * gtile, y * gtile, gtile, gtile);
   }
   canvasTexture(scene, 'ground', ground);
+  const groundScale = world / gtile;           // world pixels per texture pixel of the ground
   for (const [id, def] of Object.entries<any>(defs.props)) {
     const [cols, rows] = propGrid(def);
     for (let v = 0; v < (def.variants ?? 1); v++) canvasTexture(scene, `prop-${id}-${v}`, propCanvas(id, def, v, tile) ?? blank(cols * tile, rows * tile));
@@ -55,6 +59,7 @@ export function makeWorldArt(scene: Phaser.Scene, plan: any, art: any) {
   grad.addColorStop(0, 'rgba(255,255,255,0.9)'); grad.addColorStop(0.4, 'rgba(255,255,255,0.28)'); grad.addColorStop(1, 'rgba(255,255,255,0)');
   x.fillStyle = grad; x.fillRect(0, 0, 64, 64);
   canvasTexture(scene, 'glow', g);
+  return { groundScale };
 }
 
 /** One block of a home, placed on the home's grid (x right, y up from the ground line), in pixels. */

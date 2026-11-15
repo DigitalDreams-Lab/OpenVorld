@@ -15,7 +15,7 @@ type GenFrame = { img: HTMLImageElement; x: number; y: number; w: number; h: num
 let GEN: Map<string, GenFrame> | null = null, genRevision: string | null = null, genLoad = 0;
 /** Texture pixels per world pixel: sprites are baked at this multiple of the world tile and drawn scaled down by it, so the
  * camera zoom shows them smoothly instead of as enlarged pixels. */
-export const TEX = 2;
+export const TEX = 4;
 const canvasCache = new Map<string, HTMLCanvasElement>();
 const listeners = new Set<() => void>();
 /** Sprite-name key, same rule as the server (engine/server/art.mjs keyOf). */

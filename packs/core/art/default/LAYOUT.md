@@ -1,7 +1,7 @@
 # Default sprite sheets: layout
 
 Every sprite is a **square**. Movement frames and avatar portraits are separate sheets and may use higher source resolutions.
-World, building and UI cells share one tile size. Cells are read left to right, top to bottom. A bigger object
+World, building and UI cells share one tile size (128 px per cell: redrawn at four times the original detail with Codex image generation, `node tools/redraw-art.mjs`; the game bakes them at 64 px). Cells are read left to right, top to bottom. A bigger object
 (a tree, a well, a house) is several sprites side by side: draw each part so it joins its neighbours edge to edge.
 Leave empty cells transparent. Transparent PNG (RGBA). Files: `packs/core/art/default/<sheet>.png`; the *-guide.png images
 show the same grids with every cell named.
@@ -52,7 +52,7 @@ The character stands on the bottom edge of the cell, centred, the same size and 
 | 2, 3 | portrait_agent_13 | head-and-shoulders avatar with a visible mouth; same character order as the movement sheet |
 | 3, 3 | portrait_agent_14 | head-and-shoulders avatar with a visible mouth; same character order as the movement sheet |
 
-## world.png  (8 x 11 cells = 256 x 352)
+## world.png  (8 x 11 cells = 1024 x 1408)
 
 | cell (col, row) | sprite | what to draw |
 | --- | --- | --- |
@@ -138,7 +138,7 @@ The character stands on the bottom edge of the cell, centred, the same size and 
 | 7, 9 | b_plaza_0_1 | plaza landmark (a notice board / terminal / monument), part col 0 row 1 |
 | 0, 10 | b_plaza_1_1 | plaza landmark (a notice board / terminal / monument), part col 1 row 1 |
 
-## buildings.png  (8 x 34 cells = 256 x 1088)
+## buildings.png  (8 x 34 cells = 1024 x 4352)
 
 | cell (col, row) | sprite | what to draw |
 | --- | --- | --- |
@@ -412,7 +412,7 @@ The character stands on the bottom edge of the cell, centred, the same size and 
 | 6, 33 | h_house_treasury_3_4 | illustrated treasury house, part col 3 row 4 (joins neighbouring cells) |
 | 7, 33 | h_house_treasury_4_4 | illustrated treasury house, part col 4 row 4 (joins neighbouring cells) |
 
-## ui.png  (8 x 5 cells = 256 x 160)
+## ui.png  (8 x 5 cells = 1024 x 640)
 
 | cell (col, row) | sprite | what to draw |
 | --- | --- | --- |
