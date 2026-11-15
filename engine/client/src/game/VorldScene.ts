@@ -5,7 +5,7 @@ import { nearestProp, standSpots, facing, clampQueue, type Pt } from './commands
 import Phaser from 'phaser';
 import { emit, on } from '../store';
 import { play } from '../audio/sfx';
-import { TEX } from './pixels';
+import { TEX, CHAR_TEX, BEE_SCALE } from './pixels';
 import { makeBuilding, makeMember, makePillar, makeWorldArt } from './sprites';
 import { companionOf, generatedRevision, movementDirection, type Direction } from './pixels';
 import { homeGeometry, propGeometry } from './geometry';
@@ -92,12 +92,12 @@ export class VorldScene extends Phaser.Scene {
 
     // founder + companion
     const start = this.startPosition && this.walkable(this.startPosition.x, this.startPosition.y) ? this.startPosition : { x: plan.spawn.x * T + 8, y: plan.spawn.y * T };
-    this.player = this.physics.add.sprite(start.x, start.y, 'founder-down-2').setOrigin(0.5, 1).setScale(this.charScale / TEX);
+    this.player = this.physics.add.sprite(start.x, start.y, 'founder-down-2').setOrigin(0.5, 1).setScale(this.charScale / CHAR_TEX);
     this.player.setCollideWorldBounds(true);
-    (this.player.body as Phaser.Physics.Arcade.Body).setSize(8 * TEX / this.charScale, 6 * TEX / this.charScale).setOffset((fs.w - 8 * TEX / this.charScale) / 2, fs.h - 8 * TEX / this.charScale);   // the collision box stays the size of a tile-sized walker
+    (this.player.body as Phaser.Physics.Arcade.Body).setSize(8 * CHAR_TEX / this.charScale, 6 * CHAR_TEX / this.charScale).setOffset((fs.w - 8 * CHAR_TEX / this.charScale) / 2, fs.h - 8 * CHAR_TEX / this.charScale);   // the collision box stays the size of a tile-sized walker
     this.physics.add.collider(this.player, this.solids);
-    this.bee = this.add.sprite(this.player.x - 14, this.player.y - 26, 'companion-down-2').setOrigin(0.5, 1).setScale(this.charScale / TEX).setDepth(5000).setInteractive({ cursor: 'pointer' });
-    this.beeShadow = this.add.ellipse(this.bee.x, this.bee.y + 20, 11, 4, 0x000000, 0.26).setDepth(1);
+    this.bee = this.add.sprite(this.player.x - 14, this.player.y - 26, 'companion-down-2').setOrigin(0.5, 1).setScale(this.charScale / CHAR_TEX * (this.companionForm === 'creature' ? BEE_SCALE : 1)).setDepth(5000).setInteractive({ cursor: 'pointer' });
+    this.beeShadow = this.add.ellipse(this.bee.x, this.bee.y + 20, 8, 3, 0x000000, 0.26).setDepth(1);
     this.beeShadow.setVisible(this.companionForm === 'creature');
     this.beeLastX = this.bee.x;
     this.bee.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; emit('poke'); this.balloon(this.companionId, '♥', 900); play('ui.open'); emit('talk', this.companionId); });
@@ -175,7 +175,7 @@ export class VorldScene extends Phaser.Scene {
     this.solids.add(this.add.zone(geo.solid.x, geo.solid.y, geo.solid.w, geo.solid.h));
     for (const w of geo.walls) this.solids.add(this.add.zone(w.x, w.y, w.w, w.h));
     const sign = this.add.text(bx, geo.top - 8, '', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999);
-    const sprite = this.add.sprite(bx, by, `npc-${c.id}-down-2`).setOrigin(0.5, 1).setScale(this.charScale / TEX).setDepth(by).setInteractive({ cursor: 'pointer' });
+    const sprite = this.add.sprite(bx, by, `npc-${c.id}-down-2`).setOrigin(0.5, 1).setScale(this.charScale / CHAR_TEX).setDepth(by).setInteractive({ cursor: 'pointer' });
     sprite.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; this.tryTalk(c.id); });
     hit.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; this.tryTalk(c.id); });
     const label = this.add.text(bx, by + 2, '', this.labelStyle(pal, 6)).setOrigin(0.5, 0).setDepth(9999);
@@ -523,7 +523,7 @@ export class VorldScene extends Phaser.Scene {
     this.bee.setTexture(`companion-${this.companionDir}-${frame}`).setDepth(this.bee.y);
     this.bee.setOrigin(0.5, 1 + bob / Math.max(1, this.bee.displayHeight)).setAngle(this.beeLean);
     // squash and stretch with the flap, so he feels light
-    const base = this.charScale / TEX, sq = 1 + (frame === 1 ? 0.03 : frame === 2 ? -0.025 : 0.01);
+    const base = this.charScale / CHAR_TEX * BEE_SCALE, sq = 1 + (frame === 1 ? 0.03 : frame === 2 ? -0.025 : 0.01);
     this.bee.setScale(base / sq, base * sq);
     const sh = this.beeShadow;
     if (sh) { const lift = 1 - Math.min(1, (bob + 2) / 8) * 0.12; sh.setPosition(this.bee.x, this.bee.y + 21).setScale(lift).setAlpha(0.26 - bob * 0.015).setDepth(this.bee.y - 1); }

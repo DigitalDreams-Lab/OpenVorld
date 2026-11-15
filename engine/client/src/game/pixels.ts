@@ -16,6 +16,10 @@ let GEN: Map<string, GenFrame> | null = null, genRevision: string | null = null,
 /** Texture pixels per world pixel: sprites are baked at this multiple of the world tile and drawn scaled down by it, so the
  * camera zoom shows them smoothly instead of as enlarged pixels. */
 export const TEX = 4;
+/** Characters are baked finer than the world (their sheet cells are bigger): texture pixels per world pixel. */
+export const CHAR_TEX = 8;
+/** The companion bee is drawn this much smaller than a person. */
+export const BEE_SCALE = 0.6;
 const canvasCache = new Map<string, HTMLCanvasElement>();
 const listeners = new Set<() => void>();
 /** Sprite-name key, same rule as the server (engine/server/art.mjs keyOf). */

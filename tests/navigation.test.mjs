@@ -10,7 +10,7 @@ const stub = stubModule(`
   export default { Scene: class {} };
   export const emit = () => {}, on = () => {}, play = () => {};
   export const nearestProp = () => {}, standSpots = () => {}, facing = () => {}, clampQueue = () => {};
-  export const TEX = 1, BODY_FONT = 'sans-serif';
+  export const TEX = 1, CHAR_TEX = 1, BEE_SCALE = 1, BODY_FONT = 'sans-serif';
   let building;
   export const setBuilding = value => { building = value; };
   export const makeBuilding = () => building, makeMember = () => {}, makePillar = () => {}, makeWorldArt = () => {};

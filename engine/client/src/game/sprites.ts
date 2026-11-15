@@ -3,7 +3,7 @@
 // only places sprites. Nothing here paints pixels. EVERY sprite is a square one tile large; an object bigger than a
 // tile (a tree, a fountain, a house, the landmark) is composed of several sprites.
 import Phaser from 'phaser';
-import { DIRECTIONS, TEX, artKey, generatedCanvas, generatedCharacter, propCanvas, landmarkCanvas, hasGenerated } from './pixels';
+import { DIRECTIONS, TEX, CHAR_TEX, artKey, generatedCanvas, generatedCharacter, propCanvas, landmarkCanvas, hasGenerated } from './pixels';
 import { propGrid } from '../../../../tools/lib/props.mjs';
 
 const TILE_PX = 16;
@@ -20,8 +20,8 @@ const blank = (w = 1, h = 1) => { const c = document.createElement('canvas'); c.
 
 /** Textures `${key}-${dir}-${frame}` (frames 0/1 stride, 2 idle) from the member's walk cycle on the character sheet. */
 export function makeMember(scene: Phaser.Scene, key: string, memberId: string) {
-  const gen = generatedCharacter(memberId, TILE_PX * TEX);
-  if (!gen) { DIRECTIONS.forEach((dir) => [0, 1, 2].forEach((f) => canvasTexture(scene, `${key}-${dir}-${f}`, blank(TILE_PX * TEX, TILE_PX * TEX)))); return { w: TILE_PX * TEX, h: TILE_PX * TEX }; }
+  const gen = generatedCharacter(memberId, TILE_PX * CHAR_TEX);
+  if (!gen) { DIRECTIONS.forEach((dir) => [0, 1, 2].forEach((f) => canvasTexture(scene, `${key}-${dir}-${f}`, blank(TILE_PX * CHAR_TEX, TILE_PX * CHAR_TEX)))); return { w: TILE_PX * CHAR_TEX, h: TILE_PX * CHAR_TEX }; }
   DIRECTIONS.forEach((dir) => gen.frames[dir].forEach((c, f) => canvasTexture(scene, `${key}-${dir}-${f}`, c)));
   return { w: gen.w, h: gen.h };
 }

@@ -6,7 +6,7 @@ World, building and UI cells share one tile size (128 px per cell: redrawn at fo
 Leave empty cells transparent. Transparent PNG (RGBA). Files: `packs/core/art/default/<sheet>.png`; the *-guide.png images
 show the same grids with every cell named.
 
-## characters.png  (12 x 16 cells = 1536 x 2048)
+## characters.png  (12 x 16 cells = 3072 x 4096, 256 px per cell)
 
 One row per character, 12 cells per row: down 0, down 1, down 2, up 0, up 1, up 2, left 0, left 1, left 2, right 0, right 1, right 2.
 Frames 0 and 1 are the two walking strides (feet alternate), frame 2 is standing still. Down faces the viewer, up shows the back (no face), left and right are profiles.
