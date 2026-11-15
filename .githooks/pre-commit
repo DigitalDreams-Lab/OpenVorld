@@ -1,0 +1,3 @@
+#!/bin/sh
+# Every commit bumps the version: see CONTRIBUTING.md > Versioning. Enable with: git config core.hooksPath .githooks
+exec node tools/check-version-bump.mjs

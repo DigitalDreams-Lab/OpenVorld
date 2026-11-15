@@ -49,6 +49,10 @@ OPENVORLD_HOME=~/my-vorlds npm run dev
 3. **The room.** Write in the party's chat. The leader (or whoever you `@mention`) answers; a member who needs a teammate writes `@Name` and that teammate speaks next; a reply that mentions nobody ends the job. You see every member's text, tool calls and file changes. A member who needs access stops the room at a writ card, and it goes on when you answer.
 4. **Progress.** Finished work earns XP and levels. Chat earns a little XP, capped per day, so the game rewards finished jobs rather than talk. There are 15 deeds to unlock.
 
+## Updating
+
+Your data stays in `~/.openvorld`, outside the app and the repository, so updating never touches it. Older vorlds are migrated with a backup and newer ones are never changed. See [docs/UPGRADING.md](docs/UPGRADING.md) and the [CHANGELOG](CHANGELOG.md).
+
 ## Make it yours
 
 Everything the game shows is a **pack**: YAML files that tell the engine what to show. Put your own packs in `~/.openvorld/packs` (or `<vorld>/packs` for a single vorld) to add templates, roles, deeds, themes or brains without touching the code. See [docs/PACKS.md](docs/PACKS.md).

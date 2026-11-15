@@ -1,0 +1,14 @@
+# Changelog
+
+Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
+
+## 0.3.0 - 2026-11-15
+
+The version line starts again at 0.3.0 (OpenVorld is not at 1.0 yet).
+
+- **Updating is safe.** Vorld data now has its own format number (`schema` in vorld.yaml). Older vorlds are brought up to date at start-up after their vorld.yaml was copied to `<vorld>/backups/`; a vorld saved by a newer OpenVorld is never opened or changed. vorld.yaml and grants.yaml are written atomically. Custom character sheets made for the old four directions and three frames still work.
+- **Eight-direction characters** with a four-frame walk cycle (legs and arms move) and a wing-flap cycle for Buzz, redrawn with Codex image generation; sharper world, building and avatar art.
+- **Parties, houses, vaults and workbenches**: named groups chatting in one shared room; a private house and vault per member; several workbenches per member, chosen per chat under the message box.
+- **Notifications**: members walk over and ask for access in a balloon over their head; a chime when someone needs you, desktop notifications while the window is in the background, a title badge, and a silent crew otherwise.
+- **Desktop app** for macOS, Windows and Linux (`npm run desktop`), with the same local engine.
+- UI polish: Lexend headings, roomier settings, icon buttons, a follow/dismiss button, a clearer Brain list.

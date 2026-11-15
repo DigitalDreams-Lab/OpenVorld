@@ -10,6 +10,7 @@ import { loadPacks, packRoots, homeDir, readYaml, REPO, resolveTheme } from '../
 import { planScenery, newSeed } from '../../tools/lib/scenery.mjs';
 import { addCliDirs } from '../../tools/lib/cli-path.mjs';
 import { checkProject } from './benches.mjs';
+import { DATA_SCHEMA, isNewer, migrateDoc, newerMessage, schemaOf } from './schema.mjs';
 
 const core = loadPacks([path.join(REPO, 'packs', 'core')]);
 addCliDirs(core.byKind.providers?.providers?.bin_dirs);
@@ -43,7 +44,7 @@ export function listVorlds() {
   if (!fs.existsSync(vorldsDir())) return [];
   return fs.readdirSync(vorldsDir()).filter((id) => fs.existsSync(path.join(vorldsDir(), id, 'vorld.yaml'))).map((id) => {
     const w = readYaml(path.join(vorldsDir(), id, 'vorld.yaml'));
-    return { id, name: w.name, about: w.about, created_at: w.created_at };
+    return { id, name: w.name, about: w.about, created_at: w.created_at, ...(isNewer(w) ? { newer: true } : {}) };
   }).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 }
 
@@ -75,7 +76,9 @@ export function vorldCtx(id, { fresh = false } = {}) {
   if (!fs.existsSync(path.join(dir, 'vorld.yaml'))) bad('vorld not found', 404);
   if (!fresh && cache.has(id)) return cache.get(id);
   const packs = loadPacks(packRoots(HOME, dir));
-  const doc = readYaml(path.join(dir, 'vorld.yaml'));
+  let doc = readYaml(path.join(dir, 'vorld.yaml'));
+  if (isNewer(doc)) bad(newerMessage(doc), 409);       // never read or change data from a newer OpenVorld
+  if (doc.schema !== DATA_SCHEMA) { migrateOne(id); doc = readYaml(path.join(dir, 'vorld.yaml')); }   // a vorld copied in while the app runs
   const theme = resolveTheme(packs.byKind, doc.theme ?? packs.byKind.defaults?.defaults?.theme ?? 'default') ?? {};
   const crew = (doc.crew ?? []).map((m, i) => memberView(m, i, packs, theme, doc));
   const ctx = {
@@ -99,7 +102,37 @@ export function saveVorld(ctx, mutate) {
   cache.delete(ctx.id);
   return vorldCtx(ctx.id);
 }
-const writeDoc = (dir, doc) => fs.writeFileSync(path.join(dir, 'vorld.yaml'), `# An OpenVorld vorld. Edit freely while the game is closed.\n${YAML.stringify(doc)}`);
+/** vorld.yaml is written to a temporary file and renamed, so a crash or a full disk never leaves half a file. */
+const writeDoc = (dir, doc) => {
+  const file = path.join(dir, 'vorld.yaml'), tmp = `${file}.tmp-${process.pid}`;
+  fs.writeFileSync(tmp, `# An OpenVorld vorld. Edit freely while the game is closed.\n${YAML.stringify(doc)}`);
+  fs.renameSync(tmp, file);
+};
+
+/**
+ * Bring one vorld up to the current data format: its vorld.yaml is copied to <vorld>/backups/ first, then migrated.
+ * A vorld from a newer OpenVorld is left exactly as it is. Returns what happened.
+ */
+function migrateOne(id) {
+  const dir = path.join(vorldsDir(), id), file = path.join(dir, 'vorld.yaml');
+  const doc = readYaml(file);
+  if (isNewer(doc)) return { id, status: 'newer', schema: schemaOf(doc) };
+  if (doc.schema === DATA_SCHEMA) return { id, status: 'current' };
+  const from = schemaOf(doc), steps = migrateDoc(doc);
+  fs.mkdirSync(path.join(dir, 'backups'), { recursive: true });
+  const backup = path.join(dir, 'backups', `vorld-schema${from}-${new Date().toISOString().replace(/[:.]/g, '-')}.yaml`);
+  fs.copyFileSync(file, backup);
+  writeDoc(dir, doc);
+  return { id, status: 'migrated', from, to: DATA_SCHEMA, steps: steps.map((m) => m.note), backup };
+}
+
+/** Run at start-up: every vorld on disk, once. A vorld that cannot be migrated is reported and left alone. */
+export function migrateVorlds() {
+  if (!fs.existsSync(vorldsDir())) return [];
+  return fs.readdirSync(vorldsDir()).filter((id) => fs.existsSync(path.join(vorldsDir(), id, 'vorld.yaml'))).map((id) => {
+    try { return migrateOne(id); } catch (e) { return { id, status: 'error', error: e.message }; }
+  }).filter((r) => r.status !== 'current');
+}
 
 /** The map: houses for every agent around the plaza, seeded so two vorlds differ. */
 function planOf(ctx) {
@@ -152,7 +185,7 @@ export function createVorld(input) {
   const dir = path.join(vorldsDir(), id);
   fs.mkdirSync(path.join(dir, 'workbenches'), { recursive: true });
   if (!project) fs.mkdirSync(path.join(dir, 'project'), { recursive: true });
-  const doc = { id, name, about: str(input.about, 400), ...(project ? { project } : {}), template: template.id ?? 'blank', theme: theme.id ?? 'default', seed: newSeed(), created_at: new Date().toISOString(), crew: [companion, ...crew] };
+  const doc = { id, name, about: str(input.about, 400), ...(project ? { project } : {}), template: template.id ?? 'blank', theme: theme.id ?? 'default', seed: newSeed(), created_at: new Date().toISOString(), schema: DATA_SCHEMA, crew: [companion, ...crew] };
   writeDoc(dir, doc);
   return { id, starters: (template.parties ?? []).map((p) => ({ name: p.name, goal: p.goal, members: (p.members ?? []).map((i) => bySlot.get(i)).filter(Boolean) })) };
 }

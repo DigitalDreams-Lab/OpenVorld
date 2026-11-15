@@ -13,7 +13,9 @@ const live = (g) => !g.session || g.session === BOOT;
 export const listGrants = (ctx) => (fs.existsSync(file(ctx)) ? readYaml(file(ctx))?.grants ?? [] : []).filter(live);
 
 function save(ctx, grants) {
-  fs.writeFileSync(file(ctx), YAML.stringify({ kind: 'grants', version: 1, grants }), { mode: 0o600 });
+  const tmp = `${file(ctx)}.tmp-${process.pid}`;          // written whole, then renamed: a crash never leaves a half file
+  fs.writeFileSync(tmp, YAML.stringify({ kind: 'grants', version: 1, grants }), { mode: 0o600 });
+  fs.renameSync(tmp, file(ctx));
 }
 function audit(ctx, entry) {
   fs.appendFileSync(path.join(ctx.dir, 'audit.log'), JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n', { mode: 0o600 });

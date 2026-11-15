@@ -1,6 +1,6 @@
 {
   "name": "openvorld",
-  "version": "1.0.0",
+  "version": "0.3.0",
   "description": "Every project is a vorld: a shared project folder, a crew of AI agents with their own workspaces, and the quests they run together. Shown as a pixel-art world.",
   "license": "MIT",
   "type": "module",
@@ -12,6 +12,7 @@
     "build": "vite build --config engine/client/vite.config.mjs",
     "start": "node engine/server/index.mjs",
     "ov": "node tools/ov.mjs",
+    "bump": "node tools/bump-version.mjs",
     "validate": "node tools/ov.mjs validate",
     "typecheck": "tsc -p engine/client/tsconfig.json --noEmit",
     "test": "node --test tests/*.test.mjs",

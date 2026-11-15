@@ -6,7 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import { WebSocketServer } from 'ws';
-import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMember, detected } from './vorld.mjs';
+import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMember, detected, migrateVorlds } from './vorld.mjs';
 import { atlasFor, sheetFiles } from './art.mjs';
 import { gameFor } from './game.mjs';
 import { listThreads, createThread, getThread, updateThread, readEvents, appendEvent } from './threads.mjs';
@@ -425,6 +425,13 @@ server.on('upgrade', (req, socket, head) => {
     ws.on('close', () => sockets.get(id)?.delete(ws));
   });
 });
+
+// bring every vorld on disk to the current data format (a backup of vorld.yaml is kept first); newer vorlds stay untouched
+for (const r of migrateVorlds()) {
+  if (r.status === 'migrated') console.log(`vorld ${r.id}: data format ${r.from} -> ${r.to} (${r.steps.join(', ')}); backup ${r.backup}`);
+  else if (r.status === 'newer') console.warn(`vorld ${r.id}: saved by a newer OpenVorld (data format ${r.schema}); left untouched, update OpenVorld to open it`);
+  else console.warn(`vorld ${r.id}: could not check its data format: ${r.error}`);
+}
 
 server.listen(PORT, '127.0.0.1', () => {
   // Desktop asks the OS for a free port, leaving a running browser-mode server alone.

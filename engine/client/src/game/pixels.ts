@@ -126,13 +126,33 @@ export function iconUrl(name: string): string {
 
 export const companionOf = (vorld: any) => vorld?.crew?.find((c: any) => c.role === 'companion') ?? vorld?.crew?.[0];
 
-/** A crew member's 4x3 walk cycle: twelve whole square cells (`size` pixels each, the sheet's own size by default). */
+/**
+ * Which sheet cell each of the eight directions and four walk frames is drawn from. A custom sheet made for fewer directions
+ * (the old four) or fewer frames (the old three: two strides and a standing pose) still works: a missing direction borrows its
+ * nearest one and a short walk is looped. `has(name)` says whether the atlas holds a cell. Null when there is no front view at all.
+ */
+export function characterFramePlan(has: (name: string) => boolean, k: string): Record<Direction, string[]> | null {
+  const NEAR: Record<Direction, Direction[]> = {
+    down: ['down', 'up'], up: ['up', 'down'], left: ['left', 'right'], right: ['right', 'left'],
+    down_left: ['down_left', 'left', 'down'], down_right: ['down_right', 'right', 'down'], up_left: ['up_left', 'left', 'up'], up_right: ['up_right', 'right', 'up'],
+  };
+  const LOOP: Record<number, number[]> = { 4: [0, 1, 2, 3], 3: [0, 2, 1, 2], 2: [0, 1, 0, 1], 1: [0, 0, 0, 0] };      // 3 = the old sheet: strides 0 and 1, standing 2
+  const plan: Partial<Record<Direction, string[]>> = {};
+  for (const d of DIRECTIONS) {
+    const src = [...NEAR[d], ...DIRECTIONS].find((x) => has(`${k}_${x}_0`));      // the nearest direction the sheet has, any at all as a last resort
+    if (!src) return null;
+    let n = 0; while (n < WALK_FRAMES && has(`${k}_${src}_${n}`)) n++;
+    plan[d] = LOOP[n].map((f) => `${k}_${src}_${f}`);
+  }
+  return plan as Record<Direction, string[]>;
+}
+
+/** A crew member's walk cycle: eight directions of WALK_FRAMES whole square cells (`size` pixels each, the sheet's own size by default). */
 export function generatedCharacter(memberId: string, size?: number) {
   const k = `c_${artKey(memberId)}`;
-  const idx = Array.from({ length: WALK_FRAMES }, (_, f) => f);
-  const names = DIRECTIONS.flatMap((d) => idx.map((f) => `${k}_${d}_${f}`));
-  if (!GEN || !names.every((n) => GEN!.has(n))) return null;
-  const frames = Object.fromEntries(DIRECTIONS.map((d) => [d, idx.map((f) => generatedCanvas(`${k}_${d}_${f}`, size)!)])) as Record<Direction, HTMLCanvasElement[]>;
+  const plan = GEN && characterFramePlan((n) => GEN!.has(n), k);
+  if (!plan) return null;
+  const frames = Object.fromEntries(DIRECTIONS.map((d) => [d, plan[d].map((n) => generatedCanvas(n, size)!)])) as Record<Direction, HTMLCanvasElement[]>;
   const w = frames.down[IDLE_FRAME].width;
   return { w, h: w, frames, portrait: generatedCanvas(`${k}_portrait`, size) };
 }

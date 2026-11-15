@@ -22,6 +22,8 @@ catch (error) {
   if (backup) fs.renameSync(backup, destination);
   throw error;
 }
+// each backup is a full copy of the previous app: keep the two newest, remove older ones (only files this installer made, by name)
+for (const name of fs.readdirSync(applications).filter((n) => /^\.OpenVorld-backup-\d+\.app$/.test(n)).sort().slice(0, -2)) fs.rmSync(path.join(applications, name), { recursive: true, force: true });
 const settingsFile = path.join(os.homedir(), 'Library', 'Application Support', 'OpenVorld', 'desktop.json');
 const settings = readSettings(settingsFile), local = readSettings(path.join(root, '.openvorld-dev.json'));
 const i = process.argv.indexOf('--home');
