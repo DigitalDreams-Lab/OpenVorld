@@ -23,7 +23,8 @@ export function Workbenches({ id }: { id: string }) {
   };
   const pickNew = async () => {
     if (!native) { setTyping('+'); return; }
-    try { const p = await choose(); if (p) setAdding((a) => ({ name: a?.name ?? '', path: p })); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
+    const start = adding?.path || c?.benches?.[0]?.path;
+    try { const p = await choose(start); if (p) setAdding((a) => ({ name: a?.name ?? '', path: p })); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   const add = () => run(async () => {
     const w = await api(`/vorlds/${wid}/crew/${id}/benches`, { body: { name: adding!.name, path: adding!.path } });

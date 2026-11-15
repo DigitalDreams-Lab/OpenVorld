@@ -51,9 +51,27 @@ export function pickNative(prompt = 'Choose a folder', start) {
   const dialog = nativeDialog();
   if (!dialog) return Promise.reject(Object.assign(new Error('This computer has no folder dialog; type the folder path instead.'), { status: 501 }));
   const clean = String(prompt).replace(/[^\p{L}\p{N} .,'-]/gu, '').slice(0, 80) || 'Choose a folder';
-  const from = start && isDir(tidy(start)) ? tidy(start) : home;
+  let from = home;
+  if (start) {
+    const target = tidy(start);
+    try {
+      if (!fs.existsSync(target)) {
+        const parent = path.dirname(target);
+        if (isDir(parent)) {
+          fs.mkdirSync(target, { recursive: true });
+        }
+      }
+    } catch { /* ignore creation error */ }
+    let cur = target;
+    while (cur && cur !== path.dirname(cur)) {
+      if (isDir(cur)) { from = cur; break; }
+      cur = path.dirname(cur);
+    }
+  }
+  const escapedFrom = from.replace(/["\\]/g, '');
+  const osaScript = `try\nset loc to (POSIX file "${escapedFrom}" as alias)\nPOSIX path of (choose folder with prompt "${clean}" default location loc)\non error\nPOSIX path of (choose folder with prompt "${clean}")\nend try`;
   const run = {
-    osascript: ['osascript', ['-e', `POSIX path of (choose folder with prompt "${clean}" default location POSIX file "${from.replace(/["\\]/g, '')}")`]],
+    osascript: ['osascript', ['-e', osaScript]],
     powershell: ['powershell', ['-NoProfile', '-STA', '-Command', `Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = '${clean.replace(/'/g, "''")}'; $d.SelectedPath = '${from.replace(/'/g, "''")}'; if ($d.ShowDialog() -eq 'OK') { $d.SelectedPath }`]],
     zenity: ['zenity', ['--file-selection', '--directory', `--title=${clean}`, `--filename=${from}/`]],
     kdialog: ['kdialog', ['--getexistingdirectory', from, '--title', clean]],

@@ -25,8 +25,12 @@ export function benchesOf(ctx, role) {
   const m = ctx.member?.(role);
   const saved = Array.isArray(m?.benches) ? m.benches : [];
   const space = benchBase(ctx), main = saved.find((b) => b.id === 'main');
+  const defaultPath = path.join(space.path, role);
+  if (!main?.path && !space.custom) {
+    try { fs.mkdirSync(defaultPath, { recursive: true }); } catch { /* ignore */ }
+  }
   const list = [
-    { id: 'main', name: main?.name || 'Main bench', path: main?.path ? path.resolve(expand(main.path)) : path.join(space.path, role), chosen: !!main?.path || space.custom },
+    { id: 'main', name: main?.name || 'Main bench', path: main?.path ? path.resolve(expand(main.path)) : defaultPath, chosen: !!main?.path || space.custom },
     ...saved.filter((b) => b.id !== 'main').map((b) => ({ id: b.id, name: b.name, path: path.resolve(expand(b.path)), chosen: true })),
   ];
   const def = list.some((b) => b.id === m?.default_bench) ? m.default_bench : 'main';

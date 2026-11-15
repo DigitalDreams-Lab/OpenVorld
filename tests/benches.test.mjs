@@ -19,6 +19,7 @@ test('workbenches: a Main bench by default, more on request, one default, each c
   // everyone starts with a Main bench inside the vorld
   assert.deepEqual(a.benches.map((x) => [x.id, x.default, x.chosen]), [['main', true, false]]);
   assert.equal(a.benches[0].path, path.join(home, 'vorlds', id, 'workbenches', a.id));
+  assert.ok(fs.existsSync(a.benches[0].path), 'default workbench folder exists on disk');
   assert.equal(vorld.benches.custom, false);
 
   // more benches, in folders the founder picks

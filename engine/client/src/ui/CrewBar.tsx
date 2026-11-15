@@ -60,7 +60,7 @@ function AddAgent({ onClose }: { onClose: () => void }) {
   const ws = folder.trim() || defaultWs;
   const pickFolder = async () => {
     if (!native) { setTyping(true); return; }
-    try { const p = await choose(folder.trim() || vorld.benches?.base); if (p) setFolder(p); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
+    try { const p = await choose(folder.trim() || defaultWs || vorld.benches?.base); if (p) setFolder(p); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   const add = async () => {
     setBusy(true);
