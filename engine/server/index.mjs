@@ -52,6 +52,7 @@ function vorldView(ctx) {
     crew: ctx.crew.map((c) => {
       const b = brainOf(ctx, c.id);
       return { id: c.id, role: c.role, order: c.order, name: c.name, job: c.job, function: c.function, personality: ctx.doc.crew.find((m) => m.id === c.id)?.personality ?? '', look: c.look, home: c.home,
+        avatar: c.avatar ?? null,
         brain: c.brain ?? null, brain_label: b.provider === 'none' ? null : `${b.label}${b.model ? ' · ' + b.model : ''}`, working: working.has(c.id),
         benches: benchesOf(ctx, c.id) };
     }),
@@ -59,9 +60,9 @@ function vorldView(ctx) {
     interactions: { reactions: ctx.interactions.reactions ?? {}, chat: ctx.interactions.agent?.chat ?? {} },
     permissions: { answers: k.permissions?.permissions?.answers ?? [], capabilities: Object.fromEntries(Object.entries(k.permissions?.permissions?.capabilities ?? {}).map(([id, c]) => [id, { label: c.label ?? id, risk: c.risk ?? 'medium', seal: c.seal ?? null }])) },
     benches: { base: benchBase(ctx).path, custom: benchBase(ctx).custom },
-    scenery: ctx.scenery(),
     parties: listParties(ctx),
-    art: { scenery, creatures: k.default_art?.default_art?.creatures ?? {}, house_sprites: k.default_art?.default_art?.illustrated_houses ?? [], atlas: atlasFor(ctx) },
+    scenery: ctx.scenery(),
+    art: { scenery, creatures: k.default_art?.default_art?.creatures ?? {}, house_sprites: k.default_art?.default_art?.illustrated_houses ?? [], atlas: atlasFor(ctx), agent_avatars: (k.default_art?.default_art?.characters?.rows ?? []).filter((r) => r.for === 'agent').map((r) => r.id) },
     deeds: game.deedList().map(({ id, name, desc, hint, xp, icon, hidden }) => ({ id, name, desc, hint, xp, icon, hidden: !!hidden })),
     state: game.snapshot(),
   };
@@ -87,6 +88,7 @@ route('GET', '/api/boot', () => {
     templates: Object.values(k.template ?? {}).sort((a, b) => (a.order ?? 9) - (b.order ?? 9)).map((t) => ({ id: t.id, label: t.label, description: t.description, crew: t.crew ?? [], parties: (t.parties ?? []).map((p) => p.name) })),
     theme: { palette: theme.palette ?? {}, companion: theme.companion ?? {}, agent_names: theme.agent_names ?? [] },
     creatures: k.default_art?.default_art?.creatures ?? {},
+    agent_avatars: (k.default_art?.default_art?.characters?.rows ?? []).filter((r) => r.for === 'agent').map((r) => r.id),
   };
 });
 route('POST', '/api/detect', () => detected(true));
@@ -143,6 +145,7 @@ route('PUT', '/api/vorlds/:id/crew/:mid', async ({ p, req }) => {
     const m = d.crew.find((x) => x.id === p.mid);
     if (trim(b.name, 40)) m.name = trim(b.name, 40);
     for (const [key, n] of [['job', 40], ['function', 400], ['personality', 200]]) if (b[key] !== undefined) { const v = trim(b[key], n); if (v) m[key] = v; else delete m[key]; }
+    if (b.avatar !== undefined) { const v = trim(b.avatar, 40)?.replace(/^portrait_/, ''); if (v) m.avatar = v; else delete m.avatar; }
     if (m.role === 'companion' && ['robot', 'creature', 'person'].includes(b.form)) m.form = b.form;
     if (b.brain) m.brain = { provider: trim(b.brain.provider, 40) || 'none', ...(trim(b.brain.model, 120) ? { model: trim(b.brain.model, 120) } : {}), ...(trim(b.brain.name, 40) ? { name: trim(b.brain.name, 40) } : {}) };
   });

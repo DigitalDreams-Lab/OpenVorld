@@ -38,6 +38,11 @@ export function atlasFor(ctx) {
     const want = m.id === 'founder' ? 'founder' : m.role === 'companion' ? 'companion' : null;
     const own = want ? rows.findIndex((r) => r.for === want) : -1;
     if (own >= 0) return own;
+    if (m.avatar) {
+      const av = String(m.avatar).replace(/^portrait_/, '');
+      const match = rows.findIndex((r) => r.id === av || r.id === `agent_${av}`);
+      if (match >= 0) return match;
+    }
     const agents = ctx.crew.filter((c) => c.role === 'agent');
     const k = Math.max(0, agents.findIndex((c) => c.id === m.id));
     return agentRows.length ? agentRows[k % agentRows.length] : 0;
@@ -59,11 +64,12 @@ export function atlasFor(ctx) {
     if (!s) continue;
     const cell = s.width / g.cols, frames = {};
     if (id === 'portraits') {
+      g.cells.forEach((name, i) => { if (name !== '_') frames[name] = { x: (i % g.cols) * cell, y: Math.floor(i / g.cols) * cell, w: cell, h: cell, kind: 'sprite' }; });
       for (const m of people) { const r = rowOf(m); frames[`c_${keyOf(m.id)}_portrait`] = { x: (r % g.cols) * cell, y: Math.floor(r / g.cols) * cell, w: cell, h: cell, kind: 'sprite' }; }
     } else g.cells.forEach((name, i) => { if (name !== '_') frames[name] = { x: (i % g.cols) * cell, y: Math.floor(i / g.cols) * cell, w: cell, h: cell, kind: name.startsWith('t_') ? 'tile' : 'sprite' }; });
     sheets.push({ group: id, image: id, frames });
   }
   for (const s of Object.values(files)) if (s.file) sig.push(s.file, fs.statSync(s.file).mtimeMs);
-  sig.push(people.map((p) => p.id).join(','));
+  sig.push(people.map((p) => `${p.id}:${p.avatar ?? ''}`).join(','));
   return { revision: crypto.createHash('sha1').update(sig.join('|')).digest('hex').slice(0, 12), sheets };
 }

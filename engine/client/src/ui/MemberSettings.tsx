@@ -6,6 +6,7 @@ import { emit, memberOf, setState, toast, useStore } from '../store';
 import { play } from '../audio/sfx';
 import { loadGenerated } from '../game/pixels';
 import { Portrait } from './Portrait';
+import { AvatarPicker } from './AvatarPicker';
 import { useConfirm } from './ConfirmDialog';
 import { ModelPicker } from './ModelPicker';
 import { Workbenches } from './Workbenches';
@@ -24,9 +25,12 @@ export function useBrainChoices(wid: string) {
 
 export function MemberSettings({ id }: { id: string }) {
   const wid = useStore((s) => s.vorldId)!;
-  useStore((s) => s.vorld);
+  const vorld = useStore((s) => s.vorld);
   const c = memberOf(id);
-  const [f, setF] = useState<any>(() => ({ name: c.name, job: c.job ?? '', function: c.function ?? '', personality: c.personality ?? '', form: c.look?.form ?? 'creature', brain: { provider: c.brain?.provider ?? 'none', name: c.brain?.name, model: c.brain?.model ?? '' } }));
+  const agents = (vorld?.crew ?? []).filter((m: any) => m.role === 'agent');
+  const agentIdx = agents.findIndex((m: any) => m.id === id);
+  const fallbackAvatar = `agent_${((agentIdx >= 0 ? agentIdx : 0) % 14) + 1}`;
+  const [f, setF] = useState<any>(() => ({ name: c.name, job: c.job ?? '', function: c.function ?? '', personality: c.personality ?? '', avatar: c.avatar || fallbackAvatar, form: c.look?.form ?? 'creature', brain: { provider: c.brain?.provider ?? 'none', name: c.brain?.name, model: c.brain?.model ?? '' } }));
   const { opts, choices, label } = useBrainChoices(wid);
   const [confirm, dialog] = useConfirm();
   const close = () => setState({ modal: null });
@@ -53,7 +57,21 @@ export function MemberSettings({ id }: { id: string }) {
       <div className="modal panel member-settings" onClick={(e) => e.stopPropagation()}>
         <header className="row between"><h2>{f.name} <small>{c.role === 'companion' ? 'companion' : 'agent'}</small></h2><button className="x" onClick={close}>✕</button></header>
         <div className="cs-grid">
-          <div className="cs-preview"><Portrait role={id} size={96} /></div>
+          <div className="cs-preview">
+            <Portrait role={id} avatar={c.role === 'agent' ? f.avatar : undefined} size={96} />
+            {c.role === 'agent' && (
+              <div className="cs-avatar-box">
+                <span className="cs-avatar-label">Change face</span>
+                <AvatarPicker
+                  value={f.avatar}
+                  onChange={(avatar) => setF({ ...f, avatar })}
+                  avatars={vorld?.art?.agent_avatars}
+                  columns={4}
+                  size={34}
+                />
+              </div>
+            )}
+          </div>
           <div className="cs-fields">
             <label>Name<input className="field" value={f.name} maxLength={40} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
             <label>Job title<input className="field" value={f.job} maxLength={40} placeholder="e.g. Writer" onChange={(e) => setF({ ...f, job: e.target.value })} /></label>

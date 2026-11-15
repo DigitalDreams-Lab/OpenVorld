@@ -5,6 +5,7 @@ import { emit, setState, toast, useStore } from '../store';
 import { play } from '../audio/sfx';
 import { loadGenerated } from '../game/pixels';
 import { Portrait } from './Portrait';
+import { AvatarPicker } from './AvatarPicker';
 import { useBrainChoices } from './MemberSettings';
 import { ModelPicker } from './ModelPicker';
 import { FolderPicker, useFolderDialog } from './FolderPicker';
@@ -39,10 +40,13 @@ function AddAgent({ onClose }: { onClose: () => void }) {
   const wid = useStore((s) => s.vorldId)!;
   const vorld = useStore((s) => s.vorld);
   const comp = vorld.crew.find((c: any) => c.role === 'companion');
+  const agents = (vorld.crew ?? []).filter((c: any) => c.role === 'agent');
+  const defaultAvatar = `agent_${(agents.length % 14) + 1}`;
   const [f, setF] = useState({
     name: '',
     job: '',
     function: '',
+    avatar: defaultAvatar,
     brain: { provider: comp?.brain?.provider ?? 'none', name: comp?.brain?.name, model: comp?.brain?.model ?? '' },
   });
   const [folder, setFolder] = useState('');
@@ -75,6 +79,21 @@ function AddAgent({ onClose }: { onClose: () => void }) {
       <form className="modal panel add-agent" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void add(); }}>
         <header className="row between"><h2>New agent</h2><button type="button" className="x" onClick={onClose}>✕</button></header>
         <p className="muted">An agent is a name, a job title and a job description. It uses your companion's brain and Main bench unless you pick another folder.</p>
+        <div className="add-agent-face-row">
+          <div className="add-agent-preview">
+            <Portrait avatar={f.avatar} size={54} />
+          </div>
+          <div className="add-agent-picker-col">
+            <span className="field-label">Choose face</span>
+            <AvatarPicker
+              value={f.avatar}
+              onChange={(avatar) => setF({ ...f, avatar })}
+              avatars={vorld?.art?.agent_avatars}
+              columns={7}
+              size={34}
+            />
+          </div>
+        </div>
         <label>Name<input className="field" autoFocus value={f.name} maxLength={40} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
         <label>Job title<input className="field" value={f.job} maxLength={40} placeholder="e.g. Researcher" onChange={(e) => setF({ ...f, job: e.target.value })} /></label>
         <label>Job description<textarea className="field" rows={3} value={f.function} maxLength={400} placeholder="What they do for you" onChange={(e) => setF({ ...f, function: e.target.value })} /></label>

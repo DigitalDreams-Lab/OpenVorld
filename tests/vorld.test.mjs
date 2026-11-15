@@ -44,13 +44,17 @@ test('XP: chat is capped per day, finished work is not, levels follow the curve'
 });
 
 test('every crew member has sprites on the default sheets', () => {
-  const ctx = makeVorld({ crew: [{ name: 'Ada' }, { name: 'Bo' }] });
+  const ctx = makeVorld({ crew: [{ name: 'Ada', avatar: 'agent_5' }, { name: 'Bo' }] });
   const atlas = atlasFor(ctx);
   const frames = Object.assign({}, ...atlas.sheets.map((s) => s.frames));
   for (const id of ['founder', ...ctx.crew.map((c) => c.id)]) {
     assert.ok(frames[`c_${id.replace(/-/g, '_')}_down_2`], `${id} can walk`);
     assert.ok(frames[`c_${id.replace(/-/g, '_')}_portrait`], `${id} has a portrait`);
   }
+  for (let i = 1; i <= 14; i++) {
+    assert.ok(frames[`portrait_agent_${i}`], `portrait_agent_${i} exists in atlas`);
+  }
+  assert.deepEqual(frames.c_ada_portrait, frames.portrait_agent_5, 'Ada assigned agent_5 matches portrait_agent_5 frame');
   assert.ok(frames.t_ground_0 && frames.p_tree_0_0 && frames.i_trophy, 'tiles, props and icons');
 });
 
@@ -58,16 +62,21 @@ test('the crew API: add, edit, brain, remove; the companion stays', async (t) =>
   await startServer(t);
   const { root } = await newVorld();
   const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-add-ws-')); t.after(() => fs.rmSync(ws, { recursive: true, force: true }));
-  const added = await call('POST', `${root}/crew`, { name: 'Ada', job: 'Writer', function: 'Writes posts', brain: { provider: 'claude-code', model: 'opus' }, bench: ws });
+  const added = await call('POST', `${root}/crew`, { name: 'Ada', job: 'Writer', function: 'Writes posts', avatar: 'agent_4', brain: { provider: 'claude-code', model: 'opus' }, bench: ws });
   assert.equal(added.status, 200);
   assert.equal(added.data.crew.length, 2);
   assert.equal(added.data.added, 'ada');
   const addedAda = added.data.crew.find((c) => c.id === 'ada');
+  assert.equal(addedAda.avatar, 'agent_4');
   assert.deepEqual(addedAda.brain, { provider: 'claude-code', model: 'opus' });
   assert.deepEqual(addedAda.benches.map((b) => [b.id, b.path, b.chosen]), [['main', ws, true]]);
-  const edited = await call('PUT', `${root}/crew/ada`, { job: 'Editor', brain: { provider: 'claude-code', model: 'sonnet' } });
+  const edited = await call('PUT', `${root}/crew/ada`, { job: 'Editor', avatar: 'agent_9', brain: { provider: 'claude-code', model: 'sonnet' } });
   const ada = edited.data.crew.find((c) => c.id === 'ada');
-  assert.equal(ada.job, 'Editor'); assert.deepEqual(ada.brain, { provider: 'claude-code', model: 'sonnet' });
+  assert.equal(ada.job, 'Editor');
+  assert.equal(ada.avatar, 'agent_9');
+  assert.deepEqual(ada.brain, { provider: 'claude-code', model: 'sonnet' });
+  const frames = Object.assign({}, ...edited.data.art.atlas.sheets.map((s) => s.frames));
+  assert.deepEqual(frames.c_ada_portrait, frames.portrait_agent_9, 'edited ada portrait matches portrait_agent_9');
   const companion = edited.data.crew.find((c) => c.role === 'companion');
   assert.equal((await call('DELETE', `${root}/crew/${companion.id}`)).status, 400);
   assert.equal((await call('DELETE', `${root}/crew/ada`)).data.crew.length, 1);

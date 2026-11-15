@@ -56,6 +56,7 @@ function memberView(m, order, packs, theme, doc) {
     name: m.name || (role === 'companion' ? theme.companion?.name : null) || m.id,
     job: m.job || def.job || '',
     function: m.function || '',
+    avatar: m.avatar ? String(m.avatar).replace(/^portrait_/, '') : null,
     voice: m.personality || (role === 'companion' ? theme.companion?.voice_style : theme.agent_voice) || 'a friendly voice',
     look: role === 'companion' ? { form: m.form ?? theme.companion?.form ?? 'creature', species: m.species ?? theme.companion?.species ?? 'bee' } : null,
     brain: m.brain ?? null,
@@ -119,6 +120,7 @@ export function cleanMember(input, taken, role = 'agent') {
   if (str(input.job, 40)) m.job = str(input.job, 40);
   if (str(input.function, 400)) m.function = str(input.function, 400);
   if (str(input.personality, 200)) m.personality = str(input.personality, 200);
+  if (str(input.avatar, 40)) m.avatar = str(input.avatar, 40).replace(/^portrait_/, '');
   if (role === 'companion') { m.form = ['robot', 'creature', 'person'].includes(input.form) ? input.form : 'creature'; if (m.form === 'creature') m.species = slug(input.species) || 'bee'; }
   const brain = BRAIN(input.brain); if (brain) m.brain = brain;
   return m;
