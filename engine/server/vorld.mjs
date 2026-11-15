@@ -12,6 +12,7 @@ import { addCliDirs } from '../../tools/lib/cli-path.mjs';
 import { checkProject } from './workspace.mjs';
 
 const core = loadPacks([path.join(REPO, 'packs', 'core')]);
+addCliDirs(core.byKind.providers?.providers?.bin_dirs);
 export const HOME = process.env.OPENVORLD_HOME ? path.resolve(process.env.OPENVORLD_HOME) : homeDir(core.byKind.defaults?.defaults);
 const vorldsDir = () => path.join(HOME, 'vorlds');
 export const allPacks = () => loadPacks(packRoots(HOME));

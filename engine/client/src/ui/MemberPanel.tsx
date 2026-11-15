@@ -45,7 +45,7 @@ export function MemberPanel({ id }: { id: string }) {
           <button className="x" onClick={() => setState({ talkingTo: null })} aria-label="Close">✕</button>
         </div>
       </header>
-      {!m.brain_label && <p className="no-brain">{m.name} has no brain yet. <button className="link" onClick={() => setState({ modal: 'member' })}>Pick one</button> (Claude Code, Codex or an API model).</p>}
+      {!m.brain_label && <p className="no-brain">{m.name} has no brain yet. <button className="link" onClick={() => setState({ modal: 'member' })}>Pick one</button> (Claude Code, Codex, Antigravity or an API model).</p>}
       <div className="thread-tabs">
         <button className="btn small primary" onClick={newChat}>+ {str('ui.new_chat', {}, 'New chat')}</button>
         <div className="thread-list">

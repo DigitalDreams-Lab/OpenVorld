@@ -5,6 +5,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import * as claude from './drivers/claude.mjs';
 import * as codex from './drivers/codex.mjs';
+import * as antigravity from './drivers/antigravity.mjs';
 import * as openai from './drivers/openai.mjs';
 import * as scripted from './drivers/scripted.mjs';
 import { splitEnvelope } from './envelope.mjs';
@@ -14,8 +15,8 @@ import { engineTools } from './tools.mjs';
 import { appendEvent, getThread, updateThread, history, readEvents } from '../threads.mjs';
 import { grantsOf, folderGrants, consumeOnce, holds, checkScope } from '../gate.mjs';
 import { workspaceOf, projectOf } from '../workspace.mjs';
-import { gameFor } from '../game.mjs';
 import { browserFor } from './browse.mjs';
+import { gameFor } from '../game.mjs';
 import { attachmentPrompt, publicFiles, threadAttachments, getAttachment, saveAttachment, imageType } from '../attachments.mjs';
 
 const active = new Map(); // threadId -> AbortController
@@ -149,6 +150,7 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
     else if (brain.provider === 'claude-code') result = await claude.run({ ...common, tools, allowed: [...allowed, ...(web?.allowed ?? [])], addDirs, mcp: web?.mcp });
     else if (brain.provider === 'codex') result = await codex.run({ ...common, mcp: web?.mcp, addDirs: writeDirs.filter((d) => d !== cwd), writable: ws.chosen, web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
+    else if (brain.provider === 'antigravity') result = await antigravity.run({ ...common, addDirs, writable: writeDirs.length > 0 });
     else if (brain.driver === 'openai') {
       const et = agentCfg.engine_tools ?? {};
       const engine = et.enabled === false ? null : engineTools({ ctx, role, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, browser: web?.call, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });
