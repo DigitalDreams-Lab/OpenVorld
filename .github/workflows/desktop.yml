@@ -1,6 +1,11 @@
 name: Desktop builds
 on:
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Publish the builds as a GitHub release named after the version'
+        type: boolean
+        default: true
   push:
     tags: ['v*']
 permissions:
@@ -25,11 +30,56 @@ jobs:
       - run: npm run desktop:dist -- --publish never
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - id: version
+        shell: bash
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      # the files are named OpenVorld-<version>-<os>-<arch>.<ext> (electron-builder.yml > artifactName); the artifact carries the version too
       - uses: actions/upload-artifact@v4
         with:
-          name: 'OpenVorld-${{ matrix.os }}'
+          name: 'OpenVorld-${{ steps.version.outputs.version }}-${{ matrix.os }}'
+          if-no-files-found: error
           path: |
             release/*.dmg
             release/*.zip
             release/*.exe
             release/*.AppImage
+
+  # Every run that builds also publishes: the builds of all three systems go into one release, tagged v<version>, with the
+  # changelog entry as its notes and a SHA256SUMS.txt. Run it again for the same version and the files are replaced.
+  release:
+    needs: build
+    if: github.event_name != 'workflow_dispatch' || inputs.release
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: A tag must name the version it builds
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          if [ "${GITHUB_REF_NAME}" != "v${{ steps.version.outputs.version }}" ]; then
+            echo "::error::The tag is ${GITHUB_REF_NAME} but package.json says ${{ steps.version.outputs.version }}. Bump the version (npm run bump) or tag v${{ steps.version.outputs.version }}."
+            exit 1
+          fi
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: 'OpenVorld-${{ steps.version.outputs.version }}-*'
+          merge-multiple: true
+          path: dist
+      - name: Publish the release
+        env:
+          GH_TOKEN: '${{ github.token }}'
+          VERSION: '${{ steps.version.outputs.version }}'
+        run: |
+          TAG="v${VERSION}"
+          ls -l dist
+          (cd dist && shasum -a 256 * > SHA256SUMS.txt)
+          node tools/release-notes.mjs "${VERSION}" > notes.md
+          if gh release view "${TAG}" > /dev/null 2>&1; then
+            gh release upload "${TAG}" dist/* --clobber
+            gh release edit "${TAG}" --notes-file notes.md
+          else
+            gh release create "${TAG}" dist/* --target "${GITHUB_SHA}" --title "OpenVorld ${VERSION}" --notes-file notes.md
+          fi

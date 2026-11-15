@@ -20,6 +20,10 @@ npm run desktop:dist       # installers for this platform
 
 Artifacts are written to `release/`. On macOS the app is in `release/mac-arm64/OpenVorld.app` (Apple Silicon) or `release/mac/OpenVorld.app` (Intel). Builds produce DMG/ZIP on macOS, an NSIS installer on Windows, and AppImage on Linux. The desktop-build workflow builds each on its own operating system. Windows and Linux builds still need platform-specific end-to-end validation.
 
+### Releases
+
+The **Desktop builds** workflow (Actions tab → *Run workflow*, or pushing a tag like `v0.6.0`) builds macOS, Windows and Linux and then publishes one GitHub release named after the version in `package.json`: tag `v<version>`, the files named `OpenVorld-<version>-<os>-<arch>.<ext>`, a `SHA256SUMS.txt`, and the matching `CHANGELOG.md` entry as the notes. Running it again for the same version replaces the files. A pushed tag must match the version (`v0.6.0` for `0.6.0`), or the run stops with a message. When running it by hand, untick *Publish the builds as a GitHub release* to only build.
+
 The default Mac build uses an ad-hoc signature for local use. Public distribution needs an Apple Developer ID signature and notarization; Windows releases should also be signed. Signing and automatic updates are not configured by this local setup.
 
 ## Install on your Mac
