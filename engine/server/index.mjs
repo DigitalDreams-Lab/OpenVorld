@@ -10,7 +10,7 @@ import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMemb
 import { atlasFor, sheetFiles } from './art.mjs';
 import { gameFor } from './game.mjs';
 import { listThreads, createThread, getThread, readEvents, appendEvent } from './threads.mjs';
-import { runTurn, stopTurn, brainOf, isWorking, requestAccess } from './agents/runner.mjs';
+import { runTurn, stopTurn, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
 import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, partyBusy } from './parties.mjs';
 import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, addReferences } from './attachments.mjs';
 import { listGrants, grant, revoke, checkFolder, checkScope, deny, holds } from './gate.mjs';
@@ -308,13 +308,19 @@ route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
   const ev = appendEvent(ctx, p.tid, { type: 'writ.answered', id: p.wid, role: ask.role, answer: b.answer, scope });
   emit({ type: 'thread.event', thread: p.tid, role: ask.role, ev });
   const n = game.check(notes); if (n.length) emit({ type: 'game', notes: n, state: game.snapshot() });
-  // pick the work back up: a party room carries on, a chat on request
+  // pick the work back up once the member is idle (the founder may answer while their last turn is still ending) and no
+  // other request of theirs is waiting: a party room carries on, a chat continues on request
   const thread = getThread(ctx, p.tid);
-  if (!partyBusy(p.tid) && thread.kind === 'party') void resumeParty(ctx, p.tid, ask.role, emit);
-  else if (!isWorking(p.tid) && b.answer !== 'deny' && b.continue !== false) {
-    const label = ctx.packs.byKind.permissions?.permissions?.capabilities?.[ask.capability]?.label ?? ask.capability;
-    void turn(ctx, p.tid, `Access granted: you may ${label} ${scope}. Please continue.`);
-  }
+  const resume = thread.kind === 'party' ? b.continue !== false : b.answer !== 'deny' && b.continue !== false;
+  if (resume) void (async () => {
+    for (let i = 0; i < 600 && (isWorking(p.tid) || partyBusy(p.tid)); i++) await new Promise((r) => setTimeout(r, 500));
+    if (isWorking(p.tid) || partyBusy(p.tid) || openWrits(ctx, p.tid).some((w) => w.role === ask.role)) return;
+    if (thread.kind === 'party') await resumeParty(ctx, p.tid, ask.role, emit);
+    else {
+      const label = ctx.packs.byKind.permissions?.permissions?.capabilities?.[ask.capability]?.label ?? ask.capability;
+      await turn(ctx, p.tid, `Access granted: you may ${label} ${scope}. Please continue.`);
+    }
+  })().catch(() => {});
   return { ok: true, scope };
 });
 route('GET', '/api/vorlds/:id/grants', ({ p }) => listGrants(W(p)));

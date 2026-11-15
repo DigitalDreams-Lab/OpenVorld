@@ -157,3 +157,32 @@ test('the API: form a party, open a chat, write in it, and the room answers', as
   const removed = await call('DELETE', `${root}/parties/${pid}`);
   assert.deepEqual(removed.data.parties, []);
 });
+
+test('answering a writ while the member is still mid-turn still carries the work on (chat and party)', async (t) => {
+  const { startServer, call, newVorld } = await import('./helpers/server.mjs');
+  await startServer(t);
+  const { id, root } = await newVorld({ template: 'blank', crew: [{ name: 'Ada', job: 'Writer' }], brain: { provider: 'openai-compatible', model: 'party-test' } });
+  const ctx = vorldCtx(id, { fresh: true });
+  saveVorld(ctx, (d) => { d.providers = [{ id: 'openai-compatible', base_url: 'https://example.invalid/v1' }]; });
+  const ada = ctx.crew.find((c) => c.role === 'agent').id;
+
+  for (const kind of ['chat', 'party']) {
+    let n = 0;
+    t.mock.restoreAll?.();
+    t.mock.method(globalThis, 'fetch', async () => { n++; await new Promise((r) => setTimeout(r, 400)); return sse('Thanks, carrying on.'); });
+    let tid;
+    if (kind === 'chat') tid = (await call('POST', `${root}/threads`, { role: ada })).data.id;
+    else { const p = (await call('POST', `${root}/parties`, { name: 'Solo', goal: 'g', members: [ada] })).data; tid = (await call('POST', `${root}/parties/${p.added}/chats`, {})).data.id; }
+    await call('POST', `${root}/threads/${tid}/messages`, { text: 'go' });
+    // the member asks for a secret through the tool bridge (as Claude Code and Codex do) while its turn is still running
+    const key = kind === 'chat' ? 'CHAT_KEY' : 'PARTY_KEY';
+    await call('POST', `${root}/browser/${ada}/secret_ask?thread=${tid}`, { name: key, why: 'test' });
+    const ask = readEvents(ctx, tid).find((e) => e.type === 'writ.request');
+    assert.ok(ask, `${kind}: the request appeared`);
+    assert.ok(P.partyBusy(tid), `${kind}: the turn is still running when the founder answers`);
+    assert.equal((await call('POST', `${root}/threads/${tid}/writs/${ask.id}`, { answer: 'always', value: 'abcdef-123456' })).status, 200);
+    for (let i = 0; i < 200 && n < 2; i++) await new Promise((r) => setTimeout(r, 25));
+    assert.equal(n, 2, `${kind}: the member was asked to continue`);
+    for (let i = 0; i < 200 && (P.partyBusy(tid) || getThread(ctx, tid).state === 'working'); i++) await new Promise((r) => setTimeout(r, 25));
+  }
+});
