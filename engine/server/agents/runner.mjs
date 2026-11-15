@@ -20,6 +20,7 @@ import { benchOf, benchesOf, projectOf } from '../benches.mjs';
 import { heldSecrets, redactEvent, redactSecrets, vaultHelp } from '../house.mjs';
 import { browserFor } from './browse.mjs';
 import { gameFor } from '../game.mjs';
+import { profileContext } from '../profile.mjs';
 import { attachmentPrompt, publicFiles, threadAttachments, getAttachment, saveAttachment, imageType } from '../attachments.mjs';
 
 const active = new Map(); // threadId -> AbortController
@@ -55,7 +56,7 @@ function systemPrompt(ctx, id, benchId, scope = {}) {
   const benchNote = mine.length ? `Your workbenches (you can read and change files on all of them, in any chat): ${mine.map((b) => `${b.name} (${b.path})`).join('; ')}. This chat's active workbench is ${active.name} (${active.path}): start there and put new files there unless the founder says otherwise.` : '';
   const writs = grantsOf(ctx, id).map((g) => `${g.capability} ${g.scope}`).join('; ') || 'none';
   const env = ctx.interactions.envelope ?? {};
-  return [base, benchNote, `Your writs (access): ${writs}. You have no other access; if you need more, ask for it in the "access" list so the founder can grant it.`,
+  return [base, profileContext(ctx.home), benchNote, `Your writs (access): ${writs}. You have no other access; if you need more, ask for it in the "access" list so the founder can grant it.`,
     env.instructions ?? '', vaultHelp(ctx, id), commandHelp(ctx, id, scope)].filter(Boolean).join('\n\n');
 }
 
@@ -192,7 +193,9 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     // with no session to resume, a CLI brain is told the conversation so far; the API driver is handed the history itself
     const drive = async (sessionId) => {
     const catchup = !inRoom && !sessionId && brain.driver !== 'openai' ? catchUp(history(ctx, threadId).slice(0, -1)) : '';
-    const common = { system, prompt: catchup + attachmentPrompt(text, attachments), sessionId, cwd, model: brain.model, signal, onEvent };
+    // Resumed CLI sessions retain their first system prompt, so refresh personal context in the new turn too.
+    const personal = sessionId && brain.driver !== 'openai' ? profileContext(ctx.home) : '';
+    const common = { system, prompt: [personal, catchup + attachmentPrompt(text, attachments)].filter(Boolean).join('\n\n'), sessionId, cwd, model: brain.model, signal, onEvent };
     let result;
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
     else if (brain.provider === 'claude-code') result = await claude.run({ ...common, env: heldSecrets(ctx, role), tools, allowed: [...allowed, ...(web?.allowed ?? [])], addDirs, mcp: web?.mcp });

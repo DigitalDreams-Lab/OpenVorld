@@ -74,6 +74,10 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .hud-title { font-size: calc(18px * var(--display-scale)); font-weight: 600; } .lv { background: color-mix(in srgb, var(--gold) 20%, #ffe09a); color: var(--ink); border: 1px solid var(--ink); padding: 0 6px; margin-left: 4px; font-size: calc(14px * var(--display-scale)); }
 .xpbar { height: 10px; border: 2px solid var(--ink); background: #fffefb; margin: 4px 0; width: 200px; } .xpbar i { display: block; height: 100%; background: linear-gradient(90deg, color-mix(in srgb, var(--turquoise) 25%, #63dfce), color-mix(in srgb, var(--gold) 20%, #ffce68)); transition: width .6s; }
 .hud-sub { font-size: 13px; color: var(--ink); }
+.hud-sub { display: flex; align-items: baseline; gap: 4px; }
+.hud-rank { font-size: 10px; opacity: .7; white-space: nowrap; }
+.hud-profile { border: 0; padding: 0; background: transparent; cursor: pointer; flex: none; }
+.hud-profile:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 
 .coin { display: inline-flex; gap: 4px; align-items: center; }
 .hud-right { margin-left: auto; display: flex; gap: 8px; }

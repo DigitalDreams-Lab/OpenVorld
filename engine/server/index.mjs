@@ -20,6 +20,7 @@ import { benchesOf, benchOf, benchBase, checkBench, newBenchId, projectOf, check
 import { listSecrets, setSecret, removeSecret, hasSecret, redactSecrets, askSecret } from './house.mjs';
 import { listModels } from './models.mjs';
 import * as browse from './browser.mjs';
+import { readProfile, saveProfile } from './profile.mjs';
 import { REPO, resolveTheme } from '../../tools/lib/packs.mjs';
 
 let PORT = Number(process.env.OV_PORT ?? 4317);
@@ -48,8 +49,10 @@ function vorldView(ctx) {
   const working = new Set(listThreads(ctx).filter((t) => t.state === 'working' && isWorking(t.id)).map((t) => (t.kind === 'party' ? t.speaker : t.role)).filter(Boolean));
   const k = ctx.packs.byKind;
   const scenery = k.scenery?.scenery ?? {};
+  const profile = readProfile(HOME);
   return {
     vorld: { id: ctx.id, name: ctx.doc.name, about: ctx.doc.about ?? '', project: (({ path: p, chosen, exists }) => ({ path: p, chosen, exists }))(projectOf(ctx)) },
+    profile,
     crew: ctx.crew.map((c) => {
       const b = brainOf(ctx, c.id);
       return { id: c.id, role: c.role, order: c.order, name: c.name, job: c.job, function: c.function, personality: ctx.doc.crew.find((m) => m.id === c.id)?.personality ?? '', look: c.look, home: c.home,
@@ -85,7 +88,7 @@ const W = (p) => vorldCtx(p.id);
 route('GET', '/api/boot', () => {
   const k = allPacks().byKind, theme = resolveTheme(k, k.defaults?.defaults?.theme ?? 'default') ?? {};
   return {
-    version: VERSION, home: HOME, vorlds: listVorlds(), detected: detected(),
+    version: VERSION, home: HOME, profile: readProfile(HOME), vorlds: listVorlds(), detected: detected(),
     templates: Object.values(k.template ?? {}).sort((a, b) => (a.order ?? 9) - (b.order ?? 9)).map((t) => ({ id: t.id, label: t.label, description: t.description, crew: t.crew ?? [], parties: (t.parties ?? []).map((p) => p.name) })),
     theme: { palette: theme.palette ?? {}, companion: theme.companion ?? {}, agent_names: theme.agent_names ?? [] },
     creatures: k.default_art?.default_art?.creatures ?? {},
@@ -93,6 +96,12 @@ route('GET', '/api/boot', () => {
   };
 });
 route('POST', '/api/detect', () => detected(true));
+route('GET', '/api/profile', () => readProfile(HOME));
+route('PUT', '/api/profile', async ({ req }) => {
+  const profile = saveProfile(HOME, await body(req));
+  for (const id of sockets.keys()) emitTo(id)({ type: 'profile', profile });
+  return profile;
+});
 route('GET', '/api/art/:sheet', ({ p, res }) => {
   const s = sheetFiles(allPacks())[String(p.sheet).replace(/\.png$/, '')];
   if (!s?.file) fail('unknown sheet', 404);

@@ -76,7 +76,7 @@ function createWindow() {
     callback(Boolean(webContents === contents && isAppUrl(details.requestingUrl ?? webContents.getURL(), origin) && (audio || notifications)));
   });
   contents.session.webRequest.onHeadersReceived({ urls: [`${origin}/*`] }, (details, callback) => {
-    const policy = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self' data:; connect-src 'self' ${origin.replace('http:', 'ws:')}; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'none'`;
+    const policy = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self' data:; connect-src 'self' ${origin.replace('http:', 'ws:')}; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'self' blob:`;
     callback({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [policy] } });
   });
   window.once('ready-to-show', () => window?.show());

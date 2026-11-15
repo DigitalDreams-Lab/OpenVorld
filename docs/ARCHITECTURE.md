@@ -60,6 +60,10 @@ vorlds/<id>/
 
 ## Client (`engine/client/src`)
 
+The founder's optional name and about-me description live in `<home>/profile.json`, shared across vorlds without a data migration. Settings edits the profile through authenticated `/api/profile` routes, the HUD displays the name alongside the unchanged level/title, and the current profile is supplied as background to agents on each turn (also refreshed in resumed CLI sessions). The avatar in the HUD opens profile settings.
+
+Messages support isolated HTML/SVG previews (from fenced blocks, complete markup, and linked files), images, browser-native PDF/audio/video, Markdown, formatted JSON, CSV/TSV tables, and plain source/text files. `previews.ts` classifies formats and prepares static HTML; `ui/MessagePreview.tsx` owns preview dialogs and rendering. Local HTML assets are fetched through the existing conversation-scoped file route and embedded as data URLs. HTML runs in a scriptless opaque-origin sandbox with network, nested frames, forms, and parent access blocked. Preview reads are bounded; downloads retain their existing behavior.
+
 `ui/AgentBalloons.tsx` shows each member's current action or latest response line above their map avatar, including a compact live preview while browsing. The scene reports camera-projected anchors after rendering, so balloons follow movement and zoom without updating the React store on every frame. Final lines persist briefly per member across party handoffs; restored idle browser frames do not reopen a window.
 
 - `screens/`: Title (choose a vorld), Onboarding (found one) and Game.

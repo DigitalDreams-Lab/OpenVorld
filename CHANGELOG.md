@@ -2,6 +2,12 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.7.0 - 2026-11-16
+
+- Add shared founder name and About me settings, with the main character kept fixed
+- Return characters upright after work reactions and interrupted animations
+- Enable isolated HTML and media previews in the desktop app and add desktop preview and profile smoke checks
+
 ## 0.6.2 - 2026-11-15
 
 - Speech balloons (a call over, a line a character says) are drawn with the job balloons and stack above them, newest on top, each joined to its character, instead of hiding under the job balloon; a tall stack keeps the newest lines

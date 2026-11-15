@@ -1,0 +1,110 @@
+// Exercise real message rendering in a disposable desktop world, without running a paid agent.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import assert from 'node:assert/strict';
+import { _electron } from 'playwright-core';
+import { encodePng } from '../tools/lib/pngcodec.mjs';
+
+const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'openvorld-preview-smoke-'));
+const project = path.join(temporary, 'project'); fs.mkdirSync(project);
+const executable = process.argv[2] || (await import('electron')).default;
+const env = { ...process.env, OPENVORLD_HOME: path.join(temporary, 'data'), OV_DESKTOP_USER_DATA: path.join(temporary, 'preferences') };
+delete env.ELECTRON_RUN_AS_NODE; delete env.NODE_OPTIONS; delete env.NODE_PATH;
+const png = encodePng({ width: 1, height: 1, data: Buffer.from([40, 150, 110, 255]) });
+const html = '<!doctype html><html><head><link rel="stylesheet" href="style.css"></head><body><h1>Local HTML report</h1><img alt="Local asset" src="pixel.png"><script>window.previewScriptRan=true;parent.previewScriptRan=true;fetch("https://example.invalid/leak")</script><iframe src="https://example.invalid/leak"></iframe></body></html>';
+fs.writeFileSync(path.join(project, 'report.html'), html);
+fs.writeFileSync(path.join(project, 'style.css'), 'h1{color:rgb(16,96,160)} body{background:#f4f8fb}');
+fs.writeFileSync(path.join(project, 'pixel.png'), png);
+fs.writeFileSync(path.join(project, 'drawing.svg'), '<svg xmlns="http://www.w3.org/2000/svg" width="180" height="90"><rect width="180" height="90" fill="#2c9775"/><text x="20" y="50" fill="white">SVG preview</text></svg>');
+fs.writeFileSync(path.join(project, 'data.json'), '{"count":3,"ready":true}');
+fs.writeFileSync(path.join(project, 'rows.csv'), 'Name,Note\nAda,"One, two"\nBo,Ready');
+fs.writeFileSync(path.join(project, 'notes.md'), '# Previewed Markdown\n\nA **formatted** note.');
+const wav = Buffer.alloc(444, 128); wav.write('RIFF'); wav.writeUInt32LE(436, 4); wav.write('WAVEfmt ', 8); wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22); wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(8000, 28); wav.writeUInt16LE(1, 32); wav.writeUInt16LE(8, 34); wav.write('data', 36); wav.writeUInt32LE(400, 40);
+fs.writeFileSync(path.join(project, 'sample.wav'), wav);
+const stream = 'BT /F1 18 Tf 20 120 Td (PDF preview works) Tj ET';
+const objects = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>', `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`];
+let pdf = '%PDF-1.4\n'; const offsets = [0];
+objects.forEach((object, i) => { offsets.push(Buffer.byteLength(pdf)); pdf += `${i + 1} 0 obj\n${object}\nendobj\n`; });
+const xref = Buffer.byteLength(pdf); pdf += `xref\n0 6\n0000000000 65535 f \n${offsets.slice(1).map(offset => String(offset).padStart(10, '0') + ' 00000 n \n').join('')}trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF\n`;
+fs.writeFileSync(path.join(project, 'report.pdf'), pdf);
+let desktop;
+try {
+  desktop = await _electron.launch({ executablePath: executable, args: process.argv[2] ? [] : [fileURLToPath(new URL('..', import.meta.url))], env, timeout: 30000 });
+  const page = await desktop.firstWindow(), errors = [], leaked = [];
+  page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => { if (message.type() === 'error') console.error(message.text()); });
+  page.on('request', request => { if (request.url().includes('example.invalid')) leaked.push(request.url()); });
+  await page.getByRole('button', { name: 'New vorld', exact: true }).waitFor();
+  const video = await page.evaluate(async () => {
+    const canvas = document.createElement('canvas'); canvas.width = 64; canvas.height = 48;
+    const context = canvas.getContext('2d'); context.fillStyle = '#278765'; context.fillRect(0, 0, 64, 48);
+    const stream = canvas.captureStream(2), recorder = new MediaRecorder(stream, { mimeType: 'video/webm' }), chunks = [];
+    recorder.ondataavailable = event => chunks.push(event.data);
+    const stopped = new Promise(resolve => recorder.onstop = resolve);
+    recorder.start(); await new Promise(resolve => setTimeout(resolve, 600)); recorder.stop(); await stopped;
+    stream.getTracks().forEach(track => track.stop());
+    return [...new Uint8Array(await new Blob(chunks).arrayBuffer())];
+  });
+  fs.writeFileSync(path.join(project, 'sample.webm'), Buffer.from(video));
+  const state = await page.evaluate(async project => {
+    const token = document.querySelector('meta[name="ov-token"]').content;
+    const api = async (url, body) => {
+      const response = await fetch('/api' + url, { method: body ? 'POST' : 'GET', headers: { 'x-ov-token': token, 'content-type': 'application/json' }, ...(body ? { body: JSON.stringify(body) } : {}) });
+      if (!response.ok) throw new Error(await response.text()); return response.json();
+    };
+    const world = await api('/vorlds', { name: 'Preview test world', template: 'blank', brain: { provider: 'none' }, project });
+    const view = await api(`/vorlds/${world.id}/vorld`), role = view.crew.find(member => member.role === 'companion').id;
+    const thread = await api(`/vorlds/${world.id}/threads`, { role, title: 'Artifact previews' });
+    return { id: world.id, tid: thread.id, role };
+  }, project);
+  const links = [['HTML report', 'report.html'], ['Vector', 'drawing.svg'], ['JSON data', 'data.json'], ['CSV table', 'rows.csv'], ['Markdown note', 'notes.md'], ['Audio sample', 'sample.wav'], ['Video sample', 'sample.webm'], ['PDF report', 'report.pdf']].map(([label, file]) => `[${label}](<${path.join(project, file)}>)`).join('\n\n');
+  const text = '# Rendered artifacts\n\n```html\n<h1>Inline report</h1><script>window.previewScriptRan=true</script>\n```\n\n' + links + '\n\n![Local image](<' + path.join(project, 'pixel.png') + '>)';
+  fs.appendFileSync(path.join(env.OPENVORLD_HOME, 'vorlds', state.id, 'threads', state.tid + '.jsonl'), JSON.stringify({ at: new Date().toISOString(), type: 'agent.text', role: state.role, text }) + '\n');
+  await page.reload(); await page.getByRole('button', { name: 'Preview test world', exact: true }).click();
+  await page.locator('.phaser-host canvas').waitFor(); await page.locator('.cb-item').first().click();
+  await page.getByRole('button', { name: 'Preview', exact: true }).click();
+  const inline = page.frameLocator('iframe[title="HTML preview"]');
+  await inline.getByRole('heading', { name: 'Inline report' }).waitFor();
+  assert.equal(await page.locator('iframe[title="HTML preview"]').getAttribute('sandbox'), '');
+  assert.equal(await inline.locator('script').count(), 0);
+  assert.equal(await inline.locator('body').evaluate(() => { try { return parent.document.body.tagName; } catch { return 'isolated'; } }), 'isolated');
+  await page.getByRole('link', { name: 'HTML report', exact: true }).click();
+  const report = page.frameLocator('iframe[title="report.html preview"]');
+  await report.getByRole('heading', { name: 'Local HTML report' }).waitFor();
+  assert.equal(await report.locator('h1').evaluate(element => getComputedStyle(element).color), 'rgb(16, 96, 160)');
+  await report.locator('img').evaluate(image => image.complete ? undefined : new Promise(resolve => image.onload = resolve));
+  assert.equal(await report.locator('img').evaluate(image => image.naturalWidth), 1);
+  assert.equal(await report.locator('script,iframe').count(), 0);
+  await page.screenshot({ path: path.join(os.tmpdir(), 'openvorld-message-preview.png') });
+  await page.getByRole('button', { name: 'Close preview ✕' }).click();
+  for (const [label, expected] of [['JSON data', '"count": 3'], ['CSV table', 'One, two'], ['Markdown note', 'Previewed Markdown']]) {
+    await page.getByRole('link', { name: label, exact: true }).click();
+    await page.getByRole('dialog').getByText(expected, { exact: false }).waitFor();
+    await page.keyboard.press('Escape'); await page.getByRole('dialog').waitFor({ state: 'detached' });
+    assert.equal(await page.locator('.member-panel').count(), 1, 'Escape closes the preview, preserving the conversation');
+  }
+  await page.getByRole('link', { name: 'Audio sample', exact: true }).click();
+  await page.getByRole('dialog').locator('audio').waitFor();
+  await page.waitForFunction(() => document.querySelector('audio')?.readyState >= 1);
+  await page.keyboard.press('Escape');
+  await page.getByRole('link', { name: 'Video sample', exact: true }).click();
+  await page.getByRole('dialog').locator('video').waitFor();
+  await page.waitForFunction(() => document.querySelector('video')?.readyState >= 1);
+  await page.keyboard.press('Escape');
+  await page.getByRole('link', { name: 'PDF report', exact: true }).click();
+  await page.getByRole('dialog').locator('.pdf-preview').waitFor();
+  await page.waitForTimeout(1000);
+  await page.screenshot({ path: path.join(os.tmpdir(), 'openvorld-pdf-preview.png') });
+  await page.keyboard.press('Escape');
+  await page.getByRole('link', { name: 'Vector', exact: true }).click();
+  await page.frameLocator('iframe[title="drawing.svg preview"]').locator('svg').waitFor();
+  await page.keyboard.press('Escape');
+  await page.waitForFunction(() => [...document.querySelectorAll('.image-preview img')].some(image => image.naturalWidth === 1));
+  assert.deepEqual(leaked, []); assert.deepEqual(errors, []);
+  console.log(JSON.stringify({ result: 'passed', html: true, isolated: true, localAssets: true, images: true, svg: true, audio: true, video: true, pdf: true, json: true, csv: true, markdown: true, screenshot: path.join(os.tmpdir(), 'openvorld-message-preview.png') }));
+} finally {
+  if (desktop) await desktop.close();
+  fs.rmSync(temporary, { recursive: true, force: true });
+}

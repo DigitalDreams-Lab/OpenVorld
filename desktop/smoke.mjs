@@ -8,6 +8,7 @@ import { _electron } from 'playwright-core';
 
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'openvorld-desktop-smoke-'));
 const activityCheck = process.argv.includes('--activity');
+const profileCheck = process.argv.includes('--profile');
 const executableArgument = process.argv.slice(2).find(argument => !argument.startsWith('--'));
 const executable = executableArgument || (await import('electron')).default;
 const env = { ...process.env, OPENVORLD_HOME: path.join(temporary, 'data'), OV_DESKTOP_USER_DATA: path.join(temporary, 'preferences') };
@@ -52,6 +53,22 @@ try {
     throw new Error('The scripted agent did not reply.');
   });
   assert.equal(state.home, env.OPENVORLD_HOME); assert.ok(state.replied);
+  if (profileCheck) {
+    await page.getByRole('button', { name: 'Edit your profile', exact: true }).click();
+    await page.getByLabel('Your name', { exact: true }).fill('Ada Brook');
+    await page.getByLabel('About me', { exact: true }).fill('I build useful tools and prefer concise updates.');
+    await page.getByRole('button', { name: 'Save', exact: true }).click();
+    await page.waitForFunction(() => document.querySelector('.hud-title .ellip')?.textContent === 'Ada Brook');
+    assert.ok((await page.locator('.hud-rank').innerText()).trim().length > 1, 'the earned title is still shown');
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('.hud-title .ellip')?.textContent === 'Ada Brook');
+    await page.getByRole('button', { name: 'Edit your profile', exact: true }).click();
+    assert.equal(await page.getByLabel('Your name', { exact: true }).inputValue(), 'Ada Brook');
+    assert.equal(await page.getByLabel('About me', { exact: true }).inputValue(), 'I build useful tools and prefer concise updates.');
+    await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+    const saved = JSON.parse(fs.readFileSync(path.join(env.OPENVORLD_HOME, 'profile.json'), 'utf8'));
+    assert.equal(saved.name, 'Ada Brook'); assert.match(saved.about, /concise updates/);
+  }
   if (activityCheck) {
     assert.ok(gameSocket);
     const send = message => gameSocket.send(JSON.stringify(message));
@@ -82,7 +99,7 @@ try {
   await page.screenshot({ path: screenshot });
   await desktop.close(); desktop = null;
   await assert.rejects(fetch(origin + '/api/boot'), 'quitting also stops the engine');
-  console.log(JSON.stringify({ result: 'passed', executable, crew: state.crew, scriptedReply: state.replied, engineStopped: true, screenshot }));
+  console.log(JSON.stringify({ result: 'passed', executable, crew: state.crew, scriptedReply: state.replied, profileChecked: profileCheck, engineStopped: true, screenshot }));
 } finally {
   if (desktop) await desktop.close();
   fs.rmSync(temporary, { recursive: true, force: true });

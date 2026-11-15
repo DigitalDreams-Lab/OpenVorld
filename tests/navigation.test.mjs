@@ -1,13 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { clientModule, clientModuleUrl, stubModule } from './helpers/client.mjs';
+import { createRequire } from 'node:module';
+import { EventEmitter } from 'node:events';
+import path from 'node:path';
+const require = createRequire(import.meta.url);
+const TweenManager = require(path.resolve('node_modules/phaser/src/tweens/TweenManager.js'));
 
 const navigation = await clientModuleUrl('engine/client/src/game/navigation.ts');
 const geometry = await clientModuleUrl('engine/client/src/game/geometry.ts');
 const { clearWalk, walkingPath } = await import(navigation);
 const { homeGeometry } = await import(geometry);
 const stub = stubModule(`
-  export default { Scene: class {} };
+  export default { Scene: class {}, Display: { Color: { HexStringToColor: () => ({ color: 0 }) } } };
   export const emit = () => {}, on = () => {}, play = () => {};
   export const nearestProp = () => {}, standSpots = () => {}, facing = () => {}, clampQueue = () => {};
   export const TEX = 1, CHAR_TEX = 1, BEE_SCALE = 1, IDLE_FRAME = 1, walkFrame = () => 0, BODY_FONT = 'sans-serif';
@@ -31,6 +36,46 @@ function sceneWithHouse() {
 function member(x, y, target) {
   return { id: 'writer', target, sprite: { x, y, setPosition(x, y) { this.x = x; this.y = y; } } };
 }
+
+function reactionScene() {
+  const scene = sceneWithHouse(), sprite = { x: 100, y: 100, angle: 0, setAngle(angle) { this.angle = angle; return this; } };
+  scene.vorld = { theme: { palette: {} } };
+  scene.npcs.set('writer', { sprite, working: true });
+  scene.sys = { events: new EventEmitter() };
+  scene.tweens = new TweenManager(scene); scene.tweens.getDelta = () => 16;
+  scene.particles = () => {}; scene.cameras = { main: { shake() {} } };
+  const advance = frames => { for (let i = 0; i < frames; i++) scene.tweens.step(true); };
+  return { scene, sprite, advance };
+}
+
+test('hammering plays a tilt and naturally returns the character to upright', () => {
+  const { scene, sprite, advance } = reactionScene();
+  scene.react('writer', { anim: 'hammer' }); advance(5);
+  assert.ok(sprite.angle < 0, 'the work animation actually plays');
+  advance(30); assert.equal(sprite.angle, 0); assert.equal(scene.rotationReactions.size, 0);
+});
+
+test('rapid work reactions replace each other without leaving a residual rotation', () => {
+  const { scene, sprite, advance } = reactionScene();
+  for (let i = 0; i < 12; i++) { scene.react('writer', { anim: 'hammer' }); advance(3); assert.equal(scene.rotationReactions.size, 1); }
+  advance(40); assert.equal(sprite.angle, 0); assert.equal(scene.rotationReactions.size, 0);
+});
+
+test('finishing a job cancels a tilt immediately and later frames cannot bring it back', () => {
+  const { scene, sprite, advance } = reactionScene();
+  scene.react('writer', { anim: 'hammer' }); advance(5); assert.ok(sprite.angle < 0);
+  scene.setWorking('writer', false);
+  assert.equal(sprite.angle, 0); assert.equal(scene.npcs.get('writer').working, false);
+  advance(60); assert.equal(sprite.angle, 0); assert.equal(scene.rotationReactions.size, 0);
+});
+
+test('waves and dances also finish upright, including when interrupted by another emote', () => {
+  const { scene, sprite, advance } = reactionScene();
+  scene.react('writer', { anim: 'wave' }); advance(6); assert.ok(sprite.angle > 0);
+  scene.react('writer', { anim: 'dance' }); advance(180);
+  assert.equal(sprite.angle, 0); assert.equal(scene.rotationReactions.size, 0);
+  sprite.angle = -12; scene.setWorking('writer', true); assert.equal(sprite.angle, 0, 'a new job clears a previously stuck pose');
+});
 
 test('returning crew walk around a house and arrive outside its front door', () => {
   const scene = sceneWithHouse(), n = member(136, 40, { x: 136, y: 160 });

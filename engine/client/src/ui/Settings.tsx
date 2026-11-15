@@ -19,6 +19,8 @@ export function Settings() {
   const vorld = useStore((s) => s.vorld);
   const [s, setS] = useState<any>(null);
   const [w, setW] = useState({ name: vorld.vorld.name, about: vorld.vorld.about });
+  const [profile, setProfile] = useState({ name: vorld.profile?.name ?? '', about: vorld.profile?.about ?? '' });
+  const [saving, setSaving] = useState(false);
   useEffect(() => { api(`/vorlds/${wid}/settings`).then(setS).catch((e) => toast({ kind: 'error', title: e.message })); }, [wid]);
   if (!s) return null;
   const endpoints: any[] = s.providers.filter((p: any) => p.id === 'openai-compatible');
@@ -30,18 +32,27 @@ export function Settings() {
     setS((x: any) => ({ ...x, providers: [...x.providers, { id: 'openai-compatible', name: n, base_url: p.base_url ?? '', api: p.api, api_key_env: '' }] }));
   };
   const save = async () => {
+    if (saving) return;
+    setSaving(true);
     try {
       // the key box takes a key or a variable name: untouched keeps what is saved, emptied forgets it, anything typed is sent for the server to sort out
       const providers = s.providers.map(({ key_input, has_key, ...q }: any) => (key_input === undefined ? q : key_input === '' ? { ...q, api_key_env: '', remove_key: true } : { ...q, api_key: key_input }));
       await api(`/vorlds/${wid}/settings`, { method: 'PUT', body: { providers } });
+      const savedProfile = await api('/profile', { method: 'PUT', body: profile });
       const next = await api(`/vorlds/${wid}`, { method: 'PUT', body: w });
-      setState({ vorld: next, modal: null }); emit('vorld', next); play('seal.approved');
+      const updated = { ...next, profile: savedProfile };
+      setState({ vorld: updated, modal: null }); emit('vorld', updated); play('seal.approved');
     } catch (e: any) { toast({ kind: 'error', title: e.message }); play('ui.error'); }
+    finally { setSaving(false); }
   };
   return (
     <div className="modal-bg" onPointerDown={(e) => e.stopPropagation()} onClick={close}>
       <div className="modal panel settings" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
         <header className="row between"><h2>Settings</h2><IconButton icon="close" title="Close" onClick={close} /></header>
+        <h3>Your profile</h3>
+        <label>Your name<input className="field" autoComplete="nickname" value={profile.name} maxLength={80} placeholder="What should the crew call you?" onChange={event => setProfile({ ...profile, name: event.target.value })} /></label>
+        <label><span id="profile-about-label">About me</span><textarea aria-labelledby="profile-about-label" className="field" rows={3} value={profile.about} maxLength={2000} placeholder="Your role, interests, and how you like to work." onChange={event => setProfile({ ...profile, about: event.target.value })} /></label>
+        <p className="muted small">Shared across your vorlds in this data folder. Your crew uses this as context when you work together.</p>
         <h3>Vorld</h3>
         <label>Name<input className="field" value={w.name} maxLength={60} onChange={(e) => setW({ ...w, name: e.target.value })} /></label>
         <label>What it is for<textarea className="field" rows={2} value={w.about} maxLength={400} placeholder="The project, company or activity this vorld runs. Every crew member reads this." onChange={(e) => setW({ ...w, about: e.target.value })} /></label>
@@ -72,7 +83,7 @@ export function Settings() {
         <h3>Notifications</h3>
         <NotifySettings />
         <p className="muted small">Saved on this computer in <code>{s.storage.vorld}</code></p>
-        <div className="row end"><button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={save}>Save</button></div>
+        <div className="row end"><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</button></div>
       </div>
     </div>
   );

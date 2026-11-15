@@ -31,6 +31,7 @@ export class VorldScene extends Phaser.Scene {
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
   npcs = new Map<string, Npc>();
   routes = new Map<string, { target: Pt; points: Pt[] }>();
+  rotationReactions = new Map<string, { target: Phaser.GameObjects.Sprite; tween: Phaser.Tweens.Tween }>();
   solids!: Phaser.Physics.Arcade.StaticGroup;
   prompt!: Phaser.GameObjects.Text;
   near: string | null = null;
@@ -136,7 +137,7 @@ export class VorldScene extends Phaser.Scene {
       on('browsing', (ids: string[]) => { this.browsing = new Set(ids); this.refresh(); }),
       on('balloon', ({ role, text, ms }) => this.balloon(role, text, ms)),
       on('react', ({ role, reaction }) => this.react(role, reaction)),
-      on('working', ({ role, working }) => { const n = this.npcs.get(role); if (n) n.working = working; }),
+      on('working', ({ role, working }) => this.setWorking(role, working)),
       on('summon', ({ ids }: { ids: string[] }) => this.callOver(ids, 'summoned')),
       on('gather', ({ ids }: { ids: string[] }) => this.callOver(ids, 'gather')),
       on('command', ({ role, commands }: { role: string; commands: any[] }) => this.runCommands(role, commands)),
@@ -157,7 +158,7 @@ export class VorldScene extends Phaser.Scene {
       emit('agent-anchors', { width: this.scale.displaySize.width, height: this.scale.displaySize.height, positions });
     };
     this.game.events.on('postrender', reportAnchors);
-    const cleanup = () => { this.game.events.off('postrender', reportAnchors); emit('agent-anchors', null); this.unsub.forEach((u) => u()); this.unsub = []; };
+    const cleanup = () => { for (const role of this.rotationReactions.keys()) this.resetRotation(role); this.game.events.off('postrender', reportAnchors); emit('agent-anchors', null); this.unsub.forEach((u) => u()); this.unsub = []; };
     this.events.once('shutdown', cleanup); this.events.once('destroy', cleanup);
     this.refresh();
     if (this.asking.size) this.setAsking([...this.asking]);
@@ -312,6 +313,31 @@ export class VorldScene extends Phaser.Scene {
     }
   }
 
+  resetRotation(role: string) {
+    const current = this.rotationReactions.get(role);
+    if (current) {
+      this.rotationReactions.delete(role);
+      current.tween.remove(); current.tween.destroy(); current.target.setAngle(0);
+    }
+    const target = role === this.companionId ? this.bee : this.npcs.get(role)?.sprite;
+    target?.setAngle(0);
+  }
+  setWorking(role: string, working: boolean) {
+    const member = this.npcs.get(role); if (member) member.working = working;
+    this.resetRotation(role);
+  }
+  /** Only one tilt per member; every swing starts and ends upright. */
+  rotateReaction(role: string, target: Phaser.GameObjects.Sprite, angle: number, duration: number, repeat = 0) {
+    this.resetRotation(role);
+    const tween = this.tweens.add({ targets: target, angle: { from: 0, to: angle }, duration, yoyo: true, repeat,
+      onComplete: () => {
+        if (this.rotationReactions.get(role)?.tween !== tween) return;
+        this.rotationReactions.delete(role); target.setAngle(0);
+      },
+    });
+    this.rotationReactions.set(role, { target, tween });
+  }
+
   /** Visual reaction to an agent event (from packs/core/interactions.yaml). */
   react(role: string, r: any) {
     if (!r) return;
@@ -321,7 +347,7 @@ export class VorldScene extends Phaser.Scene {
     const col = (h: string, d: string) => Phaser.Display.Color.HexStringToColor(h ?? d).color;
     switch (r.anim) {
       case 'hammer':
-        this.tweens.add({ targets: target, angle: { from: -12, to: 8 }, duration: 90, yoyo: true });
+        this.rotateReaction(role, target, -12, 90);
         this.particles(target.x + 6, target.y, col(pal.gold, '#fc0'), 10);
         this.cameras.main.shake(60, 0.0015);
         break;
@@ -331,8 +357,9 @@ export class VorldScene extends Phaser.Scene {
       case 'read_scroll': case 'gaze': this.tweens.add({ targets: target, scaleY: 0.92, duration: 120, yoyo: true }); break;
       case 'think': this.tweens.add({ targets: target, y: target.y - 2, duration: 300, yoyo: true }); break;
       case 'bow': this.tweens.add({ targets: target, scaleY: 0.85, duration: 160, yoyo: true }); break;
-      case 'wave': this.tweens.add({ targets: target, angle: { from: -10, to: 10 }, duration: 110, yoyo: true, repeat: 5, onComplete: () => target.setAngle(0) }); break;
-      case 'dance': this.tweens.add({ targets: target, y: target.y - 4, angle: { from: -8, to: 8 }, duration: 140, yoyo: true, repeat: 7, onComplete: () => target.setAngle(0) }); this.particles(target.x, target.y - 10, col(pal.gold, '#fc0'), 8, 16); break;
+      case 'wave': this.rotateReaction(role, target, 10, 110, 5); break;
+      case 'dance': this.rotateReaction(role, target, 8, 140, 7); this.tweens.add({ targets: target, y: target.y - 4, duration: 140, yoyo: true, repeat: 7 }); this.particles(target.x, target.y - 10, col(pal.gold, '#fc0'), 8, 16); break;
+      case 'idle': this.resetRotation(role); break;
       case 'shrug': this.tweens.add({ targets: target, scaleY: target.scaleY * 0.93, x: target.x + 1, duration: 180, yoyo: true, repeat: 1 }); break;
       case 'sniff': this.tweens.add({ targets: target, y: target.y - 1.5, duration: 160, yoyo: true, repeat: 3 }); break;
       case 'rest': this.tweens.add({ targets: target, scaleY: target.scaleY * 0.88, duration: 260, yoyo: true, hold: Math.max(0, (r.ms ?? 2500) - 520) }); break;
