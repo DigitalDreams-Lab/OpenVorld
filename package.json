@@ -1,6 +1,6 @@
 {
   "name": "openvorld",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Every project is a vorld: a shared project folder, a crew of AI agents with their own workspaces, and the quests they run together. Shown as a pixel-art world.",
   "license": "MIT",
   "type": "module",

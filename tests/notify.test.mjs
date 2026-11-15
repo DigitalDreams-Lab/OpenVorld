@@ -37,3 +37,13 @@ test('notify plays the chime for attention and nothing for a finished job', () =
   notify({ kind: 'error', title: 'Quinn hit a problem' });
   assert.deepEqual(played, ['notify.attention']);
 });
+
+test('the test button learns what happened: chime played, and whether a desktop notification could be sent', async () => {
+  setNotifyPrefs({ sound: true, desktop: true });
+  played.length = 0;
+  const r = await notify({ kind: 'attention', title: 'OpenVorld' }, { force: true });
+  assert.deepEqual(played, ['notify.attention']);
+  assert.deepEqual(r, { sound: true, desktop: 'unsupported' }, 'no Notification API in this environment');
+  setNotifyPrefs({ sound: false, desktop: false });
+  assert.deepEqual(await notify({ kind: 'attention', title: 'x' }, { force: true }), { sound: false, desktop: 'off' });
+});

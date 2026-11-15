@@ -6,7 +6,6 @@ import { api } from '../api';
 import { emit, setState, toast, useStore } from '../store';
 import { play, setSfxVolume } from '../audio/sfx';
 import { notify, notifyPrefs, setNotifyPrefs } from '../notify';
-import { WritsList } from './WritsList';
 import { FolderPicker, useFolderDialog } from './FolderPicker';
 
 const tail = (p: string) => { const parts = p.split('/').filter(Boolean); return parts.length > 3 ? `…/${parts.slice(-2).join('/')}` : p; };
@@ -58,7 +57,6 @@ export function Settings() {
 
         <ProjectFolder />
         <DefaultFolder />
-        <WritsList />
         <h3>Sound</h3>
         <label className="form-row"><span>Effects</span><input type="range" min={0} max={1} step={0.05} defaultValue={0.8} onChange={(e) => { setSfxVolume(Number(e.target.value)); play('ui.click'); }} /></label>
         <h3>Notifications</h3>
@@ -147,12 +145,19 @@ function DefaultFolder() {
 function NotifySettings() {
   const [prefs, setPrefs] = useState(notifyPrefs());
   const set = (patch: Partial<typeof prefs>) => { setNotifyPrefs(patch); setPrefs(notifyPrefs()); };
+  const mac = typeof navigator !== 'undefined' && /Mac/i.test(navigator.platform);
+  const sendTest = async () => {
+    const r = await notify({ kind: 'attention', title: 'OpenVorld', body: 'This is how a notification looks.' }, { force: true });
+    const chime = r.sound ? 'The chime played.' : 'The chime is switched off.';
+    const banner = { sent: mac ? 'A desktop notification was sent to macOS. No banner? Open System Settings → Notifications → OpenVorld and allow banners and sounds, and check that no Focus mode is on.' : 'A desktop notification was sent.', blocked: 'Desktop notifications are blocked here. Allow them for OpenVorld in your system or browser settings.', unsupported: 'This window cannot show desktop notifications.', off: 'Desktop notifications are switched off above.', 'not-needed': '' }[r.desktop];
+    toast({ kind: r.desktop === 'blocked' || r.desktop === 'unsupported' ? 'error' : 'info', title: 'Test sent', body: `${chime} ${banner}`.trim() }, 9000);
+  };
   return (
     <>
       <label className="check"><input type="checkbox" checked={prefs.sound} onChange={(e) => set({ sound: e.target.checked })} /> Play a chime when someone needs me</label>
       <label className="check"><input type="checkbox" checked={prefs.desktop} onChange={(e) => set({ desktop: e.target.checked })} /> Show a desktop notification when OpenVorld is in the background</label>
       <p className="muted small">The crew's work itself (tool calls, typing) is silent. A notification means someone is waiting for your answer, or a job ended while you were away.</p>
-      <div className="row"><button className="btn small" onClick={() => notify({ kind: 'attention', title: 'OpenVorld', body: 'This is how a notification looks.' }, { force: true })}>Send a test</button></div>
+      <div className="row"><button className="btn small" onClick={() => void sendTest()}>Send a test</button></div>
     </>
   );
 }

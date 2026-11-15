@@ -12,6 +12,7 @@ import { useConfirm } from './ConfirmDialog';
 import { ModelPicker } from './ModelPicker';
 import { Workbenches } from './Workbenches';
 import { VaultPanel } from './VaultPanel';
+import { MemberWrits } from './WritsList';
 
 /** The brains this vorld can use: detected CLIs plus the API endpoints set up in Settings. */
 export function useBrainChoices(wid: string) {
@@ -96,6 +97,7 @@ export function MemberSettings({ id }: { id: string }) {
             </div>
             <Workbenches id={id} />
             <VaultPanel id={id} />
+            <MemberWrits id={id} />
           </div>
         </div>
         <div className="row between modal-foot">

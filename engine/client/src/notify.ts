@@ -24,22 +24,29 @@ export function notificationPlan(kind: NotifyKind, focused: boolean, prefs: Noti
 
 const windowFocused = () => typeof document !== 'undefined' && !document.hidden && document.hasFocus();
 
-export function notify(n: { kind: NotifyKind; title: string; body?: string; role?: string }, opts: { force?: boolean } = {}) {
+/** What a notification did, so the test button can say so instead of leaving the founder guessing. */
+export type NotifyResult = { sound: boolean; desktop: 'sent' | 'blocked' | 'unsupported' | 'off' | 'not-needed' };
+
+export function notify(n: { kind: NotifyKind; title: string; body?: string; role?: string }, opts: { force?: boolean } = {}): Promise<NotifyResult> {
   const plan = notificationPlan(n.kind, opts.force ? false : windowFocused());
-  if (plan.sound || (opts.force && notifyPrefs().sound)) play('notify.attention');
-  if (plan.desktop) desktop(n);
+  const sound = plan.sound || (!!opts.force && notifyPrefs().sound);
+  if (sound) play('notify.attention');
+  if (!plan.desktop) return Promise.resolve({ sound, desktop: notifyPrefs().desktop ? 'not-needed' : 'off' });
+  return desktop(n).then((desktop) => ({ sound, desktop }));
 }
 
-function desktop({ kind, title, body, role }: { kind: NotifyKind; title: string; body?: string; role?: string }) {
-  if (typeof Notification === 'undefined') return;
-  const show = () => {
+async function desktop({ kind, title, body, role }: { kind: NotifyKind; title: string; body?: string; role?: string }): Promise<NotifyResult['desktop']> {
+  if (typeof Notification === 'undefined') return 'unsupported';
+  const show = (): NotifyResult['desktop'] => {
     try {
       const note = new Notification(title, { body, tag: `ov-${kind}-${role ?? ''}`, silent: true });      // the chime is ours: no second system sound
       note.onclick = () => { window.focus(); if (role) emit('talk', role); note.close(); };
-    } catch { /* notifications are blocked here */ }
+      return 'sent';
+    } catch { return 'blocked'; }
   };
-  if (Notification.permission === 'granted') show();
-  else if (Notification.permission === 'default') void Notification.requestPermission().then((p) => { if (p === 'granted') show(); });
+  if (Notification.permission === 'granted') return show();
+  if (Notification.permission === 'denied') return 'blocked';
+  return (await Notification.requestPermission().catch(() => 'denied')) === 'granted' ? show() : 'blocked';
 }
 
 /** Keep the window title in step with the number of requests waiting for the founder. */
