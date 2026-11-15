@@ -10,17 +10,19 @@ import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMemb
 import { atlasFor, sheetFiles } from './art.mjs';
 import { gameFor } from './game.mjs';
 import { listThreads, createThread, getThread, readEvents, appendEvent } from './threads.mjs';
-import { runTurn, stopTurn, brainOf, isWorking } from './agents/runner.mjs';
+import { runTurn, stopTurn, brainOf, isWorking, requestAccess } from './agents/runner.mjs';
 import { listQuests, getQuest, saveQuest, deleteQuest, draftQuest, startQuest, stopQuest, retry, seal, advance, recoverQuests } from './quests.mjs';
 import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, addReferences } from './attachments.mjs';
 import { listGrants, grant, revoke, checkFolder, checkScope, deny } from './gate.mjs';
 import { browseFolder, pickNative, nativeDialog, browseConfig } from './browse.mjs';
 import { workspaceOf, defaultSpace, checkWorkspace, projectOf, checkProject } from './workspace.mjs';
 import { listModels } from './models.mjs';
+import * as browse from './browser.mjs';
 import { REPO, resolveTheme } from '../../tools/lib/packs.mjs';
 
 const PORT = Number(process.env.OV_PORT ?? 4317);
 const TOKEN = process.env.OV_TOKEN || crypto.randomBytes(24).toString('hex');
+process.env.OV_TOKEN = TOKEN; process.env.OV_PORT = String(PORT);   // the browser bridge (a child of Claude Code or Codex) calls back with these
 const DIST = path.join(REPO, 'engine', 'client', 'dist');
 const LOCAL_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, ...(process.env.OV_DEV_HOSTS ?? '').split(',').filter(Boolean)]);
 const VERSION = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version;
@@ -261,6 +263,19 @@ route('POST', '/api/vorlds/:id/fs/pick', async ({ p, req }) => {
   const ctx = W(p), b = await body(req), chosen = await pickNative(b.prompt, b.start);
   if (!chosen) return { path: null };
   try { return { path: checkFolder(ctx, b.capability === 'fs.read' ? 'fs.read' : 'fs.write', chosen) }; } catch (e) { fail(e.message); }
+});
+
+// the crew browser: the latest frame (for a panel opened later), and the tool bridge Claude Code and Codex call
+route('GET', '/api/vorlds/:id/browser/:role', ({ p }) => browse.latest(W(p), p.role) ?? {});
+route('DELETE', '/api/vorlds/:id/browser/:role', async ({ p }) => { await browse.close(W(p), p.role); return { ok: true }; });
+route('POST', '/api/vorlds/:id/browser/:role/:tool', async ({ p, q, req }) => {
+  const ctx = W(p), emit = emitTo(p.id);
+  if (!ctx.member(p.role)) fail('unknown crew member', 404);
+  const thread = q.get('thread') ? (() => { try { return getThread(ctx, q.get('thread')); } catch { return null; } })() : null;
+  // a site without a writ becomes a writ card in the member's thread right away (the brain is waiting on this call)
+  const onRequest = (a) => { if (thread) requestAccess(ctx, thread, p.role, [a], (ev) => emit({ type: 'thread.event', thread: thread.id, role: p.role, ev })); };
+  try { return { ok: true, output: await browse.callTool(ctx, p.role, p.tool, await body(req), { emit, onRequest }) }; }
+  catch (e) { return { ok: false, output: `error: ${e.message}` }; }
 });
 
 // quests

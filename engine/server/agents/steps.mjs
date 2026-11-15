@@ -10,9 +10,12 @@ export const KIND = {
   game_command: 'tool.vorld', vorld_info: 'tool.vorld',
   WebFetch: 'tool.web', WebSearch: 'tool.web', fetch_url: 'tool.web', web: 'tool.web',
 };
-export const kindOf = (name) => KIND[name] ?? 'tool.run';
+// the browser tools arrive as browser_open, or as mcp__ov_browser__browser_open from Claude Code, or ov_browser.browser_open from Codex
+const isBrowser = (name) => /(^|[_.])browser_(open|read|click|type|back)$/.test(String(name));
+export const kindOf = (name) => (isBrowser(name) ? 'tool.web' : KIND[name] ?? 'tool.run');
 
 export function targetOf(name, input = {}) {
+  if (isBrowser(name) && /(click|type)$/.test(name)) return `#${input.id}${input.text ? ` "${String(input.text).slice(0, 40)}"` : ''}`;
   const t = input.file_path ?? input.path ?? input.notebook_path ?? input.command ?? input.url ?? input.query ?? input.pattern ?? '';
   const extra = name === 'Grep' || name === 'search' ? (input.path ? ` in ${input.path}` : '') : '';
   return String(t || name).slice(0, 240) + extra;

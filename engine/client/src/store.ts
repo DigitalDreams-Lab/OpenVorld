@@ -3,6 +3,7 @@ import { useSyncExternalStore } from 'react';
 
 export type Toast = { id: number; kind: 'deed' | 'level' | 'xp' | 'info' | 'error' | 'quest'; title: string; body?: string; xp?: number; icon?: string };
 export type Live = { role?: string; steps: any[]; working: boolean; error?: string | null };
+export type BrowserFrame = { url?: string; title?: string; image?: string; active?: boolean; at?: number };
 export type Modal = null | 'quests' | 'deeds' | 'settings' | 'member' | 'add';
 
 type State = {
@@ -14,10 +15,11 @@ type State = {
   quests: any[];
   toasts: Toast[];
   live: Record<string, Live>;         // threadId -> streaming turn
+  browsers: Record<string, BrowserFrame>;   // crew member id -> what their browser last showed
   threadsVersion: number;             // bump to refetch thread lists
 };
 
-let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, questId: null, quests: [], toasts: [], live: {}, threadsVersion: 0 };
+let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, questId: null, quests: [], toasts: [], live: {}, browsers: {}, threadsVersion: 0 };
 const subs = new Set<() => void>();
 export const getState = () => state;
 export function setState(patch: Partial<State> | ((s: State) => Partial<State>)) {

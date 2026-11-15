@@ -375,3 +375,21 @@ select.field.small { padding-right: 26px; }
 .ob-row { grid-template-columns: 1fr 1fr; gap: 16px; } .ob-row > div { display: grid; gap: 6px; align-content: start; }
 .radio { display: flex !important; grid-auto-flow: column; gap: 6px; align-items: center; font-weight: 600 !important; font-size: 14px !important; }
 @media (max-width: 640px) { .ob-agent { grid-template-columns: 1fr 1fr auto; } .ob-agent .grow { grid-column: 1 / -1; } .ob-row { grid-template-columns: 1fr; } .quest-item { grid-template-columns: 1fr auto; } .quest-crew { display: none; } }
+
+/* the crew browser window: view only, bottom left over the map */
+.browser-dock { position: absolute; left: 16px; bottom: 56px; width: min(360px, calc(100% - 32px)); z-index: 4; display: grid; gap: 4px; padding: 6px; }
+.browser-dock.big { width: min(720px, calc(100% - 32px)); }
+/* beside an open member panel (470px wide) the window shrinks to the space left of it instead of sliding underneath */
+.browser-dock.beside { width: min(360px, calc(100% - 470px - 44px)); min-width: 200px; }
+.browser-dock.beside.big { width: min(720px, calc(100% - 470px - 44px)); }
+.bd-head { display: flex; align-items: center; gap: 4px; }
+.bd-tabs { display: flex; gap: 4px; flex: 1; min-width: 0; overflow-x: auto; }
+.bd-tab { display: inline-flex; align-items: center; gap: 4px; flex: none; border: 2px solid var(--ink); background: #fffaf0; padding: 1px 6px; font-size: 13px; cursor: pointer; font-weight: 700; }
+.bd-tab.on { background: var(--gold); }
+.bd-btn { border: 2px solid var(--ink); background: #fffaf0; width: 24px; height: 24px; line-height: 1; cursor: pointer; font-size: 13px; padding: 0; flex: none; }
+.bd-dot { width: 9px; height: 9px; background: #888; flex: none; } .bd-dot.live { background: var(--turquoise); animation: blink .9s steps(1) infinite; }
+.bd-url { font-size: 12px; border: 2px solid var(--ink); background: #fffaf0; padding: 1px 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bd-shot { width: 100%; aspect-ratio: 1024 / 640; object-fit: contain; background: #fff; border: 2px solid var(--ink); display: block; }
+.bd-foot { font-size: 12px; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.browser-dock.mini, .browser-dock.beside.mini { width: auto; max-width: min(360px, calc(100% - 32px)); }
+@media (max-width: 640px) { .browser-dock, .browser-dock.big, .browser-dock.beside { left: 12px; bottom: 100px; width: calc(100% - 24px); } }

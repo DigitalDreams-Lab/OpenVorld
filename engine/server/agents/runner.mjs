@@ -15,6 +15,7 @@ import { appendEvent, getThread, updateThread, history, readEvents } from '../th
 import { grantsOf, folderGrants, consumeOnce, holds, checkScope } from '../gate.mjs';
 import { workspaceOf, projectOf } from '../workspace.mjs';
 import { gameFor } from '../game.mjs';
+import { browserFor } from './browse.mjs';
 import { attachmentPrompt, publicFiles, threadAttachments, getAttachment, saveAttachment, imageType } from '../attachments.mjs';
 
 const active = new Map(); // threadId -> AbortController
@@ -141,15 +142,16 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
   const steps = () => { const s = tr.final(strip); return s.some((x) => x.t !== 'text') ? s : undefined; };
 
   try {
-    const system = systemPrompt(ctx, role);
+    const web = browserFor(ctx, role, threadId, { emit, onRequest: (a) => asks.push(a) });
+    const system = [systemPrompt(ctx, role), web ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
     const common = { system, prompt: attachmentPrompt(text, attachments), sessionId: thread.session_id, cwd, model: brain.model, signal, onEvent };
     let result;
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
-    else if (brain.provider === 'claude-code') result = await claude.run({ ...common, tools, allowed, addDirs });
-    else if (brain.provider === 'codex') result = await codex.run({ ...common, addDirs: writeDirs.filter((d) => d !== cwd), writable: ws.chosen, web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
+    else if (brain.provider === 'claude-code') result = await claude.run({ ...common, tools, allowed: [...allowed, ...(web?.allowed ?? [])], addDirs, mcp: web?.mcp });
+    else if (brain.provider === 'codex') result = await codex.run({ ...common, mcp: web?.mcp, addDirs: writeDirs.filter((d) => d !== cwd), writable: ws.chosen, web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
     else if (brain.driver === 'openai') {
       const et = agentCfg.engine_tools ?? {};
-      const engine = et.enabled === false ? null : engineTools({ ctx, role, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });
+      const engine = et.enabled === false ? null : engineTools({ ctx, role, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, browser: web?.call, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });
       const prior = history(ctx, threadId).slice(0, -1).map((turn) => {
         if (!turn.attachments?.length) return turn;
         const files = turn.attachments.flatMap((f) => { try { return [getAttachment(ctx, threadId, f.id)]; } catch { return []; } });
@@ -189,7 +191,7 @@ export function openWrits(ctx, threadId) {
  * Turn what a member needs into writ requests the founder sees in the chat (deduplicated, never for access they
  * already hold, never for scopes that can never be granted). Answered through POST .../writs/:id.
  */
-function requestAccess(ctx, thread, role, asks, send) {
+export function requestAccess(ctx, thread, role, asks, send) {
   const seen = new Set();
   const caps = ctx.packs.byKind.permissions?.permissions?.capabilities ?? {};
   const open = openWrits(ctx, thread.id);

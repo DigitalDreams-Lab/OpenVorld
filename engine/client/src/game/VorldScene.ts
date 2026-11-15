@@ -43,6 +43,7 @@ export class VorldScene extends Phaser.Scene {
   terminal = { x: 0, y: 0 };
   homeRects: Array<{ x: number; y: number; w: number; h: number }> = [];
   companionDir: Direction = 'down';
+  browsing = new Set<string>();              // members whose browser is in use right now: a globe over their head
   attention = new Set<string>();             // members waiting for the founder (a seal or a writ): a "!" over their head
   atlasRev: string | null = null;
 
@@ -121,6 +122,7 @@ export class VorldScene extends Phaser.Scene {
         this.vorld = w; this.refresh();
       }),
       on('attention', (ids: string[]) => { this.attention = new Set(ids); this.refresh(); }),
+      on('browsing', (ids: string[]) => { this.browsing = new Set(ids); this.refresh(); }),
       on('balloon', ({ role, text, ms }) => this.balloon(role, text, ms)),
       on('react', ({ role, reaction }) => this.react(role, reaction)),
       on('working', ({ role, working }) => { const n = this.npcs.get(role); if (n) n.working = working; }),
@@ -233,8 +235,9 @@ export class VorldScene extends Phaser.Scene {
       n.sign.setText(c.home);
       if (!n.built) { n.built = true; this.buildUp(n.building, true); }
       if (n.mark) { n.mark.destroy(); n.mark = undefined; }
-      if (this.attention.has(n.id)) {
-        n.mark = this.add.text(n.sprite.x, n.sprite.y - 30, '!', { ...this.labelStyle(pal, 12), color: pal.gold ?? '#fc0' }).setOrigin(0.5).setDepth(19000);
+      const mark = this.attention.has(n.id) ? '!' : this.browsing.has(n.id) ? '🌐' : null;
+      if (mark) {
+        n.mark = this.add.text(n.sprite.x, n.sprite.y - 30, mark, { ...this.labelStyle(pal, 12), color: pal.gold ?? '#fc0' }).setOrigin(0.5).setDepth(19000);
         this.tweens.add({ targets: n.mark, y: n.mark.y - 4, duration: 420, yoyo: true, repeat: -1 });
       }
     }

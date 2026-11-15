@@ -16,6 +16,7 @@ import { QuestBoard, loadQuests } from '../ui/QuestBoard';
 import { Deeds } from '../ui/Deeds';
 import { Settings } from '../ui/Settings';
 import { Toasts } from '../ui/Toasts';
+import { BrowserDock } from '../ui/BrowserDock';
 
 export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
   const host = useRef<HTMLDivElement>(null);
@@ -32,8 +33,10 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
         const w = await api(`/vorlds/${wid}/vorld`);
         if (dead) return;
         await loadGenerated(w.art.atlas, (name) => artImage(name));
-        setState({ vorldId: wid, vorld: w, talkingTo: null, modal: null, questId: null, live: {} });
+        setState({ vorldId: wid, vorld: w, talkingTo: null, modal: null, questId: null, live: {}, browsers: {} });
         void loadQuests(wid);
+        // what each member's browser last showed (a window opened after they stopped browsing)
+        for (const c of w.crew) api(`/vorlds/${wid}/browser/${c.id}`).then((f) => { if (!dead && f?.image) handleBrowser({ ...f, role: c.id, active: false }); }).catch(() => {});
         applyUiTheme(w.theme.palette);
         await Promise.all(['400', '600', '700'].map((weight) => document.fonts.load(`${weight} 8px "${BODY_FONT}"`)));
         if (dead) return;
@@ -57,6 +60,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
       if (m.type === 'connection.restored') { setState((s) => ({ threadsVersion: s.threadsVersion + 1, live: {} })); void refreshVorld(); void loadQuests(wid); }
       if (m.type === 'vorld') void refreshVorld().catch((e) => toast({ kind: 'error', title: e.message }));
       if (m.type === 'thread.event') handleThreadEvent(m);
+      if (m.type === 'browser') handleBrowser(m);
       if (m.type === 'game') handleGame(m);
       if (m.type === 'quest') handleQuest(m);
       if (m.type === 'command') {
@@ -87,6 +91,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
       <div ref={host} className="phaser-host" />
       {vorld && <Hud onExit={onExit} />}
       {vorld && <CrewBar />}
+      {vorld && <BrowserDock />}
       {vorld && talkingTo && <MemberPanel key={`${wid}:${talkingTo}`} id={talkingTo} />}
       {vorld && modal === 'quests' && <QuestBoard />}
       {vorld && modal === 'deeds' && <Deeds />}
@@ -96,6 +101,18 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
       {vorld && !talkingTo && !modal && <div className="hint">WASD or click to walk · E to talk · the Quest Board stands in the plaza</div>}
     </div>
   );
+}
+
+/** A frame from a member's browser: keep the latest per member, and tell the map who is browsing right now. */
+function handleBrowser(m: any) {
+  setState((s) => {
+    const next = { ...s.browsers };
+    if (m.closed) delete next[m.role];
+    else next[m.role] = { ...next[m.role], ...(m.image ? { url: m.url, title: m.title, image: m.image } : {}), active: !!m.active, at: Date.now() };
+    return { browsers: next };
+  });
+  const b = getState().browsers;
+  emit('browsing', Object.keys(b).filter((r) => b[r].active));
 }
 
 let letterTick = 0;

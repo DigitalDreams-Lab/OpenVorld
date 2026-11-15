@@ -1,12 +1,22 @@
 // Codex CLI driver (codex exec --json). Prompt on stdin with '-'. Sandbox from writs.
 import { runJsonLines } from './proc.mjs';
-import { imagesOf } from '../steps.mjs';
+import { imagesOf, kindOf, targetOf } from '../steps.mjs';
 
+/** `-c` overrides (TOML values) that register the crew browser as an MCP server for this run. */
+const toml = (v) => JSON.stringify(String(v));
+export const mcpArgs = (mcp) => (mcp ? [
+  '-c', `mcp_servers.${mcp.name}.command=${toml(mcp.command)}`,
+  '-c', `mcp_servers.${mcp.name}.args=[${mcp.args.map(toml).join(', ')}]`,
+  '-c', `mcp_servers.${mcp.name}.default_tools_approval_mode="approve"`,   // the engine checks the writs on every call; Codex has no one to ask
+  '-c', `mcp_servers.${mcp.name}.env={${Object.entries(mcp.env).map(([k, v]) => `${k}=${toml(v)}`).join(', ')}}`,
+] : []);
 const plan = (it) => (it.items ?? []).map((x) => ({ text: x.text ?? '', status: x.completed ? 'completed' : 'pending' }));
 
-export async function run({ system, prompt, images = [], sessionId, cwd, addDirs = [], writable = false, web = false, model, signal, onEvent, onAccess = () => {} }) {
+export async function run({ system, prompt, images = [], sessionId, cwd, addDirs = [], mcp = null, writable = false, web = false, model, signal, onEvent, onAccess = () => {} }) {
   const SANDBOX = /Operation not permitted|Read-only file system|EROFS|EPERM|sandbox/i;
-  const base = ['--json', '--skip-git-repo-check', ...images.flatMap(f=>['--image',f.path]), ...(web ? ['-c', 'tools.web_search=true'] : [])];
+  // --ignore-user-config: only what OpenVorld passes applies, never the founder's own Codex plugins or MCP servers
+  // (computer-use and browser plugins there could drive the founder's real apps and bypass writs)
+  const base = ['--json', '--skip-git-repo-check', '--ignore-user-config', ...images.flatMap(f=>['--image',f.path]), ...(web ? ['-c', 'tools.web_search=true'] : []), ...mcpArgs(mcp)];
   const args = sessionId
     ? ['exec', 'resume', sessionId, ...base, ...(model ? ['-m', model] : []), '-']
     : ['exec', ...base, '-C', cwd, '-s', writable ? 'workspace-write' : 'read-only', ...addDirs.flatMap((d) => ['--add-dir', d]), ...(model ? ['-m', model] : []), '-'];
@@ -40,7 +50,7 @@ export async function run({ system, prompt, images = [], sessionId, cwd, addDirs
           onEvent({ type: 'tool_result', id, ok: it.status !== 'failed', name: 'patch', target: c.path, output: c.kind ?? '' });
         });
       } else if (started && it.type === 'mcp_tool_call') {
-        onEvent({ type: 'tool', id: it.id, kind: 'tool.run', name: `${it.server}.${it.tool}`, target: JSON.stringify(it.arguments ?? {}).slice(0, 240) });
+        onEvent({ type: 'tool', id: it.id, kind: kindOf(it.tool), name: `${it.server}.${it.tool}`, target: kindOf(it.tool) === 'tool.web' ? targetOf(it.tool, it.arguments ?? {}) : JSON.stringify(it.arguments ?? {}).slice(0, 240) });
       } else if (done && it.type === 'mcp_tool_call') {
         const content=it.result?.content;
         const output=Array.isArray(content)?content.filter(b=>b.type!=='image').map(b=>b.text??JSON.stringify(b)).join('\n'):JSON.stringify(it.result??'');

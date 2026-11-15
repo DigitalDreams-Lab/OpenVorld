@@ -42,6 +42,8 @@ vorlds/<id>/
 | `agents/tools.mjs` | The tools the engine runs for API brains, always limited to the member's writs. |
 | `agents/envelope.mjs` | Reads the fenced `ov` JSON block at the end of a reply: options, mood, balloon, access requests and a quest draft. |
 | `agents/commands.mjs` | Game commands a member can send (walk somewhere, say something, emote). |
+| `browser.mjs` | The crew browser: one private Chrome profile per member, driven through `playwright-core` and the Chrome or Edge on this computer. Enforces writs on every page, follows redirects itself, and streams small JPEG frames to the game. |
+| `agents/browse.mjs`, `agents/browser-mcp.mjs` | How brains reach the browser: API brains call it in-process; Claude Code and Codex start `browser-mcp.mjs`, a tiny MCP bridge that calls back into the engine's API with the launch token. |
 | `gate.mjs` | Writs: check, grant and revoke, plus each capability's never-list. |
 | `game.mjs` | XP, levels and deeds. |
 | `art.mjs` | Works out which sprite frames belong to which member. |
@@ -71,5 +73,7 @@ While a quest runs, the server sends `quest` events, and steps also send game co
 - Every member can read the vorld's project folder and can read and write their own private workspace. Nothing else is open to them.
 - Changing the project folder needs an `fs.write` writ, the same as any other folder. Codex only receives `--add-dir` for folders it may write.
 - Every other kind of access is a writ, scoped to one path, one command pattern or one domain. The engine enforces writs on every tool call, and CLI brains also get their sandbox flags from them.
+- The crew browser opens only domains the member holds a `net.fetch` writ for (re-read on every call, redirects and link clicks included), never addresses on this computer or network, and never types into password or payment fields. A site without a writ becomes a writ card in the member's thread.
+- Codex runs with `--ignore-user-config`, so plugins and MCP servers in your own Codex setup (computer-use, browser) can't drive your real apps around the writs.
 - Never-lists such as `~/.ssh` and `.env*` can't be granted at all.
 - The server only listens on 127.0.0.1, with a random token for each launch.

@@ -9,6 +9,7 @@ import { clip, kindOf, targetOf, detailOf } from './steps.mjs';
 import { cleanEnv } from './drivers/proc.mjs';
 import { imageType, MAX_FILE } from '../attachments.mjs';
 import { prepareCommands, vorldInfo } from './commands.mjs';
+import { BROWSER_TOOLS, isBrowserTool } from '../browser-tools.mjs';
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.venv', '__pycache__', 'Pods', 'DerivedData']);
 const SHELL_META = /[;&|`$<>(){}\n\r\\]/;
@@ -38,7 +39,7 @@ export function argvOf(command) {
  * @param {string[]} o.commands cmd.run scopes (patterns)
  * @param {string[]} o.domains net.fetch scopes ("*" = any)
  */
-export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], commands = [], domains = [], limits = {}, onRequest = () => {}, onCommand = null }) {
+export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], commands = [], domains = [], limits = {}, onRequest = () => {}, onCommand = null, browser = null }) {
   const lim = { output_chars: 12000, command_seconds: 120, fetch_chars: 20000, search_matches: 80, ...limits };
   const audit = (entry) => { try { fs.appendFileSync(path.join(ctx.dir, 'audit.log'), JSON.stringify({ at: new Date().toISOString(), role, ...entry }) + '\n', { mode: 0o600 }); } catch { /* vorld gone */ } };
   const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
@@ -72,6 +73,8 @@ export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], c
     fn('edit_file', 'Replace an exact piece of text in a file. old_string must match exactly once unless replace_all.', { path: { type: 'string' }, old_string: { type: 'string' }, new_string: { type: 'string' }, replace_all: { type: 'boolean' } }, ['path', 'old_string', 'new_string']),
   );
   if (commands.length) specs.push(fn('run_command', `Run one allowed command (no shell features). Allowed patterns: ${commands.join(' | ')}`, { command: { type: 'string' } }, ['command']));
+  // the crew's own browser: `browser(name, args)` runs a tool in the member's private Chrome (browser.mjs checks the writs)
+  if (browser) specs.push(...BROWSER_TOOLS.map((t) => fn(t.name, t.description, t.properties, t.required)));
   if (domains.length) specs.push(fn('fetch_url', `Fetch a web page as text. Allowed: ${domains.includes('*') ? 'any site' : domains.join(', ')}`, { url: { type: 'string' } }, ['url']));
 
   // acting on the vorld's map (movement, emotes, props): harmless, so no writ; only when the caller can show it on the map
@@ -182,7 +185,7 @@ export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], c
     specs,
     describe: (name, args) => ({ kind: kindOf(name), name, target: targetOf(name, args), detail: detailOf(name, args) }),
     async run(name, args, signal) {
-      const f = impl[name];
+      const f = browser && isBrowserTool(name) ? (a) => browser(name, a) : impl[name];
       if (!f || !specs.some((s) => s.function.name === name)) { audit({ tool: name, ok: false, reason: 'unknown tool' }); return { ok: false, output: `unknown tool ${name}` }; }
       try {
         const result = await f(args ?? {}, signal);

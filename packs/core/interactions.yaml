@@ -10,6 +10,24 @@ agent:
     command_seconds: 120
     fetch_chars: 20000
     search_matches: 80
+  browser:                         # the crew browser: each member browses in its own private Chrome (see engine/server/browser.mjs)
+    enabled: true
+    viewport: { width: 1024, height: 640 }
+    text_chars: 12000              # page text handed to the member per reading
+    max_elements: 60               # numbered links, buttons and fields per reading
+    nav_timeout_seconds: 20
+    idle_seconds: 300              # a browser nobody used for this long is closed
+    active_seconds: 6              # keep streaming frames to the game this long after the last action
+    frame_ms: 900
+    jpeg_quality: 55
+    allow_private: false           # localhost and local-network addresses stay blocked
+    instructions: |
+      You have your own private web browser: the tools browser_open, browser_read, browser_click, browser_type and
+      browser_back (your tool list may show a prefix such as ov_browser). The founder can watch it in the game.
+      Use it for anything on the web, and do not use any other browser, computer-use or web tool. Each website needs a
+      writ: opening one you do not have asks the founder, then you continue when they agree. Read the numbered links
+      and fields in each answer, click or type by number, and never type passwords or payment details: if a page needs a
+      login, tell the founder and let them decide.
   transcript: { output_chars: 4000, detail_chars: 1500 }
   chat: { collapse_after: 6 }
   claude_code:

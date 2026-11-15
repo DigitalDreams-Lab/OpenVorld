@@ -7,11 +7,11 @@ import { commandPattern, redact } from '../../gate.mjs';
 
 const PLAN_TOOLS = new Set(['TodoWrite']);
 
-export async function run({ system, prompt, images = [], sessionId, cwd, tools = [], allowed = [], addDirs = [], model, budgetUsd, signal, onEvent }) {
+export async function run({ system, prompt, images = [], sessionId, cwd, tools = [], allowed = [], addDirs = [], mcp = null, model, budgetUsd, signal, onEvent }) {
   const first = !sessionId;
   const sid = sessionId ?? crypto.randomUUID();
   const args = ['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
-    '--setting-sources', '', '--strict-mcp-config', '--disable-slash-commands',
+    '--setting-sources', '', '--strict-mcp-config', ...(mcp ? ['--mcp-config', JSON.stringify({ mcpServers: { [mcp.name]: { command: mcp.command, args: mcp.args, env: mcp.env } } })] : []), '--disable-slash-commands',
     '--tools', tools.join(','), '--system-prompt', system];
   if (allowed.length) args.push('--allowedTools', ...allowed);
   if (tools.some((t) => ['Edit', 'Write', 'MultiEdit'].includes(t))) args.push('--permission-mode', 'acceptEdits');
