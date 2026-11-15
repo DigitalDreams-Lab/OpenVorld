@@ -394,6 +394,10 @@ select.field.small { padding-right: 26px; }
 .party-item:hover { background: color-mix(in srgb, var(--gold) 18%, #fffaf0); }
 .party-title { font-family: var(--display); font-size: calc(17px * var(--display-scale)); }
 .party-goal { grid-column: 1 / -1; margin: 0; font-size: 13px; }
+/* a balloon that was moved off its character is joined to it by a stem (drawn behind the balloons below it) */
+.agent-balloon.stemmed::after { display: none; }
+.agent-balloon.stemmed::before { content: ''; position: absolute; left: calc(var(--tail-left, 50%) - 1px); top: 100%; width: 2px; height: var(--stem, 0); background: var(--ink); z-index: -1; border-radius: 0 0 2px 2px; }
+.agent-balloon.stemmed.below::before { top: auto; bottom: 100%; }
 .party-crew { display: flex; gap: 2px; align-items: center; } .party-crew .lead { position: relative; } .party-crew .lead::after { content: '♛'; position: absolute; top: -8px; right: -2px; font-size: 12px; }
 .party-form { display: grid; gap: 10px; margin-top: 8px; } .party-form label { display: grid; gap: 3px; font-size: 13px; }
 .party-pick { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -463,4 +467,9 @@ select.field.small { padding-right: 26px; }
 .member-writs .writ-what { font-size: 13px; font-weight: 600; }
 .member-writs .writ-scope { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 1px 5px; font-size: 12px; background: #fff; border: 1px solid color-mix(in srgb, var(--ink) 18%, transparent); }
 .member-writs .writ-lasts { font-size: 11.5px; white-space: nowrap; }
+/* several balloons at once: drop the long reason (it is in the chat) and tighten up */
+.agent-balloon.compact { gap: 4px; padding: 7px 10px; }
+.agent-balloon.compact .ab-why { display: none; }
+.agent-balloon.compact .ab-text { -webkit-line-clamp: 2; }
+.agent-balloon.ask.compact { width: 288px; }
 @media (max-width: 560px) { .member-writs .writ-row { grid-template-columns: minmax(0, 1fr) auto; } .member-writs .writ-scope { grid-column: 1 / -1; } }

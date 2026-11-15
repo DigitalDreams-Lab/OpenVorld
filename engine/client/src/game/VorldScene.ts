@@ -144,12 +144,13 @@ export class VorldScene extends Phaser.Scene {
     );
     const reportAnchors = () => {
       const camera = this.cameras.main;
-      const positions: Record<string, { x: number; y: number }> = {};
+      const positions: Record<string, { x: number; y: number; feet: number }> = {};
       const sx = this.scale.displaySize.width / this.scale.gameSize.width, sy = this.scale.displaySize.height / this.scale.gameSize.height;
       const anchor = (role: string, sprite: Phaser.GameObjects.Sprite) => {
         if (!sprite?.visible) return;
         const point = camera.matrixCombined.transformPoint(sprite.x, sprite.y - sprite.displayHeight - 3);
-        positions[role] = { x: point.x * sx, y: point.y * sy };
+        const foot = camera.matrixCombined.transformPoint(sprite.x, sprite.y - sprite.displayHeight * 0.07);   // the sheet keeps a little empty floor under the feet
+        positions[role] = { x: point.x * sx, y: point.y * sy, feet: foot.y * sy };
       };
       anchor(this.companionId, this.bee);
       for (const member of this.npcs.values()) anchor(member.id, member.sprite);

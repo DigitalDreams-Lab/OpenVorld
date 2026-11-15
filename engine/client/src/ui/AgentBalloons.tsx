@@ -5,7 +5,7 @@ import { api } from '../api';
 import { play } from '../audio/sfx';
 import { emit, on, setOpenWrits, setState, str, toast, useStore, type OpenWrit } from '../store';
 
-type Anchors = { width: number; height: number; positions: Record<string, { x: number; y: number }> };
+type Anchors = { width: number; height: number; positions: Record<string, { x: number; y: number; feet: number }> };
 export function AgentBalloons() {
   const crew: any[] = useStore(state => state.vorld?.crew ?? []);
   const live = useStore(state => state.live), browsers = useStore(state => state.browsers);
@@ -14,20 +14,52 @@ export function AgentBalloons() {
   const asks = useStore(state => state.openWrits), talkingTo = useStore(state => state.talkingTo);
   const [now, setNow] = useState(Date.now());
   const elements = useRef(new Map<string, HTMLElement>()), anchors = useRef<Anchors | null>(null);
+  /** Put every balloon over (or, near the top of the map, under) its character. Balloons that would cover each other are stacked, the
+   *  nearer character's balloon next to the character and the others above it, each joined to its own character by a stem. */
   const place = () => {
-    const snapshot = anchors.current;
+    const snapshot = anchors.current, GAP = 8;
+    type Item = { element: HTMLElement; at: { x: number; y: number; feet: number }; width: number; height: number; left: number; below: boolean };
+    const items: Item[] = [];
+    const crowded = [...elements.current.values()].length > 1;     // several balloons at once: the short form, so they fit
     for (const [role, element] of elements.current) {
       const at = snapshot?.positions[role];
+      element.classList.toggle('compact', crowded);
       if (!snapshot || !at || at.x < 0 || at.x > snapshot.width || at.y < 0 || at.y > snapshot.height) { element.style.visibility = 'hidden'; continue; }
       const width = element.offsetWidth, height = element.offsetHeight;
-      const left = Math.max(8, Math.min(snapshot.width - width - 8, at.x - width / 2));
-      const below = at.y < height + 20;
-      const top = below ? at.y + 24 : at.y - height - 12;
-      element.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
-      element.style.setProperty('--tail-left', `${Math.max(16, Math.min(width - 16, at.x - left))}px`);
-      element.classList.toggle('below', below);
-      element.style.visibility = 'visible';
+      items.push({ element, at, width, height, left: Math.max(8, Math.min(snapshot.width - width - 8, at.x - width / 2)), below: at.y < height + 20 });
     }
+    const placed: { left: number; right: number; top: number; bottom: number }[] = [];
+    const order = [...items.filter(i => !i.below).sort((a, b) => b.at.feet - a.at.feet), ...items.filter(i => i.below).sort((a, b) => a.at.feet - b.at.feet)];
+    const free = (left: number, width: number, top: number, height: number) =>
+      placed.filter(r => left < r.right + GAP && left + width > r.left - GAP && top < r.bottom + GAP && top + height > r.top - GAP);
+    order.forEach((item, index) => {
+      const { element, at, width, height, left } = item;
+      const H = snapshot!.height;
+      const slot = (below: boolean) => {                          // the nearest free spot over (or under) the character, stepping over the balloons in the way
+        let top = below ? at.feet + 16 : at.y - height - 12;
+        for (let guard = 0; guard < 12; guard++) {
+          const hit = free(left, width, top, height);
+          if (!hit.length) break;
+          top = below ? Math.max(...hit.map(r => r.bottom)) + GAP : Math.min(...hit.map(r => r.top)) - height - GAP;
+        }
+        return top;
+      };
+      let below = item.below, top = slot(below);
+      if (!below && top < 4) { const lower = slot(true); if (lower + height <= H - 4) { below = true; top = lower; } }   // no room left above: stack under the characters
+      else if (below && top + height > H - 4) { const upper = slot(false); if (upper >= 4) { below = false; top = upper; } }
+      top = Math.max(4, Math.min(H - height - 4, top));
+      placed.push({ left, right: left + width, top, bottom: top + height });
+      // the stem joins a balloon that had to move away from its character
+      const stem = below ? top - (at.feet + 2) : (at.y - 2) - (top + height);
+      const stemmed = stem > 14;
+      element.style.transform = `translate3d(${Math.round(left)}px, ${Math.round(top)}px, 0)`;
+      element.style.zIndex = String(500 - index);                 // the stem of a higher balloon passes behind the ones below it
+      element.style.setProperty('--tail-left', `${Math.max(16, Math.min(width - 16, at.x - left))}px`);
+      element.style.setProperty('--stem', `${stemmed ? Math.round(stem) : 0}px`);
+      element.classList.toggle('below', below);
+      element.classList.toggle('stemmed', stemmed);
+      element.style.visibility = 'visible';
+    });
   };
   useEffect(() => { const off = on('agent-anchors', (value: Anchors | null) => { anchors.current = value; place(); }); return () => { off(); }; }, []);
   useEffect(() => { const timer = setInterval(() => setNow(Date.now()), 500); return () => clearInterval(timer); }, []);
