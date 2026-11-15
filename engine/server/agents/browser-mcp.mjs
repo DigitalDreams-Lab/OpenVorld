@@ -3,7 +3,7 @@
 // of its own: every call goes to the OpenVorld server, which checks the member's writs and drives the browser.
 // Environment: OV_URL, OV_TOKEN, OV_VORLD, OV_ROLE, OV_THREAD (set by the engine for each turn).
 import readline from 'node:readline';
-import { BROWSER_TOOLS, BROWSER_SERVER } from '../browser-tools.mjs';
+import { BRIDGE_TOOLS, BROWSER_SERVER } from '../browser-tools.mjs';
 
 const { OV_URL, OV_TOKEN, OV_VORLD, OV_ROLE, OV_THREAD } = process.env;
 const send = (m) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', ...m }) + '\n');
@@ -25,7 +25,7 @@ readline.createInterface({ input: process.stdin }).on('line', async (line) => {
   const reply = (result) => m.id !== undefined && send({ id: m.id, result });
   if (m.method === 'initialize') return reply({ protocolVersion: m.params?.protocolVersion ?? '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: BROWSER_SERVER, version: '1.0.0' } });
   if (m.method === 'ping') return reply({});
-  if (m.method === 'tools/list') return reply({ tools: BROWSER_TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: { type: 'object', properties: t.properties, required: t.required } })) });
+  if (m.method === 'tools/list') return reply({ tools: BRIDGE_TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: { type: 'object', properties: t.properties, required: t.required } })) });
   if (m.method === 'tools/call') {
     const r = await call(m.params?.name, m.params?.arguments);
     return reply({ content: [{ type: 'text', text: r.text }], isError: r.isError });

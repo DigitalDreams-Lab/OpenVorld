@@ -112,11 +112,22 @@ export function redactEvent(ctx, role, e) {
   return out;
 }
 
-/** The vault paragraph of a member's system prompt: names only, and how to use the ones it may. Empty when the vault is empty. */
+/**
+ * The secret_ask tool: the member needs a secret (an API key, an OAuth token, a code the founder has to copy). It becomes a
+ * card in the chat where the founder pastes the value in a private box; the value never enters the conversation.
+ */
+export function askSecret(ctx, role, args, onRequest = () => {}) {
+  const name = String(args?.name ?? '').trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+  if (!SECRET_NAME.test(name)) throw new Error('name the secret in capitals, like YT_CLIENT_SECRET');
+  if (name in heldSecrets(ctx, role)) return `You already hold ${name}: write %${name}% in the command tool, or $${name} in your own shell.`;
+  onRequest({ capability: 'secret.use', scope: name, why: String(args?.why ?? '').slice(0, 200) || `use the secret ${name}` });
+  return `The founder has been asked for ${name}${hasSecret(ctx, role, name) ? ' (approval only: it is already in your vault)' : ''}. A card in the chat lets them paste it privately; wait for their answer, then carry on.`;
+}
+
+/** The vault paragraph of a member's system prompt: names only, and how to ask for and use secrets. */
 export function vaultHelp(ctx, role) {
   const names = listSecrets(ctx, role).map((s) => s.name);
-  if (!names.length) return '';
   const held = Object.keys(heldSecrets(ctx, role));
   const text = ctx.interactions?.agent?.vault?.instructions ?? '';
-  return text.replace(/\{names\}/g, names.join(', ')).replace(/\{held\}/g, held.join(', ') || 'none yet');
+  return text.replace(/\{names\}/g, names.join(', ') || 'none yet').replace(/\{held\}/g, held.join(', ') || 'none yet');
 }

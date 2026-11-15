@@ -9,8 +9,8 @@ import { clip, kindOf, targetOf, detailOf } from './steps.mjs';
 import { cleanEnv } from './drivers/proc.mjs';
 import { imageType, MAX_FILE } from '../attachments.mjs';
 import { prepareCommands, vorldInfo } from './commands.mjs';
-import { BROWSER_TOOLS, isBrowserTool } from '../browser-tools.mjs';
-import { substitute, redactSecrets } from '../house.mjs';
+import { BROWSER_TOOLS, SECRET_TOOL, isBrowserTool } from '../browser-tools.mjs';
+import { substitute, redactSecrets, askSecret } from '../house.mjs';
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.venv', '__pycache__', 'Pods', 'DerivedData']);
 const SHELL_META = /[;&|`$<>(){}\n\r\\]/;
@@ -76,6 +76,7 @@ export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], c
   if (commands.length) specs.push(fn('run_command', `Run one allowed command (no shell features). Allowed patterns: ${commands.join(' | ')}`, { command: { type: 'string' } }, ['command']));
   // the crew's own browser: `browser(name, args)` runs a tool in the member's private Chrome (browser.mjs checks the writs)
   if (browser) specs.push(...BROWSER_TOOLS.map((t) => fn(t.name, t.description, t.properties, t.required)));
+  specs.push(fn(SECRET_TOOL.name, SECRET_TOOL.description, SECRET_TOOL.properties, SECRET_TOOL.required));
   if (domains.length) specs.push(fn('fetch_url', `Fetch a web page as text. Allowed: ${domains.includes('*') ? 'any site' : domains.join(', ')}`, { url: { type: 'string' } }, ['url']));
 
   // acting on the vorld's map (movement, emotes, props): harmless, so no writ; only when the caller can show it on the map
@@ -109,6 +110,7 @@ export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], c
   }
 
   const impl = {
+    secret_ask(a) { return askSecret(ctx, role, a, onRequest); },
     vorld_info() { return vorldInfo(ctx, role); },
     game_command({ commands }) {
       const r = prepareCommands(ctx, role, commands);

@@ -26,19 +26,19 @@ agent:
       browser_back (your tool list may show a prefix such as ov_browser). The founder can watch it in the game.
       Use it for anything on the web, and do not use any other browser, computer-use or web tool. Each website needs a
       writ: opening one you do not have asks the founder, then you continue when they agree. Read the numbered links
-      and fields in each answer, click or type by number, and never type passwords or payment details: if a page needs a
-      login, tell the founder and let them decide.
-      If a site needs the founder's sign-in and the founder has signed in on this computer, ask for access with
-      capability net.session (scope = the site), then open it with signed_in true. Signed in, you are acting as the
-      founder: read freely, but anything that posts, sends, buys, deletes or changes settings needs net.act for that
-      site, so ask first and do it only once approved.
+      and fields in each answer, click or type by number, and never type passwords or payment details.
+      If a site needs a login, open it with signed_in true. If the founder has not signed in there for you yet, a card
+      appears in the chat where they sign in themselves in a real window and approve; wait for that, then try again.
+      Signed in, you are acting as the founder: read freely, but anything that posts, sends, buys, deletes or changes
+      settings needs net.act for that site, so ask first and do it only once approved.
     act_words: [post, publish, send, submit, buy, purchase, pay, order, checkout, delete, remove, confirm, subscribe, unsubscribe, follow, unfollow, like, comment, reply, share, upload, save, update, book, reserve, approve, accept, withdraw, transfer, donate, schedule, sign out, log out, logout]
   vault:                           # the member's vault of secrets (see engine/server/house.mjs); {names} and {held} are filled in
     instructions: |
       Your vault holds secrets (names only; you can never read the values): {names}. Secrets you may use now: {held}.
-      To use one, ask for access with capability secret.use (scope = the name); the founder decides. Never ask the
-      founder to paste a secret into the chat. In the engine's command tool write %NAME% where the value belongs; in
-      your own shell write $NAME (your environment has the secrets you may use). Values are hidden in the chat.
+      If you need a key, token or any value only the founder has, call the tool secret_ask (name in capitals, and why):
+      a private box appears in the chat where they paste it, so never ask them to type a secret in a normal message.
+      The same tool asks approval to use a secret you already have. Then write %NAME% where the value belongs in the
+      engine's command tool, or $NAME in your own shell. Values are hidden in the chat.
   transcript: { output_chars: 4000, detail_chars: 1500 }
   chat: { collapse_after: 6 }
   claude_code:

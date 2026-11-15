@@ -13,10 +13,10 @@ import { listThreads, createThread, getThread, readEvents, appendEvent } from '.
 import { runTurn, stopTurn, brainOf, isWorking, requestAccess } from './agents/runner.mjs';
 import { listQuests, getQuest, saveQuest, deleteQuest, draftQuest, startQuest, stopQuest, retry, seal, advance, recoverQuests } from './quests.mjs';
 import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, addReferences } from './attachments.mjs';
-import { listGrants, grant, revoke, checkFolder, checkScope, deny } from './gate.mjs';
+import { listGrants, grant, revoke, checkFolder, checkScope, deny, holds } from './gate.mjs';
 import { browseFolder, pickNative, nativeDialog, browseConfig } from './browse.mjs';
 import { benchesOf, benchOf, benchBase, checkBench, newBenchId, projectOf, checkProject, MAX_BENCHES } from './benches.mjs';
-import { listSecrets, setSecret, removeSecret, hasSecret, redactSecrets } from './house.mjs';
+import { listSecrets, setSecret, removeSecret, hasSecret, redactSecrets, askSecret } from './house.mjs';
 import { listModels } from './models.mjs';
 import * as browse from './browser.mjs';
 import { REPO, resolveTheme } from '../../tools/lib/packs.mjs';
@@ -217,7 +217,7 @@ route('DELETE', '/api/vorlds/:id/crew/:mid/vault/secrets/:name', ({ p }) => {
   return { secrets: listSecrets(ctx, p.mid) };
 });
 // signing in as a member: the founder logs in to sites in a real window; the logins go to that member's vault
-route('GET', '/api/vorlds/:id/crew/:mid/signin', ({ p }) => { const ctx = W(p); memberOr404(ctx, p.mid); return browse.signInState(ctx, p.mid); });
+route('GET', '/api/vorlds/:id/crew/:mid/signin', ({ p, q }) => { const ctx = W(p); memberOr404(ctx, p.mid); return browse.signInState(ctx, p.mid, q.get('site') ?? ''); });
 route('POST', '/api/vorlds/:id/crew/:mid/signin', async ({ p, req }) => {
   const ctx = W(p), b = await body(req); memberOr404(ctx, p.mid);
   try { return await browse.openSignIn(ctx, p.mid, { url: String(b.url ?? '').trim(), emit: emitTo(p.id) }); } catch (e) { fail(e.message); }
@@ -296,8 +296,11 @@ route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
   if (b.answer === 'deny') { deny(ctx, { role: ask.role, capability: ask.capability, scope }); game.event('writ.refused'); }
   else {
     scope = checkScope(ctx, ask.capability, b.scope ?? ask.scope);
-    if (ask.capability === 'secret.use' && !hasSecret(ctx, ask.role, scope)) fail(`there is no secret called ${scope} in ${ctx.member(ask.role)?.name ?? 'this member'}'s vault; add it there first`);
-    grant(ctx, { role: ask.role, capability: ask.capability, scope: ask.capability.startsWith('fs.') ? `${scope}/**` : scope, answer: b.answer });
+    // a secret the member asked for is pasted into the card; it goes straight into their vault, never into the thread
+    if (ask.capability === 'secret.use' && b.value) setSecret(ctx, ask.role, scope, b.value);
+    if (ask.capability === 'secret.use' && !hasSecret(ctx, ask.role, scope)) fail(`paste the value of ${scope} first`);
+    if (ask.signin && !browse.signedInTo(ctx, ask.role, scope)) fail(`sign in to ${scope} first, then allow`);
+    if (!holds(ctx, ask.role, ask.capability, scope)) grant(ctx, { role: ask.role, capability: ask.capability, scope: ask.capability.startsWith('fs.') ? `${scope}/**` : scope, answer: b.answer });
     game.event('writ.granted').xp('writ_granted', notes);
   }
   const ev = appendEvent(ctx, p.tid, { type: 'writ.answered', id: p.wid, role: ask.role, answer: b.answer, scope });
@@ -339,6 +342,7 @@ route('POST', '/api/vorlds/:id/browser/:role/:tool', async ({ p, q, req }) => {
   const thread = q.get('thread') ? (() => { try { return getThread(ctx, q.get('thread')); } catch { return null; } })() : null;
   // a site without a writ becomes a writ card in the member's thread right away (the brain is waiting on this call)
   const onRequest = (a) => { if (thread) requestAccess(ctx, thread, p.role, [a], (ev) => emit({ type: 'thread.event', thread: thread.id, role: p.role, ev })); };
+  if (p.tool === 'secret_ask') { try { return { ok: true, output: askSecret(ctx, p.role, await body(req), onRequest) }; } catch (e) { return { ok: false, output: `error: ${e.message}` }; } }
   try { return { ok: true, output: redactSecrets(ctx, p.role, await browse.callTool(ctx, p.role, p.tool, await body(req), { emit, onRequest })) }; }
   catch (e) { return { ok: false, output: `error: ${e.message}` }; }
 });

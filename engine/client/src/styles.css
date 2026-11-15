@@ -398,3 +398,5 @@ select.field.small { padding-right: 26px; }
 @media (max-width: 640px) { .browser-dock, .browser-dock.big, .browser-dock.beside { left: 12px; bottom: 100px; width: calc(100% - 24px); } }
 .signin-sites { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
 .bd-url.signed { background: color-mix(in srgb, var(--gold) 45%, #fffaf0); font-weight: 700; }
+
+.writ-need { display: grid; gap: 4px; margin: 6px 0; } .writ-need.ok { color: #1d6b3a; font-weight: 700; } .writ-need .field { width: 100%; }

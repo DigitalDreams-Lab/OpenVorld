@@ -104,7 +104,9 @@ export function sessionSites(ctx, role) {
   for (const c of loadSession(ctx, role)?.cookies ?? []) counts.set(siteOf(c.domain), (counts.get(siteOf(c.domain)) ?? 0) + 1);
   return [...counts].map(([domain, cookies]) => ({ domain, cookies })).sort((a, b) => b.cookies - a.cookies || a.domain.localeCompare(b.domain));
 }
-export const signInState = (ctx, role) => ({ role, available: browserAvailable(), open: signins.has(`${ctx.id}:${role}`), sites: sessionSites(ctx, role) });
+/** Has the founder signed in to a site that covers this host (www.youtube.com is covered by youtube.com)? */
+export const signedInTo = (ctx, role, host) => sessionSites(ctx, role).some((s) => host === s.domain || host.endsWith('.' + s.domain));
+export const signInState = (ctx, role, site = '') => ({ role, available: browserAvailable(), open: signins.has(`${ctx.id}:${role}`), sites: sessionSites(ctx, role), ...(site ? { site, signed: signedInTo(ctx, role, site) } : {}) });
 
 /**
  * Open a real, visible Chrome window for the founder to sign in to sites AS this member. Whatever they sign in to is
@@ -378,7 +380,11 @@ export async function callTool(ctx, role, name, args = {}, { emit = null, onRequ
     if (!cfg.allow_private && await isPrivateHost(u.hostname)) fail(`${u.hostname} is on this computer or network and is always blocked`);
     if (net.isIP(u.hostname.replace(/^\[|\]$/g, '')) && !cfg.allow_private) fail('open sites by their domain name, not by an IP address');
     kind = args.signed_in === true ? 'signed' : 'plain';
-    if (kind === 'signed' && !sessionSites(ctx, role).length) fail('the founder has not signed in to anything for you yet. Ask them to sign in to this site as you first (your settings > Vault), then try again');
+    // no sign-in for this site yet: a card in the chat lets the founder sign in right there and approve
+    if (kind === 'signed' && !signedInTo(ctx, role, u.hostname)) {
+      onRequest?.({ capability: 'net.session', scope: u.hostname, signin: true, why: `sign in to ${u.hostname} for you, then let you use it` });
+      fail(`the founder is not signed in to ${u.hostname} for you yet. A card in the chat asks them to sign in and approve; wait for their answer, then try again.`);
+    }
     if (!allowsHost(domainsOf(ctx, role, kind), u.hostname)) {
       onRequest?.({ capability: CAP[kind], scope: u.hostname, why: `open ${u.href.slice(0, 80)}${kind === 'signed' ? ' signed in as you' : ''}` });
       fail(`no writ for ${u.hostname}${kind === 'signed' ? ' (signed in)' : ''}. The founder has been asked; wait for their answer.`);

@@ -3,10 +3,16 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { makeVorld } from './helpers/vorld.mjs';
+import { makeVorld, vorldCtx } from './helpers/vorld.mjs';
 import { startServer, call, newVorld } from './helpers/server.mjs';
+import { requestAccess } from '../engine/server/agents/runner.mjs';
+import { getThread, readEvents } from '../engine/server/threads.mjs';
+import { saveSession } from '../engine/server/browser.mjs';
+import { grantsOf } from '../engine/server/gate.mjs';
+
+const holdsNow = (ctx, role) => grantsOf(ctx, role).map((g) => `${g.capability} ${g.scope}`);
 import { grant, checkFolder, checkScope } from '../engine/server/gate.mjs';
-import { setSecret, removeSecret, listSecrets, hasSecret, heldSecrets, substitute, redactSecrets, redactEvent, vaultHelp, houseDir, vaultDir } from '../engine/server/house.mjs';
+import { askSecret, setSecret, removeSecret, listSecrets, hasSecret, heldSecrets, substitute, redactSecrets, redactEvent, vaultHelp, houseDir, vaultDir } from '../engine/server/house.mjs';
 
 const SECRET = 'sk-live-0123456789abcdef';
 
@@ -49,7 +55,8 @@ test('vault: a secret is usable only with its own writ; %NAME% is swapped and va
 
   const help = vaultHelp(ctx, 'companion');
   assert.ok(help.includes('API_TOKEN') && help.includes('OTHER_TOKEN') && !help.includes(SECRET), 'the prompt names the secrets, never the values');
-  assert.equal(vaultHelp(makeVorld(), 'companion'), '', 'an empty vault adds nothing to the prompt');
+  const empty = vaultHelp(makeVorld(), 'companion');
+  assert.ok(empty.includes('secret_ask') && empty.includes('none yet'), 'even an empty vault tells the member how to ask for a secret');
 });
 
 test('house: no folder writ or workbench can ever hold the houses', () => {
@@ -86,4 +93,55 @@ test('vault routes: values go in and never come out; a secret.use writ needs a s
   const gone = await call('DELETE', `${root}/crew/${me}/vault/secrets/YT_TOKEN`);
   assert.deepEqual(gone.data.secrets, []);
   assert.equal((await call('DELETE', `${root}/crew/${me}/vault/secrets/YT_TOKEN`)).status, 404);
+});
+
+test('secret_ask: the card takes the pasted value into the vault, never into the thread', async (t) => {
+  await startServer(t);
+  const { root, id } = await newVorld();
+  const me = (await call('GET', `${root}/vorld`)).data.crew[0].id;
+  const ctx = vorldCtx(id, { fresh: true });
+  const thread = (await call('POST', `${root}/threads`, { role: me })).data;
+  const asked = [];
+  const text = askSecret(ctx, me, { name: 'yt_client_secret', why: 'upload the video' }, (a) => asked.push(a));
+  assert.match(text, /card in the chat/);
+  assert.throws(() => askSecret(ctx, me, { name: 'x' }), /name the secret/);
+  requestAccess(ctx, getThread(ctx, thread.id), me, asked, () => {});
+  const ask = readEvents(ctx, thread.id).find((e) => e.type === 'writ.request');
+  assert.deepEqual([ask.capability, ask.scope, ask.why], ['secret.use', 'YT_CLIENT_SECRET', 'upload the video']);
+
+  // allowing it without a value is refused: there is nothing in the vault to use
+  const url = `${root}/threads/${thread.id}/writs/${ask.id}`;
+  assert.equal((await call('POST', url, { answer: 'always' })).status, 400);
+  const done = await call('POST', url, { answer: 'always', value: SECRET, continue: false });
+  assert.equal(done.status, 200);
+  assert.deepEqual(listSecrets(ctx, me).map((s) => s.name), ['YT_CLIENT_SECRET']);
+  assert.deepEqual(heldSecrets(ctx, me), { YT_CLIENT_SECRET: SECRET });
+  const log = JSON.stringify(readEvents(ctx, thread.id));
+  assert.equal(log.includes(SECRET), false, 'the value is not in the thread');
+  assert.match(askSecret(ctx, me, { name: 'YT_CLIENT_SECRET' }), /already hold/);
+});
+
+test('sign-in card: allowing needs the sign-in first, and an old writ does not skip the card', async (t) => {
+  await startServer(t);
+  const { root, id } = await newVorld();
+  const me = (await call('GET', `${root}/vorld`)).data.crew[0].id;
+  const ctx = vorldCtx(id, { fresh: true });
+  const thread = (await call('POST', `${root}/threads`, { role: me })).data;
+  requestAccess(ctx, getThread(ctx, thread.id), me, [{ capability: 'net.session', scope: 'www.example.com', signin: true, why: 'sign in' }], () => {});
+  const ask = readEvents(ctx, thread.id).find((e) => e.type === 'writ.request');
+  assert.equal(ask.signin, true);
+  const url = `${root}/threads/${thread.id}/writs/${ask.id}`;
+  const early = await call('POST', url, { answer: 'session', continue: false });
+  assert.equal(early.status, 400);
+  assert.match(early.data.error, /sign in to www\.example\.com first/);
+  assert.equal((await call('GET', `${root}/crew/${me}/signin?site=www.example.com`)).data.signed, false);
+
+  saveSession(ctx, me, { cookies: [{ name: 'SID', value: 'x', domain: '.example.com', path: '/', expires: -1, httpOnly: false, secure: true, sameSite: 'Lax' }], origins: [] });
+  assert.equal((await call('GET', `${root}/crew/${me}/signin?site=www.example.com`)).data.signed, true);
+  assert.equal((await call('POST', url, { answer: 'session', continue: false })).status, 200);
+  assert.deepEqual(holdsNow(ctx, me), ['net.session www.example.com']);
+
+  // signed in and approved before: asking again for another site still shows a card; the same site only when flagged
+  requestAccess(ctx, getThread(ctx, thread.id), me, [{ capability: 'net.session', scope: 'www.example.com' }], () => {});
+  assert.equal(readEvents(ctx, thread.id).filter((e) => e.type === 'writ.request').length, 1, 'a plain request for a held writ stays quiet');
 });

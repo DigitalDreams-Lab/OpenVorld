@@ -13,7 +13,7 @@ const { grant } = await import('../engine/server/gate.mjs');
 const { engineTools } = await import('../engine/server/agents/tools.mjs');
 const { kindOf, targetOf } = await import('../engine/server/agents/steps.mjs');
 const { mcpArgs } = await import('../engine/server/agents/drivers/codex.mjs');
-const { BROWSER_TOOLS } = await import('../engine/server/browser-tools.mjs');
+const { BROWSER_TOOLS, BRIDGE_TOOLS } = await import('../engine/server/browser-tools.mjs');
 
 const crew = () => makeVorld({ crew: [{ name: 'Ada', job: 'Researcher' }] });
 
@@ -90,7 +90,7 @@ test('the MCP bridge turns tool calls into engine API calls, with the token and 
   const rpc = (method, params) => new Promise((res) => { const id = ++n; waiting.set(id, res); bridge.stdin.write(JSON.stringify({ jsonrpc: '2.0', id, method, params }) + '\n'); });
   assert.equal((await rpc('initialize', { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 't', version: '1' } })).result.serverInfo.name, 'ov_browser');
   const list = (await rpc('tools/list', {})).result.tools;
-  assert.deepEqual(list.map((x) => x.name), BROWSER_TOOLS.map((x) => x.name));
+  assert.deepEqual(list.map((x) => x.name), BRIDGE_TOOLS.map((x) => x.name));
   assert.deepEqual(list[0].inputSchema.required, ['url']);
   const ok = (await rpc('tools/call', { name: 'browser_open', arguments: { url: 'https://example.com' } })).result;
   assert.deepEqual([ok.isError, ok.content[0].text], [false, 'Page: Hello']);
@@ -185,10 +185,14 @@ test('signed-in browsing: saved sign-ins, per-site writs, and approval before ac
   const use = (name, args) => hub.callTool(ctx, 'ada', name, args, { onRequest: (a) => asks.push(a) });
   const home = `http://127.0.0.1:${page.address().port}/`;
 
-  // nothing saved yet: signed-in browsing says so instead of asking for writs
-  await assert.rejects(use('browser_open', { url: home, signed_in: true }), /has not signed in/);
+  // nothing saved yet: a sign-in card is asked for in the chat (the writ comes with it)
+  await assert.rejects(use('browser_open', { url: home, signed_in: true }), /not signed in to 127\.0\.0\.1 for you yet/);
+  assert.deepEqual(asks.map((a) => [a.capability, a.scope, a.signin]), [['net.session', '127.0.0.1', true]]);
+  assert.equal(hub.signedInTo(ctx, 'ada', '127.0.0.1'), false);
   hub.saveSession(ctx, 'ada', { cookies: [{ name: 'SID', value: 'secret-session', domain: '127.0.0.1', path: '/', expires: -1, httpOnly: false, secure: false, sameSite: 'Lax' }], origins: [] });
   assert.deepEqual(hub.sessionSites(ctx, 'ada').map((s) => s.domain), ['0.1']);   // IPs have no site name: shown as the last two labels
+  assert.equal(hub.signedInTo(ctx, 'ada', 'www.0.1'), true, 'a saved sign-in covers the site and its subdomains');
+  assert.equal(hub.signedInTo(ctx, 'ada', 'example.org'), false);
 
   grant(ctx, { role: 'ada', capability: 'net.fetch', scope: '127.0.0.1' });
   assert.match(await use('browser_open', { url: home }), /cookie: none/, 'plain browsing never carries the sign-ins');

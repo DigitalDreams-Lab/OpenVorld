@@ -204,10 +204,10 @@ export function requestAccess(ctx, thread, role, asks, send) {
     let scope;
     try { scope = checkScope(ctx, a.capability, a.scope); } catch { continue; }
     const key = `${a.capability}|${scope}`;
-    if (seen.has(key) || holds(ctx, role, a.capability, scope)) continue;
+    if (seen.has(key) || (!a.signin && holds(ctx, role, a.capability, scope))) continue;
     seen.add(key);
     if (open.some((e) => e.role === role && e.capability === a.capability && e.scope === scope)) continue;
-    const req = { type: 'writ.request', id: crypto.randomUUID(), role, capability: a.capability, scope, why: a.why ?? '', risk: caps[a.capability].risk ?? 'medium' };
+    const req = { type: 'writ.request', id: crypto.randomUUID(), role, capability: a.capability, scope, why: a.why ?? '', risk: caps[a.capability].risk ?? 'medium', ...(a.signin ? { signin: true } : {}) };
     appendEvent(ctx, thread.id, req);
     send({ ...req, reaction: ctx.interactions.reactions?.['writ.request'] });
   }
