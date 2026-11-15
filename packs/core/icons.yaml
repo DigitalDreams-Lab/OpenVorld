@@ -1,0 +1,6 @@
+# The interface icons. Each one is a SPRITE on the ui sheet (i_<name>, see default-art.yaml); nothing is drawn by code.
+kind: icons
+version: 1
+
+# the icons every world has (a user pack can add names; an artist draws a sprite for each)
+icons: [coin, gem, heart, star, scroll, hammer, key, crown, eye, chat, bolt, gear, trophy, home, book, leaf, flame, flag, users, dice]

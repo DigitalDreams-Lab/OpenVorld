@@ -1,0 +1,102 @@
+// World settings: name and purpose, model endpoints (OpenAI-compatible; the key is read from an environment variable
+// you name, never stored), the default work folder, the writs you granted, and sound.
+import { useEffect, useState } from 'react';
+import { api } from '../api';
+import { emit, setState, toast, useStore } from '../store';
+import { play, setSfxVolume } from '../audio/sfx';
+import { WritsList } from './WritsList';
+import { FolderPicker, useFolderDialog } from './FolderPicker';
+
+const tail = (p: string) => { const parts = p.split('/').filter(Boolean); return parts.length > 3 ? `…/${parts.slice(-2).join('/')}` : p; };
+const close = () => setState({ modal: null });
+
+export function Settings() {
+  const wid = useStore((s) => s.worldId)!;
+  const world = useStore((s) => s.world);
+  const [s, setS] = useState<any>(null);
+  const [w, setW] = useState({ name: world.world.name, about: world.world.about });
+  useEffect(() => { api(`/worlds/${wid}/settings`).then(setS).catch((e) => toast({ kind: 'error', title: e.message })); }, [wid]);
+  if (!s) return null;
+  const endpoints: any[] = s.providers.filter((p: any) => p.id === 'openai-compatible');
+  const presets = s.catalog.find((c: any) => c.id === 'openai-compatible')?.presets ?? {};
+  const setEndpoint = (p: any, patch: any) => setS((x: any) => ({ ...x, providers: x.providers.map((q: any) => (q === p ? { ...q, ...patch } : q)) }));
+  const addEndpoint = (name: string) => {
+    const p = presets[name] ?? {};
+    let n = name, k = 1; while (s.providers.some((q: any) => q.name === n)) n = `${name}-${++k}`;
+    setS((x: any) => ({ ...x, providers: [...x.providers, { id: 'openai-compatible', name: n, base_url: p.base_url ?? '', api: p.api, api_key_env: p.api_key === null ? '' : `${name.toUpperCase().replace(/-/g, '_')}_API_KEY` }] }));
+  };
+  const save = async () => {
+    try {
+      await api(`/worlds/${wid}/settings`, { method: 'PUT', body: { providers: s.providers } });
+      const next = await api(`/worlds/${wid}`, { method: 'PUT', body: w });
+      setState({ world: next, modal: null }); emit('world', next); play('seal.approved');
+    } catch (e: any) { toast({ kind: 'error', title: e.message }); play('ui.error'); }
+  };
+  return (
+    <div className="modal-bg" onClick={close}>
+      <div className="modal panel settings" onClick={(e) => e.stopPropagation()}>
+        <header className="row between"><h2>Settings</h2><button className="x" onClick={close}>✕</button></header>
+        <h3>World</h3>
+        <label>Name<input className="field" value={w.name} maxLength={60} onChange={(e) => setW({ ...w, name: e.target.value })} /></label>
+        <label>What it is for<textarea className="field" rows={2} value={w.about} maxLength={400} placeholder="The project, company or activity this world runs. Every crew member reads this." onChange={(e) => setW({ ...w, about: e.target.value })} /></label>
+
+        <h3>Brains</h3>
+        <p className="muted">Found on this computer: {s.detected.map((d: any) => d.label).join(', ') || 'no agent CLI'} <button className="link" onClick={async () => { const d = await api('/detect', { body: {} }).catch(() => null); if (d) setS({ ...s, detected: d }); }}>look again</button>. Pick each member's brain in their settings (⚙).</p>
+        <h4>Model endpoints (OpenAI-compatible)</h4>
+        {endpoints.map((p, i) => (
+          <div key={i} className="endpoint endpoint-row">
+            <b>{p.name}</b>
+            <input className="field" placeholder="base URL" value={p.base_url ?? ''} onChange={(e) => setEndpoint(p, { base_url: e.target.value })} />
+            <input className="field" placeholder="API key env var (blank for local)" value={p.api_key_env ?? ''} onChange={(e) => setEndpoint(p, { api_key_env: e.target.value })} />
+            <button className="btn small" onClick={() => setS((x: any) => ({ ...x, providers: x.providers.filter((q: any) => q !== p) }))}>Remove</button>
+          </div>
+        ))}
+        <div className="row wrap">{Object.keys(presets).map((p) => <button key={p} className="btn small" onClick={() => addEndpoint(p)}>+ {p}</button>)}</div>
+        <p className="muted small">Keys are never saved: set the environment variable before starting openVorld.</p>
+
+        <DefaultFolder />
+        <WritsList />
+        <h3>Sound</h3>
+        <label className="form-row"><span>Effects</span><input type="range" min={0} max={1} step={0.05} defaultValue={0.8} onChange={(e) => { setSfxVolume(Number(e.target.value)); play('ui.click'); }} /></label>
+        <p className="muted small">Saved on this computer in <code>{s.storage.world}</code></p>
+        <div className="row end"><button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={save}>Save</button></div>
+      </div>
+    </div>
+  );
+}
+
+/** The folder every crew member's own work folder is made in. */
+function DefaultFolder() {
+  const wid = useStore((s) => s.worldId)!;
+  const space = useStore((s) => s.world)?.workspace;
+  const { native, choose } = useFolderDialog('fs.write');
+  const [folder, setFolder] = useState(space?.default_space ?? '');
+  const [typing, setTyping] = useState(false);
+  const save = async (base: string | null) => {
+    try { const w = await api(`/worlds/${wid}`, { method: 'PUT', body: { workspace_base: base } }); setState({ world: w }); emit('world', w); setTyping(false); }
+    catch (e: any) { toast({ kind: 'error', title: e.message }); }
+  };
+  const change = async () => {
+    if (!native) { setTyping(true); return; }
+    try { const p = await choose(space?.default_space); if (p) await save(p); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
+  };
+  if (!space) return null;
+  return (
+    <>
+      <h3>Work folders</h3>
+      <p className="muted">Each crew member works in its own folder inside this one, unless you give them another in their settings.</p>
+      {!typing ? (
+        <div className="pf-row">
+          <code className="pf-path" title={space.default_space}>{tail(space.default_space)}</code>
+          <button className="btn small" onClick={change}>Change</button>
+          {space.default_is_custom && <button className="btn small" onClick={() => save(null)}>Back to the world folder</button>}
+        </div>
+      ) : (
+        <>
+          <FolderPicker label="Default folder" value={folder} onChange={setFolder} capability="fs.write" />
+          <div className="row"><button className="btn small primary" disabled={!folder.trim()} onClick={() => save(folder)}>Use this folder</button><button className="btn small" onClick={() => setTyping(false)}>Cancel</button></div>
+        </>
+      )}
+    </>
+  );
+}

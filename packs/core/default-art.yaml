@@ -1,0 +1,145 @@
+# The DEFAULT ART: sprite sheets, and nothing else. Nothing in the game is drawn by code: every character, ground tile,
+# prop, house block, icon and the plaza landmark is a SPRITE cut from a sprite sheet. This file lays the four default
+# sheets out (packs/core/art/default/*.png); replacing a PNG with real art changes the whole look of every world that
+# keeps the default art.
+#
+# Every sprite is a SQUARE. World/building/UI tiles share one size; movement and portrait sheets can have their own
+# higher source resolutions. The game keeps world sizes unchanged. Cell sizes are read from each image's grid.
+# An object bigger than a tile
+# (a tree, a fountain, a house) is made of several sprites placed side by side (`grid` in scenery.yaml, house blocks).
+# The only coded graphic left is the colour of the atmosphere light (scenery.yaml lighting).
+#
+# Sheets in reading order, left to right, top to bottom, `cols` cells per row. A `_` cell is a spare (leave it empty).
+# To add a sprite: append it to `cells` (never insert in the middle: that shifts every sprite after it).
+kind: default_art
+version: 1
+
+characters:
+  file: art/default/characters.png
+  dirs: [down, up, left, right]
+  frames: 3
+  portrait: false    # avatars are in the separate portraits.png sheet
+  # One row per character, `dirs x frames` cells left to right:
+  #   down_0 down_1 down_2  up_0 up_1 up_2  left_0 left_1 left_2  right_0 right_1 right_2
+  # frames 0 and 1 are the two strides, frame 2 is standing still. The character stands on the bottom edge of its
+  # cell, centred. `for` says who uses the row: the founder, the companion, or `agent`: the agent rows are given to the
+  # crew's agents in order (the 1st agent gets the 1st agent row, and so on; every agent is the same kind of character, each row
+  # is just another face).
+  rows:
+    - { id: founder,      for: founder,      note: "the player: always the first row" }
+    - { id: companion,    for: companion,    note: "the guide / pet: a small creature, robot or person" }
+    - { id: agent_1,       for: agent }
+    - { id: agent_2,       for: agent }
+    - { id: agent_3,       for: agent }
+    - { id: agent_4,       for: agent }
+    - { id: agent_5,       for: agent }
+    - { id: agent_6,       for: agent }
+    - { id: agent_7,       for: agent }
+    - { id: agent_8,       for: agent }
+    - { id: agent_9,       for: agent }
+    - { id: agent_10,      for: agent }
+    - { id: agent_11,      for: agent }
+    - { id: agent_12,      for: agent }
+    - { id: agent_13,      for: agent }
+    - { id: agent_14,      for: agent }
+
+sheets:
+  portraits:   # same character row order, arranged left-to-right on a separate 4x4 grid
+    file: art/default/portraits.png
+    cols: 4
+    cells: [portrait_founder, portrait_companion, portrait_agent_1, portrait_agent_2, portrait_agent_3, portrait_agent_4, portrait_agent_5, portrait_agent_6, portrait_agent_7, portrait_agent_8, portrait_agent_9, portrait_agent_10, portrait_agent_11, portrait_agent_12, portrait_agent_13, portrait_agent_14]
+  world:   # ground tiles (t_), props (p_, in parts), the plaza landmark (b_plaza_)
+    file: art/default/world.png
+    cols: 8
+    cells: [
+      t_ground_0, t_ground_1, t_ground_2, t_ground_3, t_path, t_plaza, t_water, t_bridge,   # row 0
+      t_void, p_tree_0_0, p_tree_1_0, p_tree_0_1, p_tree_1_1, p_pine_0_0, p_pine_0_1, p_bush,   # row 1
+      p_rock, p_flower, p_flower_v1, p_flower_v2, p_flower_v3, p_mushroom, p_mushroom_v1, p_crystal,   # row 2
+      p_lamp_0_0, p_lamp_0_1, p_crate, p_cactus_0_0, p_cactus_0_1, p_reeds, p_banner_0_0, p_banner_0_1,   # row 3
+      p_banner_v1_0_0, p_banner_v1_0_1, p_banner_v2_0_0, p_banner_v2_0_1, p_tuft, p_pebbles, p_bench_0_0, p_bench_1_0,   # row 4
+      p_planter, p_planter_v1, p_planter_v2, p_well_0_0, p_well_1_0, p_well_0_1, p_well_1_1, p_fountain_0_0, p_fountain_1_0, p_fountain_0_1,   # row 5
+      p_fountain_1_1, p_stall_0_0, p_stall_1_0, p_stall_0_1, p_stall_1_1, p_stall_v1_0_0, p_stall_v1_1_0, p_stall_v1_0_1,   # row 6
+      p_stall_v1_1_1, p_stall_v2_0_0, p_stall_v2_1_0, p_stall_v2_0_1, p_stall_v2_1_1, p_brazier, p_signpost, p_haystack,   # row 7
+      p_barrel, p_pylon_0_0, p_pylon_0_1, p_flower_bed, p_flower_bed_v1, p_flower_bed_v2, p_flower_bed_v3, p_generic_0,   # row 8
+      p_generic_1, p_generic_2, p_generic_3, b_plaza_0_0, b_plaza_1_0, b_plaza_0_1, b_plaza_1_1,   # row 9
+    ]
+  buildings:   # house blocks: walls, roofs, door, window, base, chimney, extras (h_)
+    file: art/default/buildings.png
+    cols: 8
+    cells: [
+      h_base_stone, h_base_deck, h_base_plinth, h_wall_brick_l, h_wall_brick_m, h_wall_brick_r, h_wall_plank_l, h_wall_plank_m,   # row 0
+      h_wall_plank_r, h_wall_stone_l, h_wall_stone_m, h_wall_stone_r, h_wall_panel_l, h_wall_panel_m, h_wall_panel_r, h_wall_plaster_l,   # row 1
+      h_wall_plaster_m, h_wall_plaster_r, h_wall_timber_l, h_wall_timber_m, h_wall_timber_r, h_roof_gable_l, h_roof_gable_m, h_roof_gable_r,   # row 2
+      h_roof_gable_peak, h_roof_hip_l, h_roof_hip_m, h_roof_hip_r, h_roof_hip_peak, h_roof_dome_l, h_roof_dome_m, h_roof_dome_r,   # row 3
+      h_roof_dome_peak, h_roof_flat_l, h_roof_flat_m, h_roof_flat_r, h_roof_cone_l, h_roof_cone_m, h_roof_cone_r, h_roof_cone_peak,   # row 4
+      h_roof_tent_l, h_roof_tent_m, h_roof_tent_r, h_roof_tent_peak, h_roof_tiers_l, h_roof_tiers_m, h_roof_tiers_r, h_roof_tiers_peak,   # row 5
+      h_door_plank, h_door_arch, h_door_round, h_door_sliding, h_window_square, h_window_arch, h_window_round, h_window_slit,   # row 6
+      h_chimney_brick, h_chimney_pipe, h_chimney_stone, h_extra_awning, h_extra_flowerbox, h_extra_lantern, h_extra_barrel, h_extra_sign,   # row 7
+      h_extra_vines, h_extra_antenna, h_extra_banner, h_extra_crate, h_extra_plant, _, _, _,   # row 8
+      h_house_forge_0_0, h_house_forge_1_0, h_house_forge_2_0, h_house_forge_3_0, h_house_forge_4_0, h_house_forge_0_1, h_house_forge_1_1, h_house_forge_2_1,
+      h_house_forge_3_1, h_house_forge_4_1, h_house_forge_0_2, h_house_forge_1_2, h_house_forge_2_2, h_house_forge_3_2, h_house_forge_4_2, h_house_forge_0_3,
+      h_house_forge_1_3, h_house_forge_2_3, h_house_forge_3_3, h_house_forge_4_3, h_house_forge_0_4, h_house_forge_1_4, h_house_forge_2_4, h_house_forge_3_4,
+      h_house_forge_4_4, h_house_inn_0_0, h_house_inn_1_0, h_house_inn_2_0, h_house_inn_3_0, h_house_inn_4_0, h_house_inn_0_1, h_house_inn_1_1,
+      h_house_inn_2_1, h_house_inn_3_1, h_house_inn_4_1, h_house_inn_0_2, h_house_inn_1_2, h_house_inn_2_2, h_house_inn_3_2, h_house_inn_4_2,
+      h_house_inn_0_3, h_house_inn_1_3, h_house_inn_2_3, h_house_inn_3_3, h_house_inn_4_3, h_house_inn_0_4, h_house_inn_1_4, h_house_inn_2_4,
+      h_house_inn_3_4, h_house_inn_4_4, h_house_hall_0_0, h_house_hall_1_0, h_house_hall_2_0, h_house_hall_3_0, h_house_hall_4_0, h_house_hall_0_1,
+      h_house_hall_1_1, h_house_hall_2_1, h_house_hall_3_1, h_house_hall_4_1, h_house_hall_0_2, h_house_hall_1_2, h_house_hall_2_2, h_house_hall_3_2,
+      h_house_hall_4_2, h_house_hall_0_3, h_house_hall_1_3, h_house_hall_2_3, h_house_hall_3_3, h_house_hall_4_3, h_house_hall_0_4, h_house_hall_1_4,
+      h_house_hall_2_4, h_house_hall_3_4, h_house_hall_4_4, h_house_workshop_0_0, h_house_workshop_1_0, h_house_workshop_2_0, h_house_workshop_3_0, h_house_workshop_4_0,
+      h_house_workshop_0_1, h_house_workshop_1_1, h_house_workshop_2_1, h_house_workshop_3_1, h_house_workshop_4_1, h_house_workshop_0_2, h_house_workshop_1_2, h_house_workshop_2_2,
+      h_house_workshop_3_2, h_house_workshop_4_2, h_house_workshop_0_3, h_house_workshop_1_3, h_house_workshop_2_3, h_house_workshop_3_3, h_house_workshop_4_3, h_house_workshop_0_4,
+      h_house_workshop_1_4, h_house_workshop_2_4, h_house_workshop_3_4, h_house_workshop_4_4, h_house_cottage_0_0, h_house_cottage_1_0, h_house_cottage_2_0, h_house_cottage_3_0,
+      h_house_cottage_4_0, h_house_cottage_0_1, h_house_cottage_1_1, h_house_cottage_2_1, h_house_cottage_3_1, h_house_cottage_4_1, h_house_cottage_0_2, h_house_cottage_1_2,
+      h_house_cottage_2_2, h_house_cottage_3_2, h_house_cottage_4_2, h_house_cottage_0_3, h_house_cottage_1_3, h_house_cottage_2_3, h_house_cottage_3_3, h_house_cottage_4_3,
+      h_house_cottage_0_4, h_house_cottage_1_4, h_house_cottage_2_4, h_house_cottage_3_4, h_house_cottage_4_4, h_house_library_0_0, h_house_library_1_0, h_house_library_2_0,
+      h_house_library_3_0, h_house_library_4_0, h_house_library_0_1, h_house_library_1_1, h_house_library_2_1, h_house_library_3_1, h_house_library_4_1, h_house_library_0_2,
+      h_house_library_1_2, h_house_library_2_2, h_house_library_3_2, h_house_library_4_2, h_house_library_0_3, h_house_library_1_3, h_house_library_2_3, h_house_library_3_3,
+      h_house_library_4_3, h_house_library_0_4, h_house_library_1_4, h_house_library_2_4, h_house_library_3_4, h_house_library_4_4, h_house_observatory_0_0, h_house_observatory_1_0,
+      h_house_observatory_2_0, h_house_observatory_3_0, h_house_observatory_4_0, h_house_observatory_0_1, h_house_observatory_1_1, h_house_observatory_2_1, h_house_observatory_3_1, h_house_observatory_4_1,
+      h_house_observatory_0_2, h_house_observatory_1_2, h_house_observatory_2_2, h_house_observatory_3_2, h_house_observatory_4_2, h_house_observatory_0_3, h_house_observatory_1_3, h_house_observatory_2_3,
+      h_house_observatory_3_3, h_house_observatory_4_3, h_house_observatory_0_4, h_house_observatory_1_4, h_house_observatory_2_4, h_house_observatory_3_4, h_house_observatory_4_4, h_house_treasury_0_0,
+      h_house_treasury_1_0, h_house_treasury_2_0, h_house_treasury_3_0, h_house_treasury_4_0, h_house_treasury_0_1, h_house_treasury_1_1, h_house_treasury_2_1, h_house_treasury_3_1,
+      h_house_treasury_4_1, h_house_treasury_0_2, h_house_treasury_1_2, h_house_treasury_2_2, h_house_treasury_3_2, h_house_treasury_4_2, h_house_treasury_0_3, h_house_treasury_1_3,
+      h_house_treasury_2_3, h_house_treasury_3_3, h_house_treasury_4_3, h_house_treasury_0_4, h_house_treasury_1_4, h_house_treasury_2_4, h_house_treasury_3_4, h_house_treasury_4_4,
+    ]
+  ui:   # interface icons (i_), rarity frames (i_frame_), generic emblems (i_emblem_)
+    file: art/default/ui.png
+    cols: 8
+    cells: [
+      i_coin, i_gem, i_heart, i_star, i_scroll, i_hammer, i_key, i_crown,   # row 0
+      i_eye, i_chat, i_bolt, i_gear, i_trophy, i_home, i_book, i_leaf,   # row 1
+      i_flame, i_flag, i_users, i_dice, i_frame_common, i_frame_uncommon, i_frame_rare, i_frame_epic,   # row 2
+      i_frame_legendary, i_frame_mythic, i_emblem_0, i_emblem_1, i_emblem_2, i_emblem_3, i_emblem_4, i_emblem_5,   # row 3
+      i_emblem_6, i_emblem_7,   # row 4
+    ]
+
+# A sprite the sheets do not name (a prop an AI designed for one world, an achievement emblem...) takes one cell of the
+# pool for its prefix, chosen by the sprite's name (always the same one). `_v<n>` colour variants fall back to the
+# base sprite first; 
+fallback:
+  p_: [p_generic_0, p_generic_1, p_generic_2, p_generic_3]
+  i_: [i_emblem_0, i_emblem_1, i_emblem_2, i_emblem_3, i_emblem_4, i_emblem_5, i_emblem_6, i_emblem_7]
+
+# Animal species a companion may be (the cast editor and the world designer pick from this; AI artists draw them).
+creatures:
+  bee: Bee
+  bird: Bird
+  cat: Cat
+  fox: Fox
+  owl: Owl
+  bunny: Bunny
+  slime: Slime
+  wisp: Wisp
+  fish: Fish
+
+# Complete illustrated houses are 5x5 square tiles. Their central doorway stays on the plan door.
+# Custom artist building sheets use the original modular parts above instead.
+illustrated_houses:
+  - { id: forge, grid: [5, 5], body_cols: 4, wall_rows: 2 }
+  - { id: inn, grid: [5, 5], body_cols: 4, wall_rows: 2 }
+  - { id: hall, grid: [5, 5], body_cols: 4, wall_rows: 2 }
+  - { id: workshop, grid: [5, 5], body_cols: 4, wall_rows: 2 }
+  - { id: cottage, grid: [5, 5], body_cols: 4, wall_rows: 2 }
+  - { id: library, grid: [5, 5], body_cols: 4, wall_rows: 2 }
+  - { id: observatory, grid: [5, 5], body_cols: 4, wall_rows: 2 }
+  - { id: treasury, grid: [5, 5], body_cols: 4, wall_rows: 2 }

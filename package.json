@@ -1,0 +1,48 @@
+{
+  "name": "openvorld",
+  "version": "1.0.0",
+  "description": "An RPG-style harness for agentic work: your AI crew lives in a pixel-art world and runs your workflows as quests.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "node engine/dev.mjs",
+    "build": "vite build --config engine/client/vite.config.mjs",
+    "start": "node engine/server/index.mjs",
+    "ov": "node tools/ov.mjs",
+    "validate": "node tools/ov.mjs validate",
+    "typecheck": "tsc -p engine/client/tsconfig.json --noEmit",
+    "test": "node --test tests/*.test.mjs"
+  },
+  "dependencies": {
+    "@fontsource/jetbrains-mono": "5.3.0",
+    "@fontsource/lexend": "5.3.0",
+    "@fontsource/tiny5": "5.3.0",
+    "phaser": "4.2.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-markdown": "^10.1.0",
+    "rehype-highlight": "^7.0.2",
+    "remark-gfm": "^4.0.1",
+    "ws": "^8.18.0",
+    "yaml": "2.6.1"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.8"
+  },
+  "keywords": [
+    "ai-agents",
+    "agent-harness",
+    "workflows",
+    "claude-code",
+    "codex",
+    "gamification",
+    "phaser"
+  ]
+}

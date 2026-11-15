@@ -1,0 +1,16 @@
+kind: template
+id: software
+label: Software project
+order: 1
+description: A small crew that plans, builds and reviews code changes.
+crew:
+  - { job: Planner,   function: "Turns a request into a short, clear plan with steps and risks." }
+  - { job: Developer, function: "Implements the plan in the project folder and runs the tests." }
+  - { job: Reviewer,  function: "Reviews the change for bugs and unclear code, and says what to fix." }
+quests:
+  - title: Ship a small feature
+    goal: Go from an idea to a reviewed change.
+    steps:
+      - { agent: 0, task: "Write a short plan for the feature the founder describes in the quest goal.", seal: true }
+      - { agent: 1, task: "Implement the plan. Run the tests. Report what changed." }
+      - { agent: 2, task: "Review the change and list anything that must be fixed before shipping.", seal: true }

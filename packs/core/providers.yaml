@@ -1,0 +1,27 @@
+# Brains for the crew. A provider is "how to talk to an agent or a model". Each member picks one in its settings.
+#   cli     spawn a headless agent CLI per turn and stream its JSON events (Claude Code, Codex)
+#   openai  any OpenAI-compatible HTTP API; the ENGINE runs the tool loop and offers only granted tools
+# models.source: where the model picker gets its list (static values, a file the tool keeps, or the endpoint's /models).
+kind: providers
+version: 1
+bin_dirs: ["~/.local/bin", "~/.claude/local", "/opt/homebrew/bin", "/usr/local/bin"]
+providers:
+  claude-code:
+    label: Claude Code
+    drivers: { cli: { detect: [claude, --version] } }
+    models: { source: static, values: [opus, sonnet, haiku], tiers: { deep: opus, balanced: sonnet, fast: haiku } }
+
+  codex:
+    label: Codex CLI
+    drivers: { cli: { detect: [codex, --version] } }
+    models: { source: file, path: "~/.codex/models_cache.json", list: models, key: slug, hide_when: { visibility: hide } }
+
+  openai-compatible:
+    label: OpenAI-compatible API
+    drivers: { openai: { base_url: { ask: true }, api_key: { secret: true, optional: true } } }
+    models: { source: endpoint, path: /models }
+    presets:
+      openrouter: { base_url: "https://openrouter.ai/api/v1" }
+      openai:     { base_url: "https://api.openai.com/v1", api: responses }
+      ollama:     { base_url: "http://localhost:11434/v1", api_key: null }
+      lm-studio:  { base_url: "http://localhost:1234/v1", api_key: null }

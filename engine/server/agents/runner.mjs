@@ -1,0 +1,205 @@
+// Runs one turn of a crew member in a thread: picks the brain, builds the prompt, turns writs into tool access,
+// drives the provider, streams every agent event to the client, and stores the reply.
+import fs from 'node:fs';
+import path from 'node:path';
+import crypto from 'node:crypto';
+import * as claude from './drivers/claude.mjs';
+import * as codex from './drivers/codex.mjs';
+import * as openai from './drivers/openai.mjs';
+import * as scripted from './drivers/scripted.mjs';
+import { splitEnvelope } from './envelope.mjs';
+import { commandHelp, prepareCommands } from './commands.mjs';
+import { Transcript } from './steps.mjs';
+import { engineTools } from './tools.mjs';
+import { appendEvent, getThread, updateThread, history, readEvents } from '../threads.mjs';
+import { grantsOf, folderGrants, consumeOnce, holds, checkScope } from '../gate.mjs';
+import { workspaceOf } from '../workspace.mjs';
+import { gameFor } from '../game.mjs';
+import { attachmentPrompt, publicFiles, threadAttachments, getAttachment, saveAttachment, imageType } from '../attachments.mjs';
+
+const active = new Map(); // threadId -> AbortController
+export const isWorking = (id) => active.has(id);
+export const stopTurn = (threadId) => active.get(threadId)?.abort();
+const TEST_RE = /\b(test|tests|vitest|jest|pytest|mocha|go test|cargo test|xcodebuild test|gradlew test)\b/;
+
+/** The brain a member thinks with: { provider, driver, model, cfg, label }, or the scripted stand-in. */
+export function brainOf(ctx, id) {
+  const m = ctx.member(id);
+  const b = m?.brain;
+  if (!b?.provider || b.provider === 'none') return { provider: 'none', driver: 'scripted', label: 'no brain' };
+  const p = ctx.providers[b.provider];
+  const inst = (ctx.doc.providers ?? []).find((x) => x.id === b.provider && (!b.name || x.name === b.name)) ?? {};
+  const tier = m.model_tier ?? 'balanced';
+  return { provider: b.provider, driver: Object.keys(p?.drivers ?? {})[0] ?? 'cli', model: b.model || inst.models?.[tier] || p?.models?.tiers?.[tier], cfg: inst, label: p?.label ?? b.provider };
+}
+
+function systemPrompt(ctx, id) {
+  const m = ctx.member(id);
+  const crew = ctx.crew.filter((c) => c.id !== id).map((c) => `${c.name} (${c.job}${c.function ? `: ${c.function}` : ''})`).join('; ') || 'nobody yet';
+  const vars = { name: m.name, job: m.job, function: m.function || 'whatever the founder asks', voice: m.voice, world: ctx.doc.name, about: ctx.doc.about || 'not described yet', crew };
+  const base = String(m.prompt).replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+  const writs = grantsOf(ctx, id).map((g) => `${g.capability} ${g.scope}`).join('; ') || 'none';
+  const env = ctx.interactions.envelope ?? {};
+  return [base, `Your writs (access): ${writs}. You have no other access; if you need more, ask for it in the "access" list so the founder can grant it.`,
+    env.instructions ?? '', m.quests ? env.quest_instructions ?? '' : '', commandHelp(ctx, id)].filter(Boolean).join('\n\n');
+}
+
+/**
+ * One turn: the founder's text (or a quest step's brief) goes to the member of the thread, the reply streams back.
+ * Resolves with { ok, shown, meta } once the reply is stored. `meta.quest` is a quest the companion drafted.
+ */
+export async function runTurn(ctx, threadId, text, emit, attachments = [], { fromFounder = true } = {}) {
+  if (active.has(threadId)) throw Object.assign(new Error('this crew member is still working on the last message'), { status: 409 });
+  const thread = getThread(ctx, threadId);
+  const ac = new AbortController();
+  active.set(threadId, ac);
+  const game = gameFor(ctx), notes = [];
+  try {
+    appendEvent(ctx, threadId, { type: fromFounder ? 'founder.message' : 'brief', text, ...(attachments.length ? { attachments: publicFiles(attachments) } : {}) });
+    if (fromFounder) {
+      game.event('chat.sent').xp('chat_message', notes);
+      const hour = new Date().getHours();
+      if (hour >= 2 && hour < 4) game.event('chat.night');
+    }
+    updateThread(ctx, threadId, { state: 'working' });
+    const r = await speak(ctx, thread, text, emit, ac.signal, attachments);
+    const patch = { state: 'waiting', session_id: r.sessionId ?? thread.session_id };
+    if (!thread.title) patch.title = r.meta?.title || text.slice(0, 48) || attachments[0]?.name || 'Chat';
+    const t = updateThread(ctx, threadId, patch);
+    if (r.ok) emit({ type: 'thread.event', thread: threadId, role: thread.role, ev: { type: 'turn.done', text: r.shown, meta: r.meta, thread: t } });
+    return r;
+  } finally {
+    active.delete(threadId);
+    try { if (getThread(ctx, threadId).state === 'working') updateThread(ctx, threadId, { state: 'waiting' }); } catch { /* deleted */ }
+    const n = game.check(notes); if (n.length) emit({ type: 'game', notes: n, state: game.snapshot() });
+  }
+}
+
+async function speak(ctx, thread, text, emit, signal, attachments) {
+  const role = thread.role, threadId = thread.id;
+  const brain = brainOf(ctx, role);
+  const reactions = ctx.interactions.reactions ?? {};
+  const send = (ev) => emit({ type: 'thread.event', thread: threadId, role, ev });
+  send({ type: 'turn.start', brain: brain.label, speaker: role, reaction: reactions['turn.start'] });
+
+  // writs -> tool access
+  const ws = workspaceOf(ctx, role), cwd = ws.path;
+  fs.mkdirSync(cwd, { recursive: true });
+  const writeDirs = [...new Set([...folderGrants(ctx, role, 'fs.write'), ...(ws.chosen ? [cwd] : [])])];
+  const allFiles = threadAttachments(ctx, threadId);
+  const uploadDirs = [...new Set(allFiles.filter((f) => f.kind !== 'reference').map((f) => path.dirname(f.path)))];
+  const referenceFiles = allFiles.filter((f) => f.kind === 'reference').map((f) => f.path);
+  const readDirs = [...folderGrants(ctx, role, 'fs.read'), ...uploadDirs];
+  const cmdGrants = grantsOf(ctx, role).filter((g) => g.capability === 'cmd.run').map((g) => g.scope);
+  const netGrants = grantsOf(ctx, role).filter((g) => g.capability === 'net.fetch').map((g) => g.scope);
+  const tools = [];
+  if (readDirs.length || writeDirs.length || referenceFiles.length) tools.push('Read', 'Glob', 'Grep');
+  if (writeDirs.length) tools.push('Edit', 'Write', 'MultiEdit');
+  if (cmdGrants.length) tools.push('Bash');
+  const allowed = [...tools.filter((t) => t !== 'Bash'), ...cmdGrants.map((c) => `Bash(${c})`)];
+  const addDirs = [...new Set([...readDirs, ...writeDirs])].filter((d) => d !== cwd);
+  const agentCfg = ctx.interactions.agent ?? {};
+  for (const t of agentCfg.claude_code?.always_tools ?? []) if (!tools.includes(t)) { tools.push(t); allowed.push(t); }
+  if (netGrants.length) { tools.push('WebFetch'); allowed.push(...(netGrants.includes('*') ? ['WebFetch', 'WebSearch'] : netGrants.map((d) => `WebFetch(domain:${d})`))); if (netGrants.includes('*')) tools.push('WebSearch'); }
+
+  // every driver's events fold into one ordered transcript (text, thinking, tools with results, plan)
+  const tr = new Transcript(agentCfg.transcript);
+  const asks = [];
+  const onEvent = (e) => {
+    if (e.type === 'access') { asks.push(e); return; }
+    if (e.type === 'delta') { tr.text(e.text); send({ type: 'delta', text: e.text }); return; }
+    if (e.type === 'thinking') { tr.thinking(e.text); send({ type: 'thinking', text: e.text }); return; }
+    if (e.type === 'plan') { tr.plan(e.items); send({ type: 'plan', items: e.items }); return; }
+    if (e.type === 'tool') {
+      const step = tr.tool(e);
+      send({ type: 'tool', id: step.id, kind: e.kind, name: e.name, target: e.target, detail: step.detail, reaction: reactions[e.kind] });
+      return;
+    }
+    if (e.type === 'tool_result') {
+      const step = tr.result(e);
+      const files = (e.images ?? []).slice(0, 8).flatMap((image, i) => {
+        try {
+          const existing = image.path && allFiles.find((f) => fs.realpathSync(f.path) === image.path);
+          if (existing) return publicFiles([existing]);
+          if (typeof image.data !== 'string' || image.data.length > 28 * 1024 * 1024) return [];
+          const data = Buffer.from(image.data, 'base64'), type = imageType(data); if (!type) return [];
+          return [saveAttachment(ctx, threadId, `tool-image-${i + 1}.${type.split('/')[1]}`, data)];
+        } catch { return []; }
+      });
+      if (step && files.length) step.attachments = files;
+      let test = null;
+      if (['Bash', 'shell', 'run_command'].includes(e.name) && TEST_RE.test(e.target ?? step?.target ?? '')) { test = e.ok ? 'pass' : 'fail'; if (step) step.test = test; }
+      send({ type: 'tool_result', id: step?.id ?? e.id, ok: e.ok, output: step?.output ?? '', attachments: files, ms: step?.ms ?? null, test,
+        reaction: test ? reactions[`test.${test}`] : !e.ok ? reactions['tool.error'] : null });
+    }
+  };
+  const lang = ctx.interactions.envelope?.block_lang ?? 'ov';
+  const strip = (t) => splitEnvelope(t, lang).text;
+  const steps = () => { const s = tr.final(strip); return s.some((x) => x.t !== 'text') ? s : undefined; };
+
+  try {
+    const system = systemPrompt(ctx, role);
+    const common = { system, prompt: attachmentPrompt(text, attachments), sessionId: thread.session_id, cwd, model: brain.model, signal, onEvent };
+    let result;
+    if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
+    else if (brain.provider === 'claude-code') result = await claude.run({ ...common, tools, allowed, addDirs });
+    else if (brain.provider === 'codex') result = await codex.run({ ...common, addDirs, writable: ws.chosen, web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
+    else if (brain.driver === 'openai') {
+      const et = agentCfg.engine_tools ?? {};
+      const engine = et.enabled === false ? null : engineTools({ ctx, role, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });
+      const prior = history(ctx, threadId).slice(0, -1).map((turn) => {
+        if (!turn.attachments?.length) return turn;
+        const files = turn.attachments.flatMap((f) => { try { return [getAttachment(ctx, threadId, f.id)]; } catch { return []; } });
+        return { role: turn.role, content: attachmentPrompt(turn.content, files) };
+      });
+      result = await openai.run({ ...common, history: prior, cfg: brain.cfg, tools: engine, maxRounds: et.max_rounds ?? 16 });
+    } else throw new Error(`${brain.label} is not supported in this version; pick another brain in settings`);
+
+    const { text: shown, meta } = splitEnvelope(result.text ?? '', lang);
+    const { access, commands: askedCommands, quest, ...metaShown } = meta;
+    const done = prepareCommands(ctx, role, askedCommands);
+    if (done.commands.length) metaShown.did = done.commands.map((c) => c.label);
+    appendEvent(ctx, threadId, { type: 'agent.text', role, text: shown, meta: metaShown, steps: steps() });
+    requestAccess(ctx, thread, role, [...asks, ...(access ?? [])], send);
+    if (done.commands.length) emit({ type: 'command', role, thread: threadId, commands: done.commands });
+    return { ok: true, shown, meta: { ...metaShown, ...(quest && ctx.member(role)?.quests ? { quest } : {}) }, sessionId: result.sessionId ?? thread.session_id };
+  } catch (err) {
+    // keep what the member did before it stopped, so the chat still shows it
+    const partial = tr.final(strip);
+    if (partial.length) appendEvent(ctx, threadId, { type: 'agent.text', role, text: partial.filter((x) => x.t === 'text').map((x) => x.text).join('\n\n'), meta: {}, steps: partial, partial: true });
+    requestAccess(ctx, thread, role, asks, send);
+    appendEvent(ctx, threadId, { type: 'turn.error', role, message: err.message });
+    send({ type: 'turn.error', message: err.message, speaker: role, reaction: reactions['turn.error'] });
+    return { ok: false, error: err.message };
+  } finally {
+    consumeOnce(ctx, role);                          // "allow once" ends with this turn
+  }
+}
+
+/** Writ requests still waiting for the founder in a thread. */
+export function openWrits(ctx, threadId) {
+  const events = readEvents(ctx, threadId), answered = new Set(events.filter((e) => e.type === 'writ.answered').map((e) => e.id));
+  return events.filter((e) => e.type === 'writ.request' && !answered.has(e.id));
+}
+
+/**
+ * Turn what a member needs into writ requests the founder sees in the chat (deduplicated, never for access they
+ * already hold, never for scopes that can never be granted). Answered through POST .../writs/:id.
+ */
+function requestAccess(ctx, thread, role, asks, send) {
+  const seen = new Set();
+  const caps = ctx.packs.byKind.permissions?.permissions?.capabilities ?? {};
+  const open = openWrits(ctx, thread.id);
+  for (const a of asks) {
+    if (!caps[a.capability]) continue;
+    let scope;
+    try { scope = checkScope(ctx, a.capability, a.scope); } catch { continue; }
+    const key = `${a.capability}|${scope}`;
+    if (seen.has(key) || holds(ctx, role, a.capability, scope)) continue;
+    seen.add(key);
+    if (open.some((e) => e.role === role && e.capability === a.capability && e.scope === scope)) continue;
+    const req = { type: 'writ.request', id: crypto.randomUUID(), role, capability: a.capability, scope, why: a.why ?? '', risk: caps[a.capability].risk ?? 'medium' };
+    appendEvent(ctx, thread.id, req);
+    send({ ...req, reaction: ctx.interactions.reactions?.['writ.request'] });
+  }
+}

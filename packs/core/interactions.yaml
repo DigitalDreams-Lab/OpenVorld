@@ -1,0 +1,69 @@
+# How agent work becomes the game: XP, animations, sounds and balloons for every normalized agent event.
+kind: interactions
+version: 1
+
+agent:
+  engine_tools:                    # tools the ENGINE runs for API brains, limited to the member's writs
+    enabled: true
+    max_rounds: 16
+    output_chars: 12000
+    command_seconds: 120
+    fetch_chars: 20000
+    search_matches: 80
+  transcript: { output_chars: 4000, detail_chars: 1500 }
+  chat: { collapse_after: 6 }
+  claude_code:
+    always_tools: [TodoWrite]      # harmless tools every Claude Code member gets
+
+# XP rules (small for chat, real for finished work)
+xp:
+  chat_message: 2
+  chat_per_day: 60                 # chat XP stops here each day
+  step_done: 15
+  quest_done: 40                   # plus quest_per_step for every step in it
+  quest_per_step: 10
+  seal_given: 5
+  writ_granted: 5
+
+levels: { base: 60, exponent: 1.6 }   # XP to reach level n = base * (n-1)^exponent
+
+# agent event -> reaction on the map (anim id, sfx id, balloon string key)
+reactions:
+  turn.start:   { anim: think, sfx: ui.open, balloon: balloon.thinking }
+  tool.read:    { anim: read_scroll, sfx: ui.open }
+  tool.search:  { anim: read_scroll, sfx: ui.open }
+  tool.web:     { anim: gaze, sfx: ui.open }
+  tool.edit:    { anim: hammer, sfx: forge.hammer }
+  tool.write:   { anim: hammer, sfx: forge.hammer }
+  tool.run:     { anim: bellows, sfx: forge.bellows }
+  tool.world:   { anim: idle }
+  tool.error:   { anim: wince, sfx: ui.error }
+  test.pass:    { anim: cheer, sfx: forge.quench, balloon: balloon.tests_pass }
+  test.fail:    { anim: wince, sfx: ui.error, balloon: balloon.tests_fail }
+  writ.request: { anim: bow, sfx: writ.request }
+  turn.error:   { anim: faint, sfx: ui.error, balloon: balloon.error }
+
+# The reply envelope every member is asked to follow. Plain text is always accepted.
+envelope:
+  block_lang: ov
+  instructions: |
+    Reply in plain prose (Markdown allowed). Keep it short unless asked for depth.
+    At the very end, add one fenced block with language "ov" holding JSON, for example:
+    ```ov
+    {"options": ["Show me", "Draft a plan"], "mood": "happy", "balloon": "Fresh ideas!", "title": "Launch plan"}
+    ```
+    options: 0-4 short replies the founder may click. mood: neutral|happy|thinking|worried|proud.
+    balloon: under 6 words, shown over your head in the world. title: name for this chat (first reply only).
+    commands: optional things you DO in the game world; see "Acting in the world" below.
+    access: only when you need access you do not have, a list like
+      [{"capability": "fs.read", "scope": "/path/to/folder", "why": "to read the landing page copy"}]
+      capability is one of fs.read, fs.write, cmd.run (scope = one command pattern, e.g. "npm test"),
+      net.fetch (scope = a domain). The founder sees it as a request and answers; do not ask in prose only.
+  quest_instructions: |
+    You can draft a QUEST: a repeatable workflow the crew runs step by step. Only when the founder asks for a
+    workflow, a process or a recurring job, add "quest" to the ov block:
+      "quest": {"title": "Weekly newsletter", "goal": "what the whole quest delivers",
+                "steps": [{"agent": "<member name>", "task": "what this step does", "seal": false}]}
+    Each step goes to one crew member (by name). The output of a step is handed to the next one.
+    "seal": true means the founder must approve that step's result before the quest goes on.
+    The founder sees it as a draft on the quest board and can edit it before running it.

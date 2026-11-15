@@ -1,0 +1,59 @@
+# Game commands: what crew members can DO in their world. Every crew member (agents and the companion) may add a `commands` list to the
+# `ov` block at the end of a reply; API brains also have the `game_command` tool. The engine checks each command against this pack
+# and the world (a place or prop that does not exist is dropped), then the map acts it out. They only move and animate
+# characters and open screens: they never touch files, run programs, spend or post anything, so they need no writ.
+#
+# A command is JSON: {"do": "walk_to", "to": "plaza"}. Roles: `agent` is every agent, `companion` is the guide.
+kind: game_commands
+version: 1
+
+limits:
+  per_reply: 6          # commands taken from one reply (the rest are dropped)
+  text_max: 60          # longest line a crew member can say out loud
+  wait_max: 10          # longest pause, in seconds
+  queue_max: 12         # most steps one crew member keeps queued on the map
+
+# Places any "to" can name, besides a prop kind that exists on this map (bench, lamp, well...) or another crew member's name (their home).
+places:
+  plaza: the town square with the quest board
+  founder: next to the founder
+  home: your own home
+
+emotes: [wave, cheer, bow, think, dance, shrug, wince]
+panels: [quests, deeds, settings]
+
+# What a crew member does at each kind of prop when told to `interact`. A prop kind not listed here is simply looked at.
+interactions:
+  bench:      { verb: sits on the bench,          anim: rest,  ms: 4000 }
+  lamp:       { verb: warms their hands at the lamp, anim: gaze, ms: 2500 }
+  well:       { verb: draws water from the well,  anim: bow,   ms: 2500 }
+  fountain:   { verb: watches the fountain,       anim: gaze,  ms: 3000 }
+  stall:      { verb: browses the stall,          anim: gaze,  ms: 2800 }
+  brazier:    { verb: warms up by the brazier,    anim: gaze,  ms: 3000 }
+  signpost:   { verb: reads the signpost,         anim: think, ms: 2500 }
+  tree:       { verb: rests in the shade of the tree, anim: rest, ms: 3500 }
+  pine:       { verb: rests under the pine,       anim: rest,  ms: 3500 }
+  rock:       { verb: sits on the rock,           anim: rest,  ms: 3500 }
+  flower:     { verb: smells the flowers,         anim: sniff, ms: 2200 }
+  flower_bed: { verb: smells the flowers,         anim: sniff, ms: 2200 }
+  planter:    { verb: tends the planter,          anim: bow,   ms: 2500 }
+  mushroom:   { verb: inspects the mushrooms,     anim: sniff, ms: 2200 }
+  crystal:    { verb: admires the crystal,        anim: gaze,  ms: 2800 }
+  barrel:     { verb: checks the barrel,          anim: gaze,  ms: 2000 }
+  crate:      { verb: checks the crate,           anim: gaze,  ms: 2000 }
+  haystack:   { verb: lies back on the haystack,  anim: rest,  ms: 3500 }
+  banner:     { verb: admires the banner,         anim: gaze,  ms: 2500 }
+  pylon:      { verb: studies the pylon,          anim: think, ms: 2500 }
+
+commands:
+  say:       { roles: [agent, companion], phrase: 'says "{text}"',        help: 'say a short line out loud (a speech balloon over your head). {"do":"say","text":"Fresh bread!"}' }
+  emote:     { roles: [agent, companion], phrase: 'does a {kind}',        help: 'show a feeling: {emotes}. {"do":"emote","kind":"wave"}' }
+  walk_to:   { roles: [agent, companion], phrase: 'walks to {to}',        help: 'walk somewhere: {places}, a crew member by name (their home), or a thing on the map: {props}. {"do":"walk_to","to":"plaza"}' }
+  interact:  { roles: [agent, companion], phrase: '{verb}',               help: 'walk to the nearest one and use it: {props}. {"do":"interact","with":"bench"}' }
+  wait:      { roles: [agent, companion], phrase: 'waits',                help: 'pause for a few seconds (1-{wait_max}). {"do":"wait","seconds":3}' }
+  go_home:   { roles: [agent, companion], phrase: 'goes home',            help: 'walk back to your home. {"do":"go_home"}' }
+  summon:    { roles: [companion],        phrase: 'calls {who} over',     help: 'call crew members over to the founder: a name, a list of names or "all". {"do":"summon","who":"Quinn"}' }
+  gather:    { roles: [companion],        phrase: 'gathers {who} at the plaza', help: 'call crew members to the quest board for a meeting. {"do":"gather","who":["Quinn","Nico"]}' }
+  send_home: { roles: [companion],        phrase: 'sends {who} home',     help: 'send crew members back to their homes: a name, a list of names or "all". {"do":"send_home","who":"all"}' }
+  point_to:  { roles: [companion],        phrase: 'points to {to}',       help: 'walk ahead and show the founder a place (same places as walk_to). {"do":"point_to","to":"well"}' }
+  show:      { roles: [companion],        phrase: 'opens {panel}',        help: 'open a screen for the founder, only when they ask to see it: {panels}. {"do":"show","panel":"deeds"}' }

@@ -1,0 +1,7 @@
+kind: template
+id: blank
+label: Start empty
+order: 9
+description: Just you and your companion. Add agents and quests yourself.
+crew: []
+quests: []

@@ -1,0 +1,230 @@
+# How a world is decorated. A world gets a mood (feel), a biome (terrain) and a seed (so two worlds with the
+# same mood still look different). Everything is data: add moods, biomes and props in a user or world pack.
+# Nothing in here is drawn by code: every ground tile, prop, house block and the landmark is a SPRITE cut from the
+# world's sprite sheets (packs/core/art/default/ holds the default ones). All sprites are squares of ONE size (the
+# size of a ground tile); an object bigger than a tile is several sprites placed side by side (`grid`).
+kind: scenery
+version: 1
+
+
+size: { w: 64, h: 44, tile: 16 }
+characters: { scale: 1.6 }          # how big members, the founder and the companion are drawn on the map (1 = one tile; the art leaves margin in its cell)
+home_slots: 16                 # plots laid out up front; members take them in order (stable when the crew grows)
+
+layouts: [ring, scatter, street]
+
+moods:
+  cozy:
+    label: Cozy
+    describe: warm, homely, friendly
+    keywords: [cozy, warm, family, home, cute, pet, tea, bakery, kids, garden, craft, handmade, friendly]
+    biomes: [meadow, garden, forest]
+    layouts: [scatter, ring]
+    light: { tint: "#ffbf80", strength: 0.22, vignette: 0.30 }
+    particles: fireflies
+    density: 1.15
+    ui: { radius: 5, border: 3, font: pixel }
+  serene:
+    label: Serene
+    describe: calm, soft, spacious
+    keywords: [calm, zen, mindful, sleep, yoga, nature, minimal, slow, journal, wellness, ocean, tea, nature]
+    biomes: [garden, meadow, forest]
+    layouts: [scatter, ring]
+    light: { tint: "#cfe6ff", strength: 0.15, vignette: 0.20 }
+    particles: petals
+    density: 0.7
+    ui: { radius: 6, border: 2, font: pixel }
+biomes:
+  meadow:
+    label: Meadow
+    water: { amount: 0.8, kind: pond }
+    edge: water
+    glow: "pal.gold"                       # the colour of this biome's lights (the atmosphere is the only coded colour)
+    props: { tree: 5, bush: 4, flower: 6, rock: 2, tuft: 8, pebbles: 2, mushroom: 1 }
+  forest:
+    label: Forest
+    water: { amount: 0.5, kind: pond }
+    edge: forest
+    glow: "pal.gold"                       # the colour of this biome's lights (the atmosphere is the only coded colour)
+    props: { pine: 8, tree: 6, bush: 3, mushroom: 3, rock: 2, tuft: 5, flower: 1 }
+  garden:
+    label: Garden
+    water: { amount: 1.0, kind: pond }
+    edge: hedge
+    glow: "pal.gold"                       # the colour of this biome's lights (the atmosphere is the only coded colour)
+    props: { flower: 10, bush: 5, tree: 3, lamp: 2, tuft: 4, rock: 1 }
+# grid: [columns, rows] of square sprites the prop is made of (default [1, 1]); a prop of several sprites stands on its
+#   bottom row, centred. Sprite names: p_<id>[_v<n>] for a single sprite, p_<id>[_v<n>]_<col>_<row> for a part.
+# solid: width of the part that blocks walking, in world pixels.
+# foot: clearance radius in world tiles; props share a bottom-centre origin and foot-based depth.
+props:
+  tree:
+    grid: [2, 2]
+    foot: 3
+    sway: true
+    solid: 12
+  pine:
+    grid: [1, 2]
+    foot: 2
+    sway: true
+    solid: 8
+  bush:
+    grid: [1, 1]
+    foot: 2
+    sway: true
+  rock:
+    grid: [1, 1]
+    foot: 2
+    solid: 10
+  flower:
+    grid: [1, 1]
+    foot: 1
+    sway: true
+    variants: 4
+  mushroom:
+    grid: [1, 1]
+    foot: 1
+    variants: 2
+  crystal:
+    grid: [1, 1]
+    foot: 2
+    solid: 10
+    glow: 0.6
+  lamp:
+    grid: [1, 2]
+    foot: 1
+    solid: 6
+    glow: 1.0
+  crate:
+    grid: [1, 1]
+    foot: 1
+    solid: 8
+  cactus:
+    grid: [1, 2]
+    foot: 2
+    solid: 8
+  reeds:
+    grid: [1, 1]
+    foot: 1
+    sway: true
+  banner:
+    grid: [1, 2]
+    foot: 1
+    sway: true
+    variants: 3
+  tuft:
+    grid: [1, 1]
+    ground: true
+  pebbles:
+    grid: [1, 1]
+    ground: true
+
+# ---- decoration props (placed by the decor rules below, never at random) ----
+  bench:
+    grid: [2, 1]
+    foot: 2
+    solid: 16
+  planter:
+    grid: [1, 1]
+    foot: 1
+    variants: 3
+  well:
+    grid: [2, 2]
+    foot: 2
+    solid: 20
+  fountain:
+    grid: [2, 2]
+    foot: 3
+    solid: 24
+    glow: 0.35
+  stall:
+    grid: [2, 2]
+    foot: 3
+    solid: 28
+    variants: 3
+  brazier:
+    grid: [1, 1]
+    foot: 2
+    solid: 12
+    glow: 1.3
+  signpost:
+    grid: [1, 1]
+    foot: 1
+    solid: 6
+  haystack:
+    grid: [1, 1]
+    foot: 2
+    solid: 20
+  barrel:
+    grid: [1, 1]
+    foot: 1
+    solid: 12
+  pylon:
+    grid: [1, 2]
+    foot: 1
+    solid: 8
+    glow: 0.9
+  flower_bed:
+    grid: [1, 1]
+    ground: true
+    variants: 4
+
+# Homes are composed per member from these parts (every part is a sprite). Each biome lists the roof shapes and wall
+# materials that suit it; the member's id picks among them, so every home in a town differs but fits the world.
+# House builder: every home is ASSEMBLED from parts, picked by a seed (world seed + member) inside the world's
+# style (biome pools, mood preferences). Every part is a sprite on the buildings sheet; an artist draws one "house
+# parts" sheet (h_<part>_<variant>) and every home is assembled from those drawings instead.
+# Blocks: wall_<variant>_l/_m/_r (one per floor, edges outlined), roof_<variant>_l/_m/_r/_peak (rows step in by
+# one block until a peak closes them; flat roofs are one row), and overlay blocks drawn on top: door, window,
+# base strip, chimney and extras.
+landmark:                                # the centre of the plaza: ONE object made of a grid of sprites (b_plaza_<col>_<row>)
+  grid: [2, 2]
+
+houses:
+  block: 16                                # every home is a grid of square blocks of this size (one world tile)
+  scale: 1.3                               # homes are drawn this much bigger, to match the characters (characters.scale)
+  sizes:                                   # footprints in blocks: odd widths keep the door at the bottom centre
+    - { cols: 3, floors: 1 }
+    - { cols: 3, floors: 2 }
+    - { cols: 5, floors: 1 }
+  extras_count: [1, 3]
+  parts:                                   # every variant the builder knows; descriptions brief the AI artist
+    base:    { stone: "a low stone step strip", deck: "a short wooden deck strip", plinth: "a smooth raised plinth strip" }
+    wall:    { brick: "brick wall texture", plank: "vertical wooden plank wall texture", stone: "rough stone block wall texture", panel: "metal panel wall texture with seams", plaster: "smooth plaster wall texture with a few cracks", timber: "half-timbered wall texture, dark beams on light plaster" }
+    roof:    { gable: "a pitched gable roof seen from the front, a wide triangle with tiles", hip: "a hipped roof, wide trapezoid with tiles", dome: "a round dome roof", flat: "a flat roof with a parapet edge", cone: "a tall conical roof", tent: "a striped tent roof", tiers: "a two-tier pagoda roof" }
+    door:    { plank: "a wooden plank front door", arch: "an arched front door", round: "a round hobbit-style front door", sliding: "a sliding metal front door" }
+    window:  { square: "a small square window with a cross frame", arch: "a small arched window", round: "a small round window", slit: "a narrow slit window" }
+    chimney: { brick: "a small brick chimney", pipe: "a thin metal chimney pipe", stone: "a small stone chimney" }
+    extra:   { awning: "a small striped awning over a door", flowerbox: "a window flower box with flowers", lantern: "a small hanging lantern", barrel: "a wooden barrel", sign: "a small hanging shop sign, blank", vines: "climbing vines with leaves", antenna: "a small antenna or dish", banner: "a small hanging banner, blank", crate: "a small wooden crate", plant: "a potted plant" }
+  # where each extra goes: by the door, under a window, on the wall, on the roof, or on the ground beside the house
+  extra_slots: { awning: door_top, flowerbox: window, lantern: door_side, barrel: ground, sign: wall, vines: wall_edge, antenna: roof, banner: wall, crate: ground, plant: ground }
+  styles:                                  # per biome: allowed variants (first ones are a little more likely)
+    default: { base: [stone, deck], wall: [plaster, brick, plank, timber], roof: [gable, hip, dome, cone], door: [plank, arch], window: [square, arch], chimney: [brick, stone], extra: [flowerbox, lantern, sign, barrel, plant, banner] }
+    meadow:  { base: [stone, deck], wall: [plank, plaster, timber, stone], roof: [gable, hip, cone, tent], door: [plank, round, arch], window: [square, round], chimney: [stone, brick], extra: [flowerbox, barrel, plant, vines, lantern, crate] }
+    forest:  { base: [deck, stone], wall: [plank, stone, timber], roof: [gable, cone, tiers], door: [plank, round], window: [square, round], chimney: [stone], extra: [vines, lantern, barrel, crate, plant] }
+    garden:  { base: [stone, plinth], wall: [plaster, brick, timber], roof: [dome, gable, tiers, hip], door: [arch, plank], window: [arch, round], chimney: [brick], extra: [flowerbox, vines, plant, lantern, banner] }
+  moods:                                   # a mood adds its favourites (they count double) to the biome pools
+    cozy:       { wall: [timber, plank], roof: [gable], extra: [flowerbox, lantern, plant, vines] }
+    serene:     { wall: [plaster], roof: [hip, tiers], extra: [plant, lantern] }
+
+# Decoration: a second pass after paths and homes exist. Everything is placed by seed inside the world's style
+# (pools per mood), never on paths or inside a home. Props with `glow` become lights automatically.
+decor:
+  plaza_ring: { prop: lamp, count: 4, radius: 4.2 }        # lamps ring the square
+  path_lamps: { prop: lamp, every: 6, max: 14, near_plaza: 13 }   # lamps beside the paths (spaced, never on them)
+  plaza_extras: [3, 5]                                       # benches, wells, stalls... around the square
+  door_frames: [0, 1]                                        # items framing each home's doorstep
+  yard_extras: [0, 2]                                        # items beside each home
+  beds: { prop: flower_bed, chance: 0.10, max: 90 }         # flower beds along path edges (mood density scales it)
+  pools:
+    plaza: [bench, bench, well, fountain, stall, signpost]
+    door: [planter, planter, barrel]
+    yard: [barrel, haystack, planter, bench]
+  moods:                                                     # a mood adds its favourites (they count double)
+    cozy:       { plaza: [stall, bench], door: [planter], yard: [haystack, planter] }
+    serene:     { plaza: [fountain, bench, well], door: [planter] }
+
+labels:                                                      # names and signs drawn on the map
+  scale: 0.72                                                # 1 = the size the code asks for
+  min: 4.5                                                   # never smaller than this (px)
+  stroke: 2.2                                                # outline thickness at scale 1

@@ -1,0 +1,11 @@
+node_modules/
+.DS_Store
+# worlds and secrets never live in the repo (they are in $OPENVORLD_HOME, ~/.openvorld by default)
+worlds/
+*.key
+*.p8
+*.pem
+.env*
+.openvorld-dev.json
+.claude/
+engine/client/dist/

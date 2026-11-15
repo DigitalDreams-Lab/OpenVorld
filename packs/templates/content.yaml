@@ -1,0 +1,16 @@
+kind: template
+id: content
+label: Content studio
+order: 2
+description: Ideas, drafts and edits for posts, videos or newsletters.
+crew:
+  - { job: Researcher, function: "Finds topics, facts and angles worth writing about." }
+  - { job: Writer,     function: "Drafts posts, scripts and newsletters in the founder's voice." }
+  - { job: Editor,     function: "Tightens drafts, fixes tone and checks facts." }
+quests:
+  - title: Weekly post
+    goal: One finished post, ready to publish.
+    steps:
+      - { agent: 0, task: "Suggest three topics for this week with one line each on why they matter." }
+      - { agent: 1, task: "Pick the strongest topic and write the post." }
+      - { agent: 2, task: "Edit the draft into its final form.", seal: true }

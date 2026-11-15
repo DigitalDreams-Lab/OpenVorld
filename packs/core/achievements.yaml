@@ -1,0 +1,21 @@
+# Deeds: hand-made achievements. `when` is a condition over engine events and counters (tools/lib/dsl.mjs):
+#   event:<name>  |  count(event:<name>) >= n  |  <counter> >= n  |  all(...) / any(...)
+# Names and descriptions come from the theme (strings.deeds.<id>). hidden: shown as "???" until found.
+kind: achievements
+version: 1
+achievements:
+  - { id: world_founded,   xp: 10,  icon: flag,    when: "event:world.created" }
+  - { id: first_words,     xp: 10,  icon: chat,    when: "event:chat.sent" }
+  - { id: first_writ,      xp: 20,  icon: key,     when: "event:writ.granted" }
+  - { id: first_refusal,   xp: 20,  icon: key,     when: "event:writ.refused", hidden: true }
+  - { id: first_quest,     xp: 50,  icon: scroll,  when: "event:quest.created" }
+  - { id: first_run,       xp: 50,  icon: flame,   when: "event:quest.done" }
+  - { id: first_seal,      xp: 30,  icon: crown,   when: "event:seal.given" }
+  - { id: sent_back,       xp: 30,  icon: hammer,  when: "event:seal.returned", hidden: true }
+  - { id: crew_of_three,   xp: 40,  icon: users,   when: "crew.agents >= 3" }
+  - { id: crew_of_six,     xp: 80,  icon: users,   when: "crew.agents >= 6" }
+  - { id: ten_quests,      xp: 150, icon: trophy,  when: "count(event:quest.done) >= 10" }
+  - { id: fifty_quests,    xp: 500, icon: trophy,  when: "count(event:quest.done) >= 50" }
+  - { id: long_chain,      xp: 100, icon: star,    when: "event:quest.done_5_steps" }
+  - { id: hundred_steps,   xp: 300, icon: star,    when: "count(event:step.done) >= 100" }
+  - { id: night_owl,       xp: 25,  icon: eye,     when: "event:chat.night", hidden: true }

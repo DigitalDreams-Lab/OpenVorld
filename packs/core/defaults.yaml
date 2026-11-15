@@ -1,0 +1,7 @@
+# Engine-wide defaults.
+kind: defaults
+version: 1
+home:
+  env: OPENVORLD_HOME
+  fallback: "~/.openvorld"             # worlds and user packs live here, never in the repo
+theme: default                         # the theme a new world wears

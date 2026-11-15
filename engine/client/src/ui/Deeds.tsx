@@ -1,0 +1,29 @@
+// Deeds: the achievements of this world. Hidden ones show only their hint until found.
+import { setState, useStore } from '../store';
+import { Icon } from './Icon';
+
+export function Deeds() {
+  const world = useStore((s) => s.world);
+  const got = world.state.deeds ?? {};
+  return (
+    <div className="modal-bg" onClick={() => setState({ modal: null })}>
+      <div className="modal panel deeds" onClick={(e) => e.stopPropagation()}>
+        <header className="row between"><h2>Deeds <small>{Object.keys(got).length}/{world.deeds.length}</small></h2><button className="x" onClick={() => setState({ modal: null })}>✕</button></header>
+        <p className="muted">Level {world.state.level} · {world.state.xp} XP. XP comes from finished quests, seals and a little from chatting.</p>
+        <div className="deed-grid">
+          {world.deeds.map((d: any) => {
+            const done = !!got[d.id], secret = d.hidden && !done;
+            return (
+              <div key={d.id} className={`deed ${done ? 'done' : 'locked'}`}>
+                <Icon name={secret ? 'eye' : d.icon ?? 'trophy'} size={28} />
+                <div className="deed-name">{secret ? '???' : d.name}</div>
+                <div className="deed-desc">{secret ? d.hint ?? 'A hidden deed.' : d.desc}</div>
+                <div className="deed-meta">{d.xp} XP{done ? ` · ${new Date(got[d.id]).toLocaleDateString()}` : ''}</div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}

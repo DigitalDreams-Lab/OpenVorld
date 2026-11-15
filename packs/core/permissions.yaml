@@ -1,0 +1,58 @@
+# Permissions ("Writs"). Every crew member starts with NOTHING: an empty private workspace inside the
+# world folder and the ability to talk. Anything else is a grant the founder approves in the game.
+#
+# Flow: a crew member calls the engine tool `request_access(capability, scope, reason)` -> the game shows
+# a Writ dialog (who, what, exact scope, why, risk) -> founder picks one of `answers` -> the grant is
+# stored in <world>/grants.yaml and enforced by the engine on every tool call (and by the agent CLI's
+# own sandbox flags as a second layer). Founders can review and revoke writs any time (Settings > Writs).
+kind: permissions
+version: 1
+
+answers:                               # `label` is the neutral text; a theme can reword it through writ.<label_key>
+  - { id: once,    label_key: writ.allow_once,    label: "Allow once",         hint: "this one time only" }
+  - { id: session, label_key: writ.allow_session, label: "Allow this session", hint: "until the game closes" }
+  - { id: always,  label_key: writ.allow_always,  label: "Always allow",       hint: "until you revoke it" }
+  - { id: deny,    label_key: writ.deny,          label: "Refuse",             hint: "nothing is granted" }
+
+# The folder picker the founder uses whenever a writ names a folder (answering a
+# request). Only folder names are listed, never file contents; folders on a capability's never-list can't be chosen.
+browse:
+  hide_dotfolders: true
+  max_entries: 400
+  native_dialog: true                  # also offer the operating system's own folder dialog where there is one
+  roots:
+    - { name: Home,      path: "~" }
+    - { name: Desktop,   path: "~/Desktop" }
+    - { name: Documents, path: "~/Documents" }
+    - { name: Projects,  path: "~/Projects" }
+    - { name: Code,      path: "~/code" }
+    - { name: Dev,       path: "~/dev" }
+    - { name: Downloads, path: "~/Downloads" }
+
+defaults:
+  unknown_capability: deny
+  expire_always_after_days: null      # null = never; a world can set e.g. 90
+  ask_timeout_seconds: 300            # unanswered request = deny
+  audit_log: true                     # every call, allowed or denied, goes to <world>/audit.log
+
+capabilities:
+  fs.read:
+    label: "read files in"                 # "<name> asks to <label> <scope>"
+    risk: low
+    scope: path                       # absolute path or glob; must be inside a folder the founder picked
+    never: ["~/.ssh/**", "~/.aws/**", "~/.config/**/token*", "**/*.p8", "**/*.pem", "**/.env*"]
+  fs.write:
+    label: "change files in"                 # "<name> asks to <label> <scope>"
+    risk: medium
+    scope: path
+    never: ["~/.ssh/**", "<world>/grants.yaml"]
+  cmd.run:
+    label: "run the command"                 # "<name> asks to <label> <scope>"
+    risk: high
+    scope: command                    # exact program + argument pattern, e.g. "ffmpeg *" or "python3 /path/stats.py --json"
+    max_seconds: 600
+    never: ["sudo *", "rm -rf *", "curl * | sh", "* > /dev/*"]
+  net.fetch:
+    label: "visit websites at"                 # "<name> asks to <label> <scope>"
+    risk: medium
+    scope: domain                     # e.g. "api.example.com", "*" means open web search
