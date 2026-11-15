@@ -15,7 +15,7 @@ import { Transcript } from './steps.mjs';
 import { engineTools } from './tools.mjs';
 import { appendEvent, getThread, updateThread, history, readEvents } from '../threads.mjs';
 import { grantsOf, folderGrants, consumeOnce, holds, checkScope } from '../gate.mjs';
-import { benchOf, projectOf } from '../benches.mjs';
+import { benchOf, benchesOf, projectOf } from '../benches.mjs';
 import { heldSecrets, redactEvent, redactSecrets, vaultHelp } from '../house.mjs';
 import { browserFor } from './browse.mjs';
 import { gameFor } from '../game.mjs';
@@ -49,9 +49,12 @@ function systemPrompt(ctx, id, benchId) {
   const vars = { name: m.name, job: m.job, function: m.function || 'whatever the founder asks', voice: m.voice, vorld: ctx.doc.name, about: ctx.doc.about || 'not described yet', crew,
     project: projectOf(ctx).path, workbench: benchOf(ctx, id, benchId).path };
   const base = String(m.prompt).replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+  // every workbench the founder chose is open to the member in every chat; the chat's own bench is where it starts
+  const mine = benchesOf(ctx, id).filter((b) => b.chosen), active = benchOf(ctx, id, benchId);
+  const benchNote = mine.length ? `Your workbenches (you can read and change files on all of them, in any chat): ${mine.map((b) => `${b.name} (${b.path})`).join('; ')}. This chat's active workbench is ${active.name} (${active.path}): start there and put new files there unless the founder says otherwise.` : '';
   const writs = grantsOf(ctx, id).map((g) => `${g.capability} ${g.scope}`).join('; ') || 'none';
   const env = ctx.interactions.envelope ?? {};
-  return [base, `Your writs (access): ${writs}. You have no other access; if you need more, ask for it in the "access" list so the founder can grant it.`,
+  return [base, benchNote, `Your writs (access): ${writs}. You have no other access; if you need more, ask for it in the "access" list so the founder can grant it.`,
     env.instructions ?? '', vaultHelp(ctx, id), commandHelp(ctx, id)].filter(Boolean).join('\n\n');
 }
 
@@ -100,7 +103,7 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
   // writs -> tool access
   const ws = benchOf(ctx, role, thread.bench), cwd = ws.path;
   fs.mkdirSync(cwd, { recursive: true });
-  const writeDirs = [...new Set([...folderGrants(ctx, role, 'fs.write'), ...(ws.chosen ? [cwd] : [])])];
+  const writeDirs = [...new Set([...folderGrants(ctx, role, 'fs.write'), ...benchesOf(ctx, role).filter((b) => b.chosen).map((b) => b.path), ...(ws.chosen ? [cwd] : [])])];
   const allFiles = threadAttachments(ctx, threadId);
   const uploadDirs = [...new Set(allFiles.filter((f) => f.kind !== 'reference').map((f) => path.dirname(f.path)))];
   const referenceFiles = allFiles.filter((f) => f.kind === 'reference').map((f) => f.path);

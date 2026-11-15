@@ -64,6 +64,12 @@ test('workbenches: a Main bench by default, more on request, one default, each c
   await call('PUT', `${root}/crew/${a.id}/benches/main`, { default: true });
   assert.equal((await call('GET', `${root}/threads/${onSite.id}`)).data.thread.bench, 'website', 'moving the default does not move old chats');
 
+  // a new chat can pick its active workbench until it has begun
+  const picked = await call('PUT', `${root}/threads/${onSite.id}`, { bench: 'main' });
+  assert.equal(picked.status, 200); assert.equal(picked.data.bench, 'main');
+  assert.equal((await call('GET', `${root}/threads/${onSite.id}`)).data.thread.bench, 'main');
+  assert.equal((await call('PUT', `${root}/threads/${onSite.id}`, { bench: 'nope' })).status, 400, 'only the member\'s own benches');
+
   // removing a bench: the default falls back to Main
   const gone = await call('DELETE', `${root}/crew/${a.id}/benches/website`);
   assert.deepEqual(gone.data.crew.find((c) => c.id === a.id).benches.map((x) => x.id), ['main']);

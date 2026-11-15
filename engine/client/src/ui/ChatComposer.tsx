@@ -47,7 +47,7 @@ export function useChatDraft({wid,thread,working,onEvents}:{wid:string;thread:st
   return {text,setText,files,addFiles,remove,send,busy,error,dragging,dropHandlers};
 }
 type Draft=ReturnType<typeof useChatDraft>;
-export function ChatComposer({draft,placeholder,working,onStop,extra,children}:{draft:Draft;placeholder:string;working:boolean;onStop:()=>void;extra?:ReactNode;children?:ReactNode}) {
+export function ChatComposer({draft,placeholder,working,onStop,extra,children,hint}:{draft:Draft;placeholder:string;working:boolean;onStop:()=>void;extra?:ReactNode;children?:ReactNode;hint?:ReactNode}) {
   const input=useRef<HTMLInputElement>(null);
   return <div className="composer">
     {draft.files.length>0&&<div className="pending-files" aria-label="Files to send">{draft.files.map(f=><div className="pending-file" key={f.id}>
@@ -61,7 +61,7 @@ export function ChatComposer({draft,placeholder,working,onStop,extra,children}:{
       {extra}
       {working?<button className="btn small" onClick={onStop}>Stop</button>:<button className="btn small primary" disabled={draft.busy||(!draft.text.trim()&&!draft.files.length)} onClick={()=>void draft.send()}>{draft.busy?'Sending…':'Send'}</button>}
     </div>
-    <div className="composer-hint">Drop or paste files to attach · Shift+Enter for a new line</div>
+    {hint??<div className="composer-hint">Drop or paste files to attach · Shift+Enter for a new line</div>}
     {children}
   </div>;
 }

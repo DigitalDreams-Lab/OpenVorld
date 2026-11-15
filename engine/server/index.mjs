@@ -9,7 +9,7 @@ import { WebSocketServer } from 'ws';
 import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMember, detected } from './vorld.mjs';
 import { atlasFor, sheetFiles } from './art.mjs';
 import { gameFor } from './game.mjs';
-import { listThreads, createThread, getThread, readEvents, appendEvent } from './threads.mjs';
+import { listThreads, createThread, getThread, updateThread, readEvents, appendEvent } from './threads.mjs';
 import { runTurn, stopTurn, stopAllTurns, activeTurnCount, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
 import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, stopAllParties, partyBusy } from './parties.mjs';
 import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, addReferences } from './attachments.mjs';
@@ -257,6 +257,14 @@ route('POST', '/api/vorlds/:id/threads', async ({ p, req }) => {
   // a chat starts on one workbench and stays there (the member's default unless another is picked)
   if (bench && !benchesOf(ctx, role).some((x) => x.id === bench)) fail('unknown workbench');
   return createThread(ctx, { role, kind: 'chat', title: trim(title, 80) || null, bench: benchOf(ctx, role, bench).id });
+});
+// the active workbench of a chat: picked on the new chat page, locked once the chat has begun (its CLI session belongs to that folder)
+route('PUT', '/api/vorlds/:id/threads/:tid', async ({ p, req }) => {
+  const ctx = W(p), t = getThread(ctx, p.tid), { bench } = await body(req);
+  if (t.kind !== 'chat') fail('only a chat has a workbench');
+  if (!benchesOf(ctx, t.role).some((x) => x.id === bench)) fail('unknown workbench');
+  if (readEvents(ctx, p.tid).some((e) => e.type === 'founder.message')) fail('this chat has begun, so its workbench stays');
+  return updateThread(ctx, p.tid, { bench });
 });
 route('GET', '/api/vorlds/:id/threads/:tid', ({ p }) => { const ctx = W(p); return { thread: getThread(ctx, p.tid), events: readEvents(ctx, p.tid) }; });
 route('POST', '/api/vorlds/:id/threads/:tid/messages', async ({ p, req }) => {

@@ -14,7 +14,6 @@ export function MemberPanel({ id }: { id: string }) {
   const m = memberOf(id);
   const [threads, setThreads] = useState<any[] | null>(null);
   const [active, setActive] = useState<string | null>(null);
-  const [bench, setBench] = useState('');           // the workbench the next chat starts on ('' = the default)
   useEffect(() => {
     let live = true;
     api(`/vorlds/${wid}/threads?role=${encodeURIComponent(id)}`).then((list) => {
@@ -28,7 +27,7 @@ export function MemberPanel({ id }: { id: string }) {
   const following = useStore((s) => s.following.includes(id));
   const newChat = async () => {
     play('ui.open');
-    try { const t = await api(`/vorlds/${wid}/threads`, { body: { role: id, ...(bench ? { bench } : {}) } }); setThreads((x) => [t, ...(x ?? [])]); setActive(t.id); }
+    try { const t = await api(`/vorlds/${wid}/threads`, { body: { role: id } }); setThreads((x) => [t, ...(x ?? [])]); setActive(t.id); }
     catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   return (
@@ -52,11 +51,6 @@ export function MemberPanel({ id }: { id: string }) {
       {!m.brain_label && <p className="no-brain">{m.name} has no brain yet. <button className="link" onClick={() => setState({ modal: 'member' })}>Pick one</button> (Claude Code, Codex, Antigravity, OpenCode or an API model).</p>}
       <div className="thread-tabs">
         <button className="btn small primary" onClick={newChat}>+ {str('ui.new_chat', {}, 'New chat')}</button>
-        {m.benches.length > 1 && (
-          <select className="field bench-pick" title="The workbench the new chat starts on" value={bench || m.benches.find((b: any) => b.default)?.id} onChange={(e) => setBench(e.target.value)}>
-            {m.benches.map((b: any) => <option key={b.id} value={b.id}>{b.name}</option>)}
-          </select>
-        )}
         <div className="thread-list">
           {(threads ?? []).map((t) => (
             <button key={t.id} className={`thread-tab ${t.id === active ? 'on' : ''} st-${t.state}`} onClick={() => { play('ui.click'); setActive(t.id); }}>

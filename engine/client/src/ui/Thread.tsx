@@ -7,6 +7,7 @@ import { AgentTurn, Markdown } from './Chat';
 import { MessageFiles } from './MessageFiles';
 import { WritCard } from './WritCard';
 import { ChatComposer, DropHint, useChatDraft } from './ChatComposer';
+import { BenchLine } from './BenchLine';
 
 /** Saved events of a thread, refetched when a turn ends (threadsVersion) or when `key` changes. */
 export function useThreadEvents(wid: string, tid: string | null) {
@@ -59,7 +60,7 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
       {canSend && !working && lastAgent?.meta?.options?.length > 0 && (
         <div className="options">{lastAgent.meta.options.map((o: string) => <button key={o} className="option" disabled={draft.busy} onClick={() => draft.send(o, true)}>▸ {o}</button>)}</div>
       )}
-      {canSend && <ChatComposer draft={draft} placeholder={placeholder ?? (party ? 'Message the party… (@Name picks who answers first)' : `Message ${m?.name ?? ''}…`)} working={working} onStop={() => { void api(`/vorlds/${wid}/threads/${tid}/stop`, { body: {} }).catch((e) => toast({ kind: 'error', title: e.message })); }} />}
+      {canSend && <ChatComposer draft={draft} placeholder={placeholder ?? (party ? 'Message the party… (@Name picks who answers first)' : `Message ${m?.name ?? ''}…`)} working={working} onStop={() => { void api(`/vorlds/${wid}/threads/${tid}/stop`, { body: {} }).catch((e) => toast({ kind: 'error', title: e.message })); }} {...(!party && thread?.bench ? { hint: <BenchLine wid={wid} thread={thread} begun={events.some((e: any) => e.type === 'founder.message')} /> } : {})} />}
     </div>
   );
 }
