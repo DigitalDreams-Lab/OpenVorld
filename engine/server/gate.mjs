@@ -31,6 +31,9 @@ export function checkFolder(ctx, capability, folder) {
   const bad = (msg) => { throw Object.assign(new Error(msg), { status: 400 }); };
   if (!folder) bad('pick a folder');
   if (!fs.existsSync(abs) || !fs.statSync(abs).isDirectory()) bad(`not a folder: ${abs}`);
+  // a crew member's house (and the vault in it) is private for good: no folder writ may hold it or contain it
+  const houses = path.join(ctx.dir, 'houses');
+  if (abs === houses || abs.startsWith(houses + path.sep) || houses.startsWith(abs + path.sep)) bad('this folder holds crew members\' private houses and can never be shared');
   if (abs === '/' || abs === os.homedir() || abs.split(path.sep).length < 3) bad('that folder is too broad; pick a project folder');
   for (const n of caps[capability]?.never ?? []) {
     const re = globToRe(expand(n, ctx));
@@ -82,6 +85,7 @@ export function checkScope(ctx, capability, scope) {
     if (isNever(ctx, 'cmd.run', pattern)) bad('this command can never be granted');
     return pattern;
   }
+  if (capability === 'secret.use') { if (!/^[A-Z][A-Z0-9_]{2,63}$/.test(s)) bad('name a secret like YT_CLIENT_SECRET'); return s; }
   if (capability === 'net.fetch' || capability === 'net.session' || capability === 'net.act') {
     const d = s.replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase();
     if (!/^(\*|[a-z0-9.-]+\.[a-z]{2,})$/.test(d)) bad('name a domain like example.com');

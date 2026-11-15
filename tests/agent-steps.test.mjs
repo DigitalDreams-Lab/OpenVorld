@@ -25,7 +25,7 @@ function sse(deltas) {
 
 test('engine tools stay inside writs: roots, never-lists, exact command patterns, no shell features', async () => {
   const vorld = fs.mkdtempSync(path.join(home, 'vorld-'));
-  const ws = path.join(vorld, 'workspaces', 'scribe'); fs.mkdirSync(ws, { recursive: true });
+  const ws = path.join(vorld, 'workbenches', 'scribe'); fs.mkdirSync(ws, { recursive: true });
   const project = fs.mkdtempSync(path.join(home, 'project-'));
   fs.writeFileSync(path.join(project, 'notes.md'), 'hello\nvorld\n');
   fs.writeFileSync(path.join(project, '.env'), 'SECRET=1');
@@ -38,7 +38,7 @@ test('engine tools stay inside writs: roots, never-lists, exact command patterns
   assert.equal((await read.run('read_file', { path: path.join(project, '.env') })).ok, false, 'never-list');
   assert.equal((await read.run('read_file', { path: '../../../' + path.basename(outside) })).ok, false, 'no escaping with ..');
   assert.equal((await read.run('write_file', { path: path.join(project, 'a.txt'), content: 'x' })).ok, false, 'a read writ is not a write writ');
-  assert.equal((await read.run('write_file', { path: 'scratch.txt', content: 'x' })).ok, true, 'the private workspace is always writable');
+  assert.equal((await read.run('write_file', { path: 'scratch.txt', content: 'x' })).ok, true, 'the default bench is always writable');
   assert.equal((await read.run('run_command', { command: 'echo hi' })).ok, false, 'tools not offered are refused');
   fs.symlinkSync(outside, path.join(project, 'link'));
   assert.equal((await read.run('read_file', { path: path.join(project, 'link', 'x.txt') })).ok, false, 'symlinks cannot lead outside');
@@ -46,7 +46,7 @@ test('engine tools stay inside writs: roots, never-lists, exact command patterns
 
   const work = engineTools({ ctx: fakeCtx(vorld), role: 'scribe', cwd: ws, writeRoots: [project], commands: ['echo *'] });
   assert.ok(work.specs.some((s) => s.function.name === 'edit_file') && work.specs.some((s) => s.function.name === 'run_command'));
-  assert.equal((await work.run('write_file', { path: 'draft.md', content: 'one two' })).ok, true, 'own workspace is writable');
+  assert.equal((await work.run('write_file', { path: 'draft.md', content: 'one two' })).ok, true, 'own bench is writable');
   assert.equal((await work.run('edit_file', { path: path.join(project, 'notes.md'), old_string: 'vorld', new_string: 'there' })).ok, true);
   assert.equal(fs.readFileSync(path.join(project, 'notes.md'), 'utf8'), 'hello\nthere\n');
   assert.equal((await work.run('edit_file', { path: path.join(project, 'notes.md'), old_string: 'absent', new_string: 'x' })).ok, false);
@@ -126,5 +126,5 @@ test('the runner stores each turn as ordered steps and streams them as events', 
   assert.deepEqual(reply.steps.map((s) => s.t), ['text', 'tool', 'text']);
   assert.equal(reply.steps[1].status, 'ok'); assert.equal(reply.steps[2].text, 'Noted.');
   assert.deepEqual(reply.meta.options, ['Thanks']);
-  assert.equal(fs.readFileSync(path.join(ctx.dir, 'workspaces', role, 'note.md'), 'utf8'), 'tea', 'the private workspace is always writable');
+  assert.equal(fs.readFileSync(path.join(ctx.dir, 'workbenches', role, 'note.md'), 'utf8'), 'tea', 'the default bench is always writable');
 });

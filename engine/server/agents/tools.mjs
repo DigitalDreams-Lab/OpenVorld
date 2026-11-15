@@ -10,6 +10,7 @@ import { cleanEnv } from './drivers/proc.mjs';
 import { imageType, MAX_FILE } from '../attachments.mjs';
 import { prepareCommands, vorldInfo } from './commands.mjs';
 import { BROWSER_TOOLS, isBrowserTool } from '../browser-tools.mjs';
+import { substitute, redactSecrets } from '../house.mjs';
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.venv', '__pycache__', 'Pods', 'DerivedData']);
 const SHELL_META = /[;&|`$<>(){}\n\r\\]/;
@@ -33,7 +34,7 @@ export function argvOf(command) {
 /**
  * @param {object} o
  * @param {object} o.ctx vorld context
- * @param {string} o.cwd working folder (the crew member's workspace)
+ * @param {string} o.cwd working folder (the chat's workbench)
  * @param {string[]} o.readRoots folders the crew member may read
  * @param {string[]} o.writeRoots folders the crew member may change
  * @param {string[]} o.commands cmd.run scopes (patterns)
@@ -154,7 +155,8 @@ export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], c
       if (SHELL_META.test(c)) throw new Error('shell features (pipes, redirects, ;, &&, $) are not allowed; run one command');
       if (!commands.some((s) => commandMatches(s, c))) { onRequest({ capability: 'cmd.run', scope: commandPattern(c), why: `run: ${redact(c).slice(0, 140)}` }); throw new Error(`no writ for "${c}". The founder has been asked; allowed now: ${commands.join(' | ') || 'none'}`); }
       if (isNever(ctx, 'cmd.run', c)) throw new Error('this command can never be granted');
-      const [cmd, ...args] = argvOf(c);
+      const [cmd, ...raw] = argvOf(c);
+      const args = substitute(ctx, role, raw, onRequest);          // %NAME% -> the secret's value, only for secrets the member holds a writ for
       const seconds = Math.min(lim.command_seconds, capabilityLimit(ctx, 'cmd.run', 'max_seconds') ?? lim.command_seconds);
       return await new Promise((res, rej) => {
         const child = spawn(cmd, args, { cwd, env: cleanEnv(), stdio: ['ignore', 'pipe', 'pipe'] });
@@ -189,12 +191,12 @@ export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], c
       if (!f || !specs.some((s) => s.function.name === name)) { audit({ tool: name, ok: false, reason: 'unknown tool' }); return { ok: false, output: `unknown tool ${name}` }; }
       try {
         const result = await f(args ?? {}, signal);
-        const output = clip(typeof result === 'string' ? result : result.output, lim.output_chars);
+        const output = redactSecrets(ctx, role, clip(typeof result === 'string' ? result : result.output, lim.output_chars));
         audit({ tool: name, target: targetOf(name, args), ok: true });
         return { ok: true, output, ...(result.images ? {images:result.images} : {}) };
       } catch (e) {
         audit({ tool: name, target: targetOf(name, args), ok: false, reason: String(e.message).slice(0, 200) });
-        return { ok: false, output: clip(e.output ?? `error: ${e.message}`, lim.output_chars) };
+        return { ok: false, output: redactSecrets(ctx, role, clip(e.output ?? `error: ${e.message}`, lim.output_chars)) };
       }
     },
   };

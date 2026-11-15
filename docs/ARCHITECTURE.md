@@ -22,7 +22,8 @@ vorlds/<id>/
   threads/index.json        every conversation, chat or quest step
   threads/<tid>.jsonl       a thread's events, append-only
   threads/<tid>.files/      files attached to that thread
-  workspaces/<member>/      each member's private workspace (the default)
+  workbenches/<member>/     each member's Main bench (the default; more benches live wherever you pick)
+  houses/<member>/vault/    each member's private house: secrets.env (named secrets) and session.json (sign-ins). Never shared
   grants.yaml               the writs you have granted
   audit.log                 every tool call the engine ran, allowed or not
   saves/game.json           XP, level, deeds and event counts
@@ -47,7 +48,7 @@ vorlds/<id>/
 | `gate.mjs` | Writs: check, grant and revoke, plus each capability's never-list. |
 | `game.mjs` | XP, levels and deeds. |
 | `art.mjs` | Works out which sprite frames belong to which member. |
-| `attachments.mjs`, `workspace.mjs`, `browse.mjs`, `models.mjs` | File uploads and references, work folders, the folder picker and model lists. |
+| `attachments.mjs`, `benches.mjs`, `house.mjs`, `browse.mjs`, `models.mjs` | File uploads and references, workbenches and the project folder, the house and its vault (named secrets, `%NAME%` substitution, redaction), the folder picker and model lists. |
 
 ### A quest run
 
@@ -70,11 +71,12 @@ While a quest runs, the server sends `quest` events, and steps also send game co
 
 ## Safety model
 
-- Every member can read the vorld's project folder and can read and write their own private workspace. Nothing else is open to them.
+- Every member can read the vorld's project folder and can read and write their own workbenches (several, one default; each chat is fixed to one). Nothing else is open to them.
+- Every member has a house (`<vorld>/houses/<member>/`) that never moves. No folder writ or workbench can hold it or contain it. Its vault keeps named secrets (`secrets.env`, owner-only) and that member's browser sign-ins. The model sees only secret names. A secret is used only with a `secret.use` writ for that name: API brains write `%NAME%` in a command and the engine swaps the value in; Claude Code and Codex get the secrets they hold a writ for as environment variables (their shell can print them, so the founder grants these one by one). Every vault value is replaced by `$NAME` in tool output, chat, transcript and events.
 - Changing the project folder needs an `fs.write` writ, the same as any other folder. Codex only receives `--add-dir` for folders it may write.
 - Every other kind of access is a writ, scoped to one path, one command pattern or one domain. The engine enforces writs on every tool call, and CLI brains also get their sandbox flags from them.
 - The crew browser opens only domains the member holds a `net.fetch` writ for (re-read on every call, redirects and link clicks included), never addresses on this computer or network, and never types into password or payment fields. A site without a writ becomes a writ card in the member's thread.
-- Signed-in browsing is separate from plain browsing. The founder signs in to sites themselves in a real Chrome window (Settings > Signed-in browsing); the cookies and local storage are saved to `<vorld>/browser/session.json` (owner-only, never leaves the computer). A member gets them only through `browser_open{signed_in:true}`, only on sites where it holds a `net.session` writ, and in a context that can only navigate to those sites. Anything that acts as the founder (a submit-type click, a form POST, Enter in a comment box) needs a `net.act` writ, which can be given once or for the session, never "always". The act check is a guard rail based on form methods and button labels (`agent.browser.act_words`), not a guarantee for every site.
+- Signed-in browsing is separate from plain browsing. The founder signs in to sites themselves in a real Chrome window (a member's settings > Vault > Sign-ins); the cookies and local storage are saved per member to `<vorld>/houses/<member>/vault/session.json` (owner-only, never leaves the computer). A member gets them only through `browser_open{signed_in:true}`, only on sites where it holds a `net.session` writ, and in a context that can only navigate to those sites. Anything that acts as the founder (a submit-type click, a form POST, Enter in a comment box) needs a `net.act` writ, which can be given once or for the session, never "always". The act check is a guard rail based on form methods and button labels (`agent.browser.act_words`), not a guarantee for every site.
 - Codex runs with `--ignore-user-config`, so plugins and MCP servers in your own Codex setup (computer-use, browser) can't drive your real apps around the writs.
 - Never-lists such as `~/.ssh` and `.env*` can't be granted at all.
 - The server only listens on 127.0.0.1, with a random token for each launch.

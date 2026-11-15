@@ -15,7 +15,8 @@ import { listQuests, getQuest, saveQuest, deleteQuest, draftQuest, startQuest, s
 import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, addReferences } from './attachments.mjs';
 import { listGrants, grant, revoke, checkFolder, checkScope, deny } from './gate.mjs';
 import { browseFolder, pickNative, nativeDialog, browseConfig } from './browse.mjs';
-import { workspaceOf, defaultSpace, checkWorkspace, projectOf, checkProject } from './workspace.mjs';
+import { benchesOf, benchOf, benchBase, checkBench, newBenchId, projectOf, checkProject, MAX_BENCHES } from './benches.mjs';
+import { listSecrets, setSecret, removeSecret, hasSecret, redactSecrets } from './house.mjs';
 import { listModels } from './models.mjs';
 import * as browse from './browser.mjs';
 import { REPO, resolveTheme } from '../../tools/lib/packs.mjs';
@@ -49,15 +50,15 @@ function vorldView(ctx) {
   return {
     vorld: { id: ctx.id, name: ctx.doc.name, about: ctx.doc.about ?? '', project: (({ path: p, chosen, exists }) => ({ path: p, chosen, exists }))(projectOf(ctx)) },
     crew: ctx.crew.map((c) => {
-      const b = brainOf(ctx, c.id), ws = workspaceOf(ctx, c.id);
+      const b = brainOf(ctx, c.id);
       return { id: c.id, role: c.role, order: c.order, name: c.name, job: c.job, function: c.function, personality: ctx.doc.crew.find((m) => m.id === c.id)?.personality ?? '', look: c.look, home: c.home,
         brain: c.brain ?? null, brain_label: b.provider === 'none' ? null : `${b.label}${b.model ? ' · ' + b.model : ''}`, working: working.has(c.id),
-        workspace: { path: ws.path, source: ws.source, chosen: ws.chosen, default_path: path.join(defaultSpace(ctx).path, c.id) } };
+        benches: benchesOf(ctx, c.id) };
     }),
     theme: { palette: ctx.theme.palette ?? {}, buildings: ctx.theme.buildings ?? {}, strings: ctx.theme.strings ?? {} },
     interactions: { reactions: ctx.interactions.reactions ?? {}, chat: ctx.interactions.agent?.chat ?? {} },
     permissions: { answers: k.permissions?.permissions?.answers ?? [], capabilities: Object.fromEntries(Object.entries(k.permissions?.permissions?.capabilities ?? {}).map(([id, c]) => [id, { label: c.label ?? id, risk: c.risk ?? 'medium', seal: c.seal ?? null }])) },
-    workspace: { default_space: defaultSpace(ctx).path, default_is_custom: defaultSpace(ctx).custom },
+    benches: { base: benchBase(ctx).path, custom: benchBase(ctx).custom },
     scenery: ctx.scenery(),
     art: { scenery, creatures: k.default_art?.default_art?.creatures ?? {}, house_sprites: k.default_art?.default_art?.illustrated_houses ?? [], atlas: atlasFor(ctx) },
     deeds: game.deedList().map(({ id, name, desc, hint, xp, icon, hidden }) => ({ id, name, desc, hint, xp, icon, hidden: !!hidden })),
@@ -109,12 +110,12 @@ route('POST', '/api/vorlds', async ({ req }) => {
 route('GET', '/api/vorlds/:id/vorld', ({ p }) => vorldView(W(p)));
 route('PUT', '/api/vorlds/:id', async ({ p, req }) => {
   const b = await body(req), ctx = W(p);
-  const folder = b.workspace_base === undefined ? undefined : b.workspace_base ? checkWorkspace(ctx, String(b.workspace_base).trim()) : null;
+  const folder = b.bench_base === undefined ? undefined : b.bench_base ? checkBench(ctx, String(b.bench_base).trim()) : null;
   const project = b.project === undefined ? undefined : b.project ? checkProject(ctx, String(b.project).trim()) : null;
   const next = saveVorld(ctx, (d) => {
     if (trim(b.name, 60)) d.name = trim(b.name, 60);
     if (b.about !== undefined) d.about = trim(b.about, 400) ?? '';
-    if (folder !== undefined) { if (folder) d.workspace = { base: folder }; else delete d.workspace; }
+    if (folder !== undefined) { if (folder) d.benches = { base: folder }; else delete d.benches; }
     if (project !== undefined) { if (project) d.project = project; else delete d.project; }
   });
   vorldChanged(p.id);
@@ -124,12 +125,12 @@ route('PUT', '/api/vorlds/:id', async ({ p, req }) => {
 // the crew
 route('POST', '/api/vorlds/:id/crew', async ({ p, req }) => {
   const ctx = W(p), b = await body(req);
-  const rawFolder = b.workspace ? String(b.workspace).trim() : '';
-  const folder = rawFolder ? checkWorkspace(ctx, rawFolder) : null;
+  const rawFolder = b.bench ? String(b.bench).trim() : '';
+  const folder = rawFolder ? checkBench(ctx, rawFolder) : null;
   let added;
   const next = saveVorld(ctx, (d) => {
     const m = cleanMember({ brain: d.crew.find((c) => c.role === 'companion')?.brain, ...b }, new Set(['founder', ...d.crew.map((c) => c.id)]));
-    if (folder) m.workspace = folder;
+    if (folder) m.benches = [{ id: 'main', name: 'Main bench', path: folder }];
     d.crew.push(m); added = m.id;
   });
   const game = gameFor(next), n = game.check([]);
@@ -140,14 +141,12 @@ route('POST', '/api/vorlds/:id/crew', async ({ p, req }) => {
 route('PUT', '/api/vorlds/:id/crew/:mid', async ({ p, req }) => {
   const ctx = W(p), b = await body(req);
   if (!ctx.member(p.mid)) fail('unknown crew member', 404);
-  const folder = b.workspace === undefined ? undefined : b.workspace ? checkWorkspace(ctx, String(b.workspace).trim()) : null;
   const next = saveVorld(ctx, (d) => {
     const m = d.crew.find((x) => x.id === p.mid);
     if (trim(b.name, 40)) m.name = trim(b.name, 40);
     for (const [key, n] of [['job', 40], ['function', 400], ['personality', 200]]) if (b[key] !== undefined) { const v = trim(b[key], n); if (v) m[key] = v; else delete m[key]; }
     if (m.role === 'companion' && ['robot', 'creature', 'person'].includes(b.form)) m.form = b.form;
     if (b.brain) m.brain = { provider: trim(b.brain.provider, 40) || 'none', ...(trim(b.brain.model, 120) ? { model: trim(b.brain.model, 120) } : {}), ...(trim(b.brain.name, 40) ? { name: trim(b.brain.name, 40) } : {}) };
-    if (folder !== undefined) { if (folder) m.workspace = folder; else delete m.workspace; }
   });
   vorldChanged(p.id);
   return vorldView(next);
@@ -162,6 +161,68 @@ route('DELETE', '/api/vorlds/:id/crew/:mid', ({ p }) => {
   vorldChanged(p.id);
   return vorldView(next);
 });
+
+// workbenches: the folders a member works in (several; one is the default; each chat starts on one)
+const memberOr404 = (ctx, id) => { if (!ctx.member(id)) fail('unknown crew member', 404); };
+route('POST', '/api/vorlds/:id/crew/:mid/benches', async ({ p, req }) => {
+  const ctx = W(p), b = await body(req); memberOr404(ctx, p.mid);
+  if (!String(b.path ?? '').trim()) fail('pick a folder for the bench');
+  if (benchesOf(ctx, p.mid).length >= MAX_BENCHES) fail(`a member can have at most ${MAX_BENCHES} workbenches`);
+  const folder = checkBench(ctx, String(b.path).trim());
+  const name = trim(b.name, 40) || path.basename(folder);
+  const id = newBenchId(ctx, p.mid, name);
+  const next = saveVorld(ctx, (d) => { const m = d.crew.find((x) => x.id === p.mid); (m.benches ??= []).push({ id, name, path: folder }); if (b.default) m.default_bench = id; });
+  vorldChanged(p.id);
+  return { ...vorldView(next), added: id };
+});
+route('PUT', '/api/vorlds/:id/crew/:mid/benches/:bid', async ({ p, req }) => {
+  const ctx = W(p), b = await body(req); memberOr404(ctx, p.mid);
+  const bench = benchesOf(ctx, p.mid).find((x) => x.id === p.bid);
+  if (!bench) fail('unknown workbench', 404);
+  const folder = b.path === undefined ? undefined : b.path ? checkBench(ctx, String(b.path).trim()) : null;   // null on the Main bench = back to the default folder
+  if (folder === null && p.bid !== 'main') fail('a workbench needs a folder');
+  const next = saveVorld(ctx, (d) => {
+    const m = d.crew.find((x) => x.id === p.mid);
+    m.benches ??= [];
+    let e = m.benches.find((x) => x.id === p.bid);
+    if (!e) { e = { id: p.bid, name: bench.name }; m.benches.unshift(e); }
+    if (trim(b.name, 40)) e.name = trim(b.name, 40);
+    if (folder) e.path = folder; else if (folder === null) delete e.path;
+    if (p.bid === 'main' && !e.path && e.name === 'Main bench') m.benches = m.benches.filter((x) => x !== e);
+    if (b.default === true) m.default_bench = p.bid;
+  });
+  vorldChanged(p.id);
+  return vorldView(next);
+});
+route('DELETE', '/api/vorlds/:id/crew/:mid/benches/:bid', ({ p }) => {
+  const ctx = W(p); memberOr404(ctx, p.mid);
+  if (p.bid === 'main') fail('the Main bench stays');
+  if (!benchesOf(ctx, p.mid).some((x) => x.id === p.bid)) fail('unknown workbench', 404);
+  const next = saveVorld(ctx, (d) => { const m = d.crew.find((x) => x.id === p.mid); m.benches = (m.benches ?? []).filter((x) => x.id !== p.bid); if (m.default_bench === p.bid) delete m.default_bench; });
+  vorldChanged(p.id);
+  return vorldView(next);
+});
+
+// the vault in a member's house: secret NAMES only ever leave the server (values go in, never out)
+route('GET', '/api/vorlds/:id/crew/:mid/vault', ({ p }) => { const ctx = W(p); memberOr404(ctx, p.mid); return { secrets: listSecrets(ctx, p.mid), signin: browse.signInState(ctx, p.mid) }; });
+route('POST', '/api/vorlds/:id/crew/:mid/vault/secrets', async ({ p, req }) => {
+  const ctx = W(p), b = await body(req); memberOr404(ctx, p.mid);
+  const name = setSecret(ctx, p.mid, b.name, b.value);
+  return { name, secrets: listSecrets(ctx, p.mid) };
+});
+route('DELETE', '/api/vorlds/:id/crew/:mid/vault/secrets/:name', ({ p }) => {
+  const ctx = W(p); memberOr404(ctx, p.mid);
+  removeSecret(ctx, p.mid, p.name);
+  for (const g of listGrants(ctx).filter((x) => x.role === p.mid && x.capability === 'secret.use' && x.scope === p.name)) revoke(ctx, g.id);
+  return { secrets: listSecrets(ctx, p.mid) };
+});
+// signing in as a member: the founder logs in to sites in a real window; the logins go to that member's vault
+route('GET', '/api/vorlds/:id/crew/:mid/signin', ({ p }) => { const ctx = W(p); memberOr404(ctx, p.mid); return browse.signInState(ctx, p.mid); });
+route('POST', '/api/vorlds/:id/crew/:mid/signin', async ({ p, req }) => {
+  const ctx = W(p), b = await body(req); memberOr404(ctx, p.mid);
+  try { return await browse.openSignIn(ctx, p.mid, { url: String(b.url ?? '').trim(), emit: emitTo(p.id) }); } catch (e) { fail(e.message); }
+});
+route('DELETE', '/api/vorlds/:id/crew/:mid/signin', async ({ p }) => { const ctx = W(p); memberOr404(ctx, p.mid); return browse.forgetSignIns(ctx, p.mid); });
 
 // brains
 route('GET', '/api/vorlds/:id/settings', ({ p }) => {
@@ -189,9 +250,11 @@ route('GET', '/api/vorlds/:id/models', async ({ p, q }) => {
 // chats (threads)
 route('GET', '/api/vorlds/:id/threads', ({ p, q }) => listThreads(W(p), q.get('role'), q.get('kind')));
 route('POST', '/api/vorlds/:id/threads', async ({ p, req }) => {
-  const ctx = W(p), { role, title } = await body(req);
+  const ctx = W(p), { role, title, bench } = await body(req);
   if (!ctx.member(role)) fail('unknown crew member');
-  return createThread(ctx, { role, kind: 'chat', title: trim(title, 80) || null });
+  // a chat starts on one workbench and stays there (the member's default unless another is picked)
+  if (bench && !benchesOf(ctx, role).some((x) => x.id === bench)) fail('unknown workbench');
+  return createThread(ctx, { role, kind: 'chat', title: trim(title, 80) || null, bench: benchOf(ctx, role, bench).id });
 });
 route('GET', '/api/vorlds/:id/threads/:tid', ({ p }) => { const ctx = W(p); return { thread: getThread(ctx, p.tid), events: readEvents(ctx, p.tid) }; });
 route('POST', '/api/vorlds/:id/threads/:tid/messages', async ({ p, req }) => {
@@ -233,6 +296,7 @@ route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
   if (b.answer === 'deny') { deny(ctx, { role: ask.role, capability: ask.capability, scope }); game.event('writ.refused'); }
   else {
     scope = checkScope(ctx, ask.capability, b.scope ?? ask.scope);
+    if (ask.capability === 'secret.use' && !hasSecret(ctx, ask.role, scope)) fail(`there is no secret called ${scope} in ${ctx.member(ask.role)?.name ?? 'this member'}'s vault; add it there first`);
     grant(ctx, { role: ask.role, capability: ask.capability, scope: ask.capability.startsWith('fs.') ? `${scope}/**` : scope, answer: b.answer });
     game.event('writ.granted').xp('writ_granted', notes);
   }
@@ -275,17 +339,9 @@ route('POST', '/api/vorlds/:id/browser/:role/:tool', async ({ p, q, req }) => {
   const thread = q.get('thread') ? (() => { try { return getThread(ctx, q.get('thread')); } catch { return null; } })() : null;
   // a site without a writ becomes a writ card in the member's thread right away (the brain is waiting on this call)
   const onRequest = (a) => { if (thread) requestAccess(ctx, thread, p.role, [a], (ev) => emit({ type: 'thread.event', thread: thread.id, role: p.role, ev })); };
-  try { return { ok: true, output: await browse.callTool(ctx, p.role, p.tool, await body(req), { emit, onRequest }) }; }
+  try { return { ok: true, output: redactSecrets(ctx, p.role, await browse.callTool(ctx, p.role, p.tool, await body(req), { emit, onRequest })) }; }
   catch (e) { return { ok: false, output: `error: ${e.message}` }; }
 });
-
-// signed-in browsing: the founder signs in to sites in a real window; members use it only through writs
-route('GET', '/api/vorlds/:id/signin', ({ p }) => browse.signInState(W(p)));
-route('POST', '/api/vorlds/:id/signin', async ({ p, req }) => {
-  const b = await body(req);
-  try { return await browse.openSignIn(W(p), { url: String(b.url ?? '').trim(), emit: emitTo(p.id) }); } catch (e) { fail(e.message); }
-});
-route('DELETE', '/api/vorlds/:id/signin', async ({ p }) => browse.forgetSignIns(W(p)));
 
 // quests
 route('GET', '/api/vorlds/:id/quests', ({ p }) => listQuests(W(p)));

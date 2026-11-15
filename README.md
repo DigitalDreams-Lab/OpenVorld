@@ -1,21 +1,22 @@
 # OpenVorld
 
-**Every project is a vorld.** A vorld is a project plus everyone working on it: the shared project folder, a crew of AI agents (each with a private workspace), the quests they plan and run together, and everything they've done so far. A project is just files; a vorld is the files plus the people and the work in progress.
+**Every project is a vorld.** A vorld is a project plus everyone working on it: the shared project folder, a crew of AI agents (each with a house, a vault and workbenches), the quests they plan and run together, and everything they've done so far. A project is just files; a vorld is the files plus the people and the work in progress.
 
 OpenVorld is the open-source home for vorlds. You see each vorld as a small pixel-art world where the crew lives, and you run it as the founder: you design the workflows, and you give the approvals.
 
 ```
 vorld "Lantern Tea"
 ├── project folder     shared: every member reads it, changes need your writ
-├── crew               a companion + agents, each with a private workspace
+├── crew               a companion + agents; each has a house, a vault and workbenches
 ├── quests             workflows: step → step → your Seal → done
 └── history            every chat, step, writ and deed, in plain files
 ```
 
 - **Quests, not endless chat.** A quest is a goal and a list of steps. Each step goes to one crew member, and each step's result is handed to the next. Mark a step with the **Seal** and the quest waits there until you approve the result or send it back with a note.
 - **Agents that feel like people.** Each member has a name, a job and a face. They walk to the Quest Board when a step starts, go home when it's done, and show a "!" when they're waiting for you.
-- **One shared project, private workspaces.** The whole crew reads the vorld's project folder, and each member drafts in their own workspace. Anything more needs a **writ** (change the project, run one command, visit one site), and you answer once, for this session or always.
-- **A browser for the crew.** Members that need the web browse in their own private Chrome, and you watch a live window in the game. Every site needs a writ, they never sign in or type passwords, and nothing on your computer or network can be reached. If a task needs a site you're logged in to, you sign in yourself in a real window, grant a per-site writ, and anything that posts, sends, buys or deletes asks for your approval first. (Needs Google Chrome or Edge installed.)
+- **One shared project, private workbenches.** The whole crew reads the vorld's project folder, and each member works on their own **workbenches** (folders you choose; several per member, and each chat starts on one). Anything more needs a **writ** (change the project, run one command, visit one site), and you answer once, for this session or always.
+- **A house and a vault for every member.** Each member has a private house that never moves and that no folder writ can reach. Its **vault** holds their API keys, OAuth tokens and the sign-ins you made for them. They see only the names, use one only with a writ, and values are hidden in chats.
+- **A browser for the crew.** Members that need the web browse in their own private Chrome, and you watch a live window in the game. Every site needs a writ, they never sign in or type passwords, and nothing on your computer or network can be reached. If a task needs a site you're logged in to, you sign in for that member yourself in a real window, grant a per-site writ, and anything that posts, sends, buys or deletes asks for your approval first. (Needs Google Chrome or Edge installed.)
 - **Bring your own brain.** Claude Code or Codex if they're on your computer, or any OpenAI-compatible API (OpenRouter, OpenAI, Ollama, LM Studio). You can pick a different brain for each member.
 - **Local and plain files.** Everything lives in `~/.openvorld`. Vorlds, chats and quests are YAML, JSON and JSONL that you can read. There's no account and no cloud.
 

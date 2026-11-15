@@ -1,4 +1,4 @@
-# Permissions ("Writs"). Every crew member starts with NOTHING: an empty private workspace inside the
+# Permissions ("Writs"). Every crew member starts with NOTHING: an empty workbench inside the
 # vorld folder and the ability to talk. Anything else is a grant the founder approves in the game.
 #
 # Flow: a crew member calls the engine tool `request_access(capability, scope, reason)` -> the game shows
@@ -40,12 +40,12 @@ capabilities:
     label: "read files in"                 # "<name> asks to <label> <scope>"
     risk: low
     scope: path                       # absolute path or glob; must be inside a folder the founder picked
-    never: ["~/.ssh/**", "~/.aws/**", "~/.config/**/token*", "**/*.p8", "**/*.pem", "**/.env*"]
+    never: ["~/.ssh/**", "~/.aws/**", "~/.config/**/token*", "**/*.p8", "**/*.pem", "**/.env*", "<vorld>/houses/**"]
   fs.write:
     label: "change files in"                 # "<name> asks to <label> <scope>"
     risk: medium
     scope: path
-    never: ["~/.ssh/**", "<vorld>/grants.yaml"]
+    never: ["~/.ssh/**", "<vorld>/grants.yaml", "<vorld>/houses/**"]
   cmd.run:
     label: "run the command"                 # "<name> asks to <label> <scope>"
     risk: high
@@ -65,3 +65,7 @@ capabilities:
     risk: high
     scope: domain
     seal: every_time                  # never "always": the founder approves this time or for the session
+  secret.use:
+    label: "use the secret"             # from the member's vault; the founder adds secrets in the member's settings
+    risk: high
+    scope: name                       # a secret name like "YT_CLIENT_SECRET"; the value is never shown in the chat

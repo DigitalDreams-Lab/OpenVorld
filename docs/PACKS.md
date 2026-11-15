@@ -39,7 +39,7 @@ quests:
 
 ## Roles (`kind: role`)
 
-There are two roles: `companion`, the guide who can draft quests, and `agent`, which every other member uses. The prompt can use `{name}`, `{job}`, `{function}`, `{voice}`, `{vorld}`, `{about}`, `{crew}`, `{project}` (the shared project folder) and `{workspace}` (the member's private workspace).
+There are two roles: `companion`, the guide who can draft quests, and `agent`, which every other member uses. The prompt can use `{name}`, `{job}`, `{function}`, `{voice}`, `{vorld}`, `{about}`, `{crew}`, `{project}` (the shared project folder) and `{workbench}` (the workbench this chat works on).
 
 ```yaml
 kind: role

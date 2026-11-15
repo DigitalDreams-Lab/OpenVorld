@@ -1,8 +1,8 @@
 // Vorld settings: name and purpose, model endpoints (OpenAI-compatible; the key is read from an environment variable
-// you name, never stored), the project folder, the private workspaces folder, the writs you granted, and sound.
+// you name, never stored), the project folder, the workbenches folder, the writs you granted, and sound.
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import { emit, on, setState, toast, useStore } from '../store';
+import { emit, setState, toast, useStore } from '../store';
 import { play, setSfxVolume } from '../audio/sfx';
 import { WritsList } from './WritsList';
 import { FolderPicker, useFolderDialog } from './FolderPicker';
@@ -55,7 +55,6 @@ export function Settings() {
         <p className="muted small">Keys are never saved: set the environment variable before starting OpenVorld.</p>
 
         <ProjectFolder />
-        <SignedIn />
         <DefaultFolder />
         <WritsList />
         <h3>Sound</h3>
@@ -104,75 +103,31 @@ function ProjectFolder() {
   );
 }
 
-/** Signed-in browsing: the founder signs in to sites in a real window; crew members use it only through writs. */
-function SignedIn() {
-  const wid = useStore((s) => s.vorldId)!;
-  const [st, setSt] = useState<any>(null);
-  const [url, setUrl] = useState('');
-  const [busy, setBusy] = useState(false);
-  const [sure, setSure] = useState(false);
-  const load = () => api(`/vorlds/${wid}/signin`).then(setSt).catch(() => {});
-  useEffect(() => { void load(); const off = on('signin', setSt); return () => { off(); }; }, [wid]);
-  useEffect(() => { if (!st?.open) return; const t = setInterval(load, 3000); return () => clearInterval(t); }, [st?.open]);
-  const open = async () => {
-    setBusy(true);
-    try { setSt(await api(`/vorlds/${wid}/signin`, { body: { url } })); play('ui.open'); }
-    catch (e: any) { toast({ kind: 'error', title: e.message }); } finally { setBusy(false); }
-  };
-  const forget = async () => {
-    try { setSt(await api(`/vorlds/${wid}/signin`, { method: 'DELETE' })); setSure(false); }
-    catch (e: any) { toast({ kind: 'error', title: e.message }); }
-  };
-  if (!st) return null;
-  return (
-    <>
-      <h3>Signed-in browsing</h3>
-      <p className="muted">Sign in to the sites your crew should use, in a real browser window. They never see or type your passwords. A member can use your sign-in only on a site where you grant them a writ, and anything that posts, sends, buys or deletes needs your approval each time.</p>
-      {!st.available ? <p className="error small">This needs Google Chrome or Microsoft Edge installed on this computer.</p> : (
-        <div className="pf-row">
-          <input className="field grow" value={url} placeholder="https://www.youtube.com (optional start page)" disabled={st.open} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void open(); }} />
-          <button className="btn small primary" disabled={busy} onClick={open}>{st.open ? 'Show the window' : 'Open sign-in window'}</button>
-        </div>
-      )}
-      {st.open && <p className="small">A browser window is open. Sign in there, then close the window to save.</p>}
-      {st.sites.length > 0 ? (
-        <>
-          <p className="small">Saved sign-ins on this computer:</p>
-          <div className="signin-sites">{st.sites.map((x: any) => <span key={x.domain} className="chip" title={`${x.cookies} cookies`}>🔒 {x.domain}</span>)}</div>
-          {!sure
-            ? <button className="btn small" onClick={() => setSure(true)}>Forget all sign-ins</button>
-            : <div className="row"><span className="small">Delete every saved sign-in?</span><button className="btn small primary" onClick={forget}>Yes, forget them</button><button className="btn small" onClick={() => setSure(false)}>Keep</button></div>}
-        </>
-      ) : <p className="muted small">No saved sign-ins yet.</p>}
-    </>
-  );
-}
-
 /** The folder every crew member's own work folder is made in. */
 function DefaultFolder() {
   const wid = useStore((s) => s.vorldId)!;
-  const space = useStore((s) => s.vorld)?.workspace;
+  const space = useStore((s) => s.vorld)?.benches;
   const { native, choose } = useFolderDialog('fs.write');
-  const [folder, setFolder] = useState(space?.default_space ?? '');
+  const [folder, setFolder] = useState(space?.base ?? '');
   const [typing, setTyping] = useState(false);
   const save = async (base: string | null) => {
-    try { const w = await api(`/vorlds/${wid}`, { method: 'PUT', body: { workspace_base: base } }); setState({ vorld: w }); emit('vorld', w); setTyping(false); }
+    try { const w = await api(`/vorlds/${wid}`, { method: 'PUT', body: { bench_base: base } }); setState({ vorld: w }); emit('vorld', w); setTyping(false); }
     catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   const change = async () => {
     if (!native) { setTyping(true); return; }
-    try { const p = await choose(space?.default_space); if (p) await save(p); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
+    try { const p = await choose(space?.base); if (p) await save(p); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   if (!space) return null;
   return (
     <>
-      <h3>Private workspaces</h3>
-      <p className="muted">Each crew member has a private workspace for drafts and notes inside this folder, unless you give them another in their settings.</p>
+      <h3>Workbenches</h3>
+      <p className="muted">Each crew member's Main bench is made inside this folder, unless you give them another folder in their settings. They can have more workbenches there too.</p>
       {!typing ? (
         <div className="pf-row">
-          <code className="pf-path" title={space.default_space}>{tail(space.default_space)}</code>
+          <code className="pf-path" title={space.base}>{tail(space.base)}</code>
           <button className="btn small" onClick={change}>Change</button>
-          {space.default_is_custom && <button className="btn small" onClick={() => save(null)}>Back to the vorld folder</button>}
+          {space.custom && <button className="btn small" onClick={() => save(null)}>Back to the vorld folder</button>}
         </div>
       ) : (
         <>

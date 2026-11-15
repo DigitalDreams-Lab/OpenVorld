@@ -22,7 +22,7 @@ export function WritsList() {
     <>
       <h3>Writs</h3>
       <p className="muted">What your crew members may do. Everything else is closed to them until they ask and you agree.</p>
-      {grants && !grants.length && <p className="muted">No access granted. Every crew member reads the project folder and works in their own private workspace.</p>}
+      {grants && !grants.length && <p className="muted">No access granted. Every crew member reads the project folder and works on their own workbenches.</p>}
       <ul className="writs-list">
         {(grants ?? []).map((g) => (
           <li key={g.id} className="writ-row">

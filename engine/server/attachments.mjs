@@ -7,7 +7,7 @@ import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { getThread, readEvents } from './threads.mjs';
 import { folderGrants, isNever } from './gate.mjs';
-import { workspaceOf, projectOf } from './workspace.mjs';
+import { benchesOf, benchOf, projectOf } from './benches.mjs';
 
 export const MAX_FILE = 20 * 1024 * 1024;
 const bad = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
@@ -124,10 +124,10 @@ function resolveAttachmentsFromEvents(ctx, tid, events) {
 /** Resolve local links from agent replies only inside this thread's granted folders. */
 export function replyFile(ctx, tid, requested) {
   const thread=getThread(ctx,tid), roles=[thread.role];
-  const roots=[projectOf(ctx).path,...roles.flatMap(role=>[workspaceOf(ctx,role).path,...folderGrants(ctx,role,'fs.read'),...folderGrants(ctx,role,'fs.write')])];
+  const roots=[projectOf(ctx).path,...roles.flatMap(role=>[...benchesOf(ctx,role).map(b=>b.path),...folderGrants(ctx,role,'fs.read'),...folderGrants(ctx,role,'fs.write')])];
   roots.push(dirOf(ctx,tid));
   roots.push(...threadAttachments(ctx,tid).filter(f=>f.kind==='reference').map(f=>f.path));
-  const base=thread.binding?.project ?? workspaceOf(ctx,roles[0]).path;
+  const base=benchOf(ctx,thread.role,thread.bench).path;
   let file;
   try { file=fs.realpathSync(path.resolve(base,String(requested))); } catch {bad('File not found',404);}
   const allowed=roots.some(root=>{try{const r=fs.realpathSync(root);return file===r || file.startsWith(r+path.sep);}catch{return false;}});

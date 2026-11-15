@@ -187,8 +187,8 @@ test('signed-in browsing: saved sign-ins, per-site writs, and approval before ac
 
   // nothing saved yet: signed-in browsing says so instead of asking for writs
   await assert.rejects(use('browser_open', { url: home, signed_in: true }), /has not signed in/);
-  hub.saveSession(ctx, { cookies: [{ name: 'SID', value: 'secret-session', domain: '127.0.0.1', path: '/', expires: -1, httpOnly: false, secure: false, sameSite: 'Lax' }], origins: [] });
-  assert.deepEqual(hub.sessionSites(ctx).map((s) => s.domain), ['0.1']);   // IPs have no site name: shown as the last two labels
+  hub.saveSession(ctx, 'ada', { cookies: [{ name: 'SID', value: 'secret-session', domain: '127.0.0.1', path: '/', expires: -1, httpOnly: false, secure: false, sameSite: 'Lax' }], origins: [] });
+  assert.deepEqual(hub.sessionSites(ctx, 'ada').map((s) => s.domain), ['0.1']);   // IPs have no site name: shown as the last two labels
 
   grant(ctx, { role: 'ada', capability: 'net.fetch', scope: '127.0.0.1' });
   assert.match(await use('browser_open', { url: home }), /cookie: none/, 'plain browsing never carries the sign-ins');
@@ -240,19 +240,19 @@ test('the sign-in window saves what the founder signs in to, and can forget it (
   process.env.OV_SIGNIN_HEADLESS = '1';
   const ctx = crew(), heard = [];
   t.after(async () => { delete process.env.OV_SIGNIN_HEADLESS; await hub.closeAll(); });
-  assert.deepEqual(hub.signInState(ctx).sites, []);
-  const state = await hub.openSignIn(ctx, { url: 'about:blank'.replace('about:blank', 'https://example.com'), emit: (m) => heard.push(m) }).catch((e) => e);
+  assert.deepEqual(hub.signInState(ctx, 'ada').sites, []);
+  const state = await hub.openSignIn(ctx, 'ada', { url: 'about:blank'.replace('about:blank', 'https://example.com'), emit: (m) => heard.push(m) }).catch((e) => e);
   // example.com may be unreachable offline; the window is up either way
-  assert.ok(hub.signInWindow(ctx), String(state?.message ?? 'window open'));
-  assert.equal(hub.signInState(ctx).open, true);
-  await hub.signInWindow(ctx).context.addCookies([{ name: 'SID', value: 'abc', domain: '.youtube.com', path: '/' }, { name: 'HSID', value: 'def', domain: '.youtube.com', path: '/' }, { name: 'a', value: '1', domain: 'github.com', path: '/' }]);
-  await hub.signInWindow(ctx).save();
-  assert.deepEqual(hub.sessionSites(ctx), [{ domain: 'youtube.com', cookies: 2 }, { domain: 'github.com', cookies: 1 }]);
-  await assert.rejects(hub.openSignIn(ctx, { url: 'file:///etc/passwd' }), /web address/);
+  assert.ok(hub.signInWindow(ctx, 'ada'), String(state?.message ?? 'window open'));
+  assert.equal(hub.signInState(ctx, 'ada').open, true);
+  await hub.signInWindow(ctx, 'ada').context.addCookies([{ name: 'SID', value: 'abc', domain: '.youtube.com', path: '/' }, { name: 'HSID', value: 'def', domain: '.youtube.com', path: '/' }, { name: 'a', value: '1', domain: 'github.com', path: '/' }]);
+  await hub.signInWindow(ctx, 'ada').save();
+  assert.deepEqual(hub.sessionSites(ctx, 'ada'), [{ domain: 'youtube.com', cookies: 2 }, { domain: 'github.com', cookies: 1 }]);
+  await assert.rejects(hub.openSignIn(ctx, 'ada', { url: 'file:///etc/passwd' }), /web address/);
   const closed = new Promise((r) => { const iv = setInterval(() => { if (heard.some((m) => m.open === false)) { clearInterval(iv); r(); } }, 50); });
-  await hub.signInWindow(ctx).browser.close();
+  await hub.signInWindow(ctx, 'ada').browser.close();
   await closed;
-  assert.equal(hub.signInState(ctx).open, false);
-  assert.equal(hub.sessionSites(ctx).length, 2, 'closing the window keeps the sign-ins');
-  assert.deepEqual((await hub.forgetSignIns(ctx)).sites, []);
+  assert.equal(hub.signInState(ctx, 'ada').open, false);
+  assert.equal(hub.sessionSites(ctx, 'ada').length, 2, 'closing the window keeps the sign-ins');
+  assert.deepEqual((await hub.forgetSignIns(ctx, 'ada')).sites, []);
 });

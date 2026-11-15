@@ -33,6 +33,12 @@ agent:
       founder: read freely, but anything that posts, sends, buys, deletes or changes settings needs net.act for that
       site, so ask first and do it only once approved.
     act_words: [post, publish, send, submit, buy, purchase, pay, order, checkout, delete, remove, confirm, subscribe, unsubscribe, follow, unfollow, like, comment, reply, share, upload, save, update, book, reserve, approve, accept, withdraw, transfer, donate, schedule, sign out, log out, logout]
+  vault:                           # the member's vault of secrets (see engine/server/house.mjs); {names} and {held} are filled in
+    instructions: |
+      Your vault holds secrets (names only; you can never read the values): {names}. Secrets you may use now: {held}.
+      To use one, ask for access with capability secret.use (scope = the name); the founder decides. Never ask the
+      founder to paste a secret into the chat. In the engine's command tool write %NAME% where the value belongs; in
+      your own shell write $NAME (your environment has the secrets you may use). Values are hidden in the chat.
   transcript: { output_chars: 4000, detail_chars: 1500 }
   chat: { collapse_after: 6 }
   claude_code:

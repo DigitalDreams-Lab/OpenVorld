@@ -55,17 +55,17 @@ function AddAgent({ onClose }: { onClose: () => void }) {
   const { opts, choices, label } = useBrainChoices(wid);
   const brainValue = `${f.brain.provider}${f.brain.name ? '#' + f.brain.name : ''}`;
   if (opts && !choices.some((p) => p.value === brainValue)) choices.push({ value: brainValue, label: `${label(f.brain.provider)} (not found here)` });
-  const defaultWs = `${vorld.workspace?.default_space ?? ''}/${slug(f.name)}`;
+  const defaultWs = `${vorld.benches?.base ?? ''}/${slug(f.name)}`;
   const ws = folder.trim() || defaultWs;
   const pickFolder = async () => {
     if (!native) { setTyping(true); return; }
-    try { const p = await choose(folder.trim() || vorld.workspace?.default_space); if (p) setFolder(p); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
+    try { const p = await choose(folder.trim() || vorld.benches?.base); if (p) setFolder(p); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   const add = async () => {
     setBusy(true);
     try {
       const trimmedFolder = folder.trim();
-      const w = await api(`/vorlds/${wid}/crew`, { body: { ...f, ...(trimmedFolder ? { workspace: trimmedFolder } : {}) } });
+      const w = await api(`/vorlds/${wid}/crew`, { body: { ...f, ...(trimmedFolder ? { bench: trimmedFolder } : {}) } });
       await loadGenerated(w.art.atlas, (name) => artImage(name));
       setState({ vorld: w, talkingTo: w.added, modal: null });
       emit('vorld', w);
@@ -77,7 +77,7 @@ function AddAgent({ onClose }: { onClose: () => void }) {
     <div className="modal-bg" onClick={onClose}>
       <form className="modal panel add-agent" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void add(); }}>
         <header className="row between"><h2>New agent</h2><button type="button" className="x" onClick={onClose}>✕</button></header>
-        <p className="muted">An agent is a name, a job title and a job description. It uses your companion's brain and default workspace unless you pick another.</p>
+        <p className="muted">An agent is a name, a job title and a job description. It uses your companion's brain and Main bench unless you pick another folder.</p>
         <label>Name<input className="field" autoFocus value={f.name} maxLength={40} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
         <label>Job title<input className="field" value={f.job} maxLength={40} placeholder="e.g. Researcher" onChange={(e) => setF({ ...f, job: e.target.value })} /></label>
         <label>Job description<textarea className="field" rows={3} value={f.function} maxLength={400} placeholder="What they do for you" onChange={(e) => setF({ ...f, function: e.target.value })} /></label>
@@ -87,7 +87,7 @@ function AddAgent({ onClose }: { onClose: () => void }) {
           <label className="grow">Model<ModelPicker wid={wid} provider={f.brain.provider} name={f.brain.name} tier="balanced" value={f.brain.model || undefined} onChange={(model) => setF({ ...f, brain: { ...f.brain, model: model ?? '' } })} /></label>
         </div>
         <section className="project-folder">
-          <b>Private workspace</b>
+          <b>Main workbench</b>
           <div className="pf-row">
             <code className="pf-path" title={ws}>{tail(ws)}</code>
             <button type="button" className="btn small" onClick={pickFolder}>Change</button>

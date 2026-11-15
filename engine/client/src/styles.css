@@ -292,10 +292,13 @@ select.field, .cs-fields select  { appearance: none; -webkit-appearance: none; m
   background-color: #fffaf0; background-repeat: no-repeat; background-position: right 10px center; background-size: 12px 8px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232a2233' stroke-width='2.4' stroke-linecap='square'/%3E%3C/svg%3E"); }
 select.field.small { padding-right: 26px; }
-.workspace .pf-row { flex-wrap: wrap; row-gap: 4px; } .workspace .pf-path { flex: 1 1 100%; }
+.workbenches .pf-row, .vault .pf-row { flex-wrap: wrap; row-gap: 4px; } .workbenches .pf-path { flex: 1 1 100%; }
+.bench { display: grid; gap: 4px; padding: 6px 0; border-top: 1px dashed var(--ink); } .bench-name { font-size: 14px; }
+.vault-part { display: grid; gap: 4px; padding: 6px 0; border-top: 1px dashed var(--ink); } .vault .row.wrap { flex-wrap: wrap; }
+.bench-pick { max-width: 140px; padding-top: 3px; padding-bottom: 3px; font-size: 13px; }
 .cs-fields > label, .cs-fields .row > label, .add-agent > label, .add-agent .row > label { min-width: 0; }
 
-.cs-fields > label, .cs-fields .workspace { grid-template-columns: minmax(0, 1fr); }
+.cs-fields > label, .cs-fields .workbenches, .cs-fields .vault { grid-template-columns: minmax(0, 1fr); }
 .cs-preview * { min-width: 0; }
 
 .endpoint.endpoint-row { grid-template-columns: 110px minmax(0, 1fr) minmax(0, 1fr) auto; }

@@ -25,11 +25,12 @@ import dns from 'node:dns/promises';
 import crypto from 'node:crypto';
 import { grantsOf } from './gate.mjs';
 import { BROWSER_TOOLS, isBrowserTool } from './browser-tools.mjs';
+import { vaultDir } from './house.mjs';
 
 const sessions = new Map();     // `${vorld}:${role}:${kind}` -> session
 const current = new Map();      // `${vorld}:${role}` -> the kind the member last opened a page in
 let shared = null;              // the one headless Chrome process every session's context lives in
-const signins = new Map();      // vorld id -> the open sign-in window
+const signins = new Map();      // `${vorld}:${role}` -> the open sign-in window
 
 const DEFAULTS = {
   enabled: true, viewport: { width: 1024, height: 640 }, text_chars: 12000, max_elements: 60,
@@ -90,46 +91,44 @@ const holds = (ctx, role, capability, host) => allowsHost(grantsOf(ctx, role).fi
 
 const fail = (msg) => { throw new Error(msg); };
 
-// ---------- the founder's saved sign-ins ----------
-const sessionFile = (ctx) => path.join(ctx.dir, 'browser', 'session.json');
-/** The saved sign-ins (Playwright storage state: cookies and local storage), or undefined. */
-function loadSession(ctx) { try { return JSON.parse(fs.readFileSync(sessionFile(ctx), 'utf8')); } catch { return undefined; } }
-export function saveSession(ctx, state) {
-  fs.mkdirSync(path.dirname(sessionFile(ctx)), { recursive: true, mode: 0o700 });
-  fs.writeFileSync(sessionFile(ctx), JSON.stringify(state), { mode: 0o600 });
-}
+// ---------- the founder's saved sign-ins (one set per crew member, in its vault) ----------
+const sessionFile = (ctx, role) => path.join(vaultDir(ctx, role), 'session.json');
+/** The member's saved sign-ins (Playwright storage state: cookies and local storage), or undefined. */
+function loadSession(ctx, role) { try { return JSON.parse(fs.readFileSync(sessionFile(ctx, role), 'utf8')); } catch { return undefined; } }
+export function saveSession(ctx, role, state) { fs.writeFileSync(sessionFile(ctx, role), JSON.stringify(state), { mode: 0o600 }); }
 const SLD = new Set(['co', 'com', 'org', 'net', 'gov', 'edu', 'ac']);
 const siteOf = (domain) => { const p = String(domain).replace(/^\./, '').toLowerCase().split('.'); return p.length > 2 && SLD.has(p.at(-2)) ? p.slice(-3).join('.') : p.slice(-2).join('.'); };
-/** Sites the founder is signed in to: [{ domain, cookies }], most cookies first. */
-export function sessionSites(ctx) {
+/** Sites the founder has signed in to for this member: [{ domain, cookies }], most cookies first. */
+export function sessionSites(ctx, role) {
   const counts = new Map();
-  for (const c of loadSession(ctx)?.cookies ?? []) counts.set(siteOf(c.domain), (counts.get(siteOf(c.domain)) ?? 0) + 1);
+  for (const c of loadSession(ctx, role)?.cookies ?? []) counts.set(siteOf(c.domain), (counts.get(siteOf(c.domain)) ?? 0) + 1);
   return [...counts].map(([domain, cookies]) => ({ domain, cookies })).sort((a, b) => b.cookies - a.cookies || a.domain.localeCompare(b.domain));
 }
-export const signInState = (ctx) => ({ available: browserAvailable(), open: signins.has(ctx.id), sites: sessionSites(ctx) });
+export const signInState = (ctx, role) => ({ role, available: browserAvailable(), open: signins.has(`${ctx.id}:${role}`), sites: sessionSites(ctx, role) });
 
 /**
- * Open a real, visible Chrome window for the founder to sign in to sites. Whatever they sign in to is saved (cookies
- * and local storage, on this computer only) when they close the window; crew members use it only through writs.
- * Resolves once the window is up. `emit` hears { type: 'signin', open, sites } when it closes.
+ * Open a real, visible Chrome window for the founder to sign in to sites AS this member. Whatever they sign in to is
+ * saved to the member's vault (cookies and local storage, on this computer only) when they close the window; the
+ * member uses it only through writs. Resolves once the window is up. `emit` hears { type: 'signin', role, open, sites }.
  */
-export async function openSignIn(ctx, { url = '', emit = null } = {}) {
+export async function openSignIn(ctx, role, { url = '', emit = null } = {}) {
   let start = '';
   if (url) {
     let u; try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`); } catch { fail('that is not a web address'); }
     if (!/^https?:$/.test(u.protocol)) fail('that is not a web address');
     start = u.href;
   }
-  if (signins.has(ctx.id)) { await signins.get(ctx.id).page.bringToFront().catch(() => {}); return signInState(ctx); }
+  const wkey = `${ctx.id}:${role}`;
+  if (signins.has(wkey)) { await signins.get(wkey).page.bringToFront().catch(() => {}); return signInState(ctx, role); }
   const exe = findChrome();
   if (!exe) fail('Signing in needs Google Chrome or Microsoft Edge installed on this computer.');
   const { chromium } = await import('playwright-core');
   // not flagged as automated: this is the founder's own window, and some sign-in pages refuse automated browsers
   const browser = await chromium.launch({ executablePath: exe, headless: process.env.OV_SIGNIN_HEADLESS === '1', ignoreDefaultArgs: ['--enable-automation'], args: ['--no-first-run', '--no-default-browser-check'] });
-  const context = await browser.newContext({ viewport: null, storageState: loadSession(ctx) });
+  const context = await browser.newContext({ viewport: null, storageState: loadSession(ctx, role) });
   const w = { browser, context, page: await context.newPage(), timer: null, debounce: null };
-  signins.set(ctx.id, w);
-  const save = async () => { const st = await context.storageState({ indexedDB: true }).catch(() => null); if (st) saveSession(ctx, st); };
+  signins.set(wkey, w);
+  const save = async () => { const st = await context.storageState({ indexedDB: true }).catch(() => null); if (st) saveSession(ctx, role, st); };
   w.save = save;
   w.timer = setInterval(save, 3000); w.timer.unref?.();
   const later = () => { clearTimeout(w.debounce); w.debounce = setTimeout(save, 600); };
@@ -137,22 +136,22 @@ export async function openSignIn(ctx, { url = '', emit = null } = {}) {
   w.page.on('framenavigated', later);
   browser.on('disconnected', async () => {
     clearInterval(w.timer); clearTimeout(w.debounce);
-    signins.delete(ctx.id);
-    await closeKind(ctx, 'signed');          // members pick up the new sign-ins the next time they open a page
-    emit?.({ type: 'signin', ...signInState(ctx) });
+    signins.delete(wkey);
+    await closeKind(ctx, 'signed', role);          // the member picks up the new sign-ins the next time it opens a page
+    emit?.({ type: 'signin', ...signInState(ctx, role) });
   });
   if (start) await w.page.goto(start, { timeout: 20000, waitUntil: 'domcontentloaded' }).catch(() => {});
-  emit?.({ type: 'signin', ...signInState(ctx) });
-  return signInState(ctx);
+  emit?.({ type: 'signin', ...signInState(ctx, role) });
+  return signInState(ctx, role);
 }
-/** For tests: the open sign-in window ({ context, page, save, browser }), or null. */
-export const signInWindow = (ctx) => signins.get(ctx.id) ?? null;
+/** For tests: the member's open sign-in window ({ context, page, save, browser }), or null. */
+export const signInWindow = (ctx, role) => signins.get(`${ctx.id}:${role}`) ?? null;
 
-/** Delete every saved sign-in. */
-export async function forgetSignIns(ctx) {
-  try { fs.rmSync(sessionFile(ctx), { force: true }); } catch { /* nothing saved */ }
-  await closeKind(ctx, 'signed');
-  return signInState(ctx);
+/** Delete every saved sign-in of the member. */
+export async function forgetSignIns(ctx, role) {
+  try { fs.rmSync(sessionFile(ctx, role), { force: true }); } catch { /* nothing saved */ }
+  await closeKind(ctx, 'signed', role);
+  return signInState(ctx, role);
 }
 
 // ---------- sessions ----------
@@ -166,7 +165,7 @@ async function sessionOf(ctx, role, kind) {
   if (s?.page && !s.page.isClosed()) return s;
   const browser = await chrome();
   const ua = `Mozilla/5.0 (${process.platform === 'darwin' ? 'Macintosh; Intel Mac OS X 10_15_7' : process.platform === 'win32' ? 'Windows NT 10.0; Win64; x64' : 'X11; Linux x86_64'}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browser.version()} Safari/537.36 OpenVorld/1`;
-  const context = await browser.newContext({ viewport: cfg.viewport, acceptDownloads: false, serviceWorkers: 'block', locale: 'en-US', userAgent: ua, permissions: [], ...(kind === 'signed' ? { storageState: loadSession(ctx) } : {}) });
+  const context = await browser.newContext({ viewport: cfg.viewport, acceptDownloads: false, serviceWorkers: 'block', locale: 'en-US', userAgent: ua, permissions: [], ...(kind === 'signed' ? { storageState: loadSession(ctx, role) } : {}) });
   s = { key, ctx, role, kind, browser, context, page: null, queue: Promise.resolve(), denied: [], hops: 0, last: null, hash: '', timer: null, idle: null, activeUntil: 0, emit: null, cfg };
   context.on('page', (p) => { s.page = p; p.on('dialog', (d) => d.dismiss().catch(() => {})); });
   await context.route('**/*', async (route) => {
@@ -206,7 +205,7 @@ async function closeSession(s) {
   await s.context.close().catch(() => {});
   if (!sessions.size && shared) { const b = shared; shared = null; b.then((x) => x.close()).catch(() => {}); }
 }
-async function closeKind(ctx, kind) { for (const s of [...sessions.values()]) if (s.ctx.id === ctx.id && s.kind === kind) await closeSession(s); }
+async function closeKind(ctx, kind, role = null) { for (const s of [...sessions.values()]) if (s.ctx.id === ctx.id && s.kind === kind && (!role || s.role === role)) await closeSession(s); }
 export async function close(ctx, role) { for (const s of [...sessions.values()]) if (s.ctx.id === ctx.id && s.role === role) await closeSession(s); }
 export async function closeAll() {
   for (const s of [...sessions.values()]) await closeSession(s);
@@ -379,7 +378,7 @@ export async function callTool(ctx, role, name, args = {}, { emit = null, onRequ
     if (!cfg.allow_private && await isPrivateHost(u.hostname)) fail(`${u.hostname} is on this computer or network and is always blocked`);
     if (net.isIP(u.hostname.replace(/^\[|\]$/g, '')) && !cfg.allow_private) fail('open sites by their domain name, not by an IP address');
     kind = args.signed_in === true ? 'signed' : 'plain';
-    if (kind === 'signed' && !sessionSites(ctx).length) fail('the founder has not signed in to anything yet. Ask them to sign in to this site first (Settings > Signed-in browsing), then try again');
+    if (kind === 'signed' && !sessionSites(ctx, role).length) fail('the founder has not signed in to anything for you yet. Ask them to sign in to this site as you first (your settings > Vault), then try again');
     if (!allowsHost(domainsOf(ctx, role, kind), u.hostname)) {
       onRequest?.({ capability: CAP[kind], scope: u.hostname, why: `open ${u.href.slice(0, 80)}${kind === 'signed' ? ' signed in as you' : ''}` });
       fail(`no writ for ${u.hostname}${kind === 'signed' ? ' (signed in)' : ''}. The founder has been asked; wait for their answer.`);

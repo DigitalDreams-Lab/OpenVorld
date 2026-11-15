@@ -10,7 +10,7 @@ import { startServer, call, newVorld } from './helpers/server.mjs';
 const { parse, evaluate } = await import('../tools/lib/dsl.mjs');
 const { gameFor, xpFor } = await import('../engine/server/game.mjs');
 const { atlasFor } = await import('../engine/server/art.mjs');
-const { projectOf } = await import('../engine/server/workspace.mjs');
+const { projectOf } = await import('../engine/server/benches.mjs');
 const { runTurn } = await import('../engine/server/agents/runner.mjs');
 const { createThread } = await import('../engine/server/threads.mjs');
 
@@ -58,14 +58,13 @@ test('the crew API: add, edit, brain, remove; the companion stays', async (t) =>
   await startServer(t);
   const { root } = await newVorld();
   const ws = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-add-ws-')); t.after(() => fs.rmSync(ws, { recursive: true, force: true }));
-  const added = await call('POST', `${root}/crew`, { name: 'Ada', job: 'Writer', function: 'Writes posts', brain: { provider: 'claude-code', model: 'opus' }, workspace: ws });
+  const added = await call('POST', `${root}/crew`, { name: 'Ada', job: 'Writer', function: 'Writes posts', brain: { provider: 'claude-code', model: 'opus' }, bench: ws });
   assert.equal(added.status, 200);
   assert.equal(added.data.crew.length, 2);
   assert.equal(added.data.added, 'ada');
   const addedAda = added.data.crew.find((c) => c.id === 'ada');
   assert.deepEqual(addedAda.brain, { provider: 'claude-code', model: 'opus' });
-  assert.equal(addedAda.workspace.path, ws);
-  assert.equal(addedAda.workspace.source, 'own');
+  assert.deepEqual(addedAda.benches.map((b) => [b.id, b.path, b.chosen]), [['main', ws, true]]);
   const edited = await call('PUT', `${root}/crew/ada`, { job: 'Editor', brain: { provider: 'claude-code', model: 'sonnet' } });
   const ada = edited.data.crew.find((c) => c.id === 'ada');
   assert.equal(ada.job, 'Editor'); assert.deepEqual(ada.brain, { provider: 'claude-code', model: 'sonnet' });

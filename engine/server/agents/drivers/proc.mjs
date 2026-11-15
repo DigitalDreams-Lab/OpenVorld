@@ -8,9 +8,9 @@ export function cleanEnv() {
   return env;
 }
 
-export function runJsonLines({ cmd, args, cwd, stdin, signal, onLine, onStderr }) {
+export function runJsonLines({ cmd, args, cwd, stdin, env, signal, onLine, onStderr }) {
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { cwd, env: cleanEnv(), stdio: ['pipe', 'pipe', 'pipe'] });
+    const child = spawn(cmd, args, { cwd, env: env ? { ...cleanEnv(), ...env } : cleanEnv(), stdio: ['pipe', 'pipe', 'pipe'] });
     const kill = () => child.kill('SIGTERM');
     signal?.addEventListener('abort', kill, { once: true });
     let buf = '', err = '';

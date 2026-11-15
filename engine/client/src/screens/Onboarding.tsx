@@ -49,7 +49,7 @@ export function Onboarding({ boot, onDone, onCancel }: { boot: any; onDone: (id:
 
         <section>
           <h3>Project folder</h3>
-          <p className="muted small">The one folder the whole crew works on. Everyone can read it; changing files in it needs your writ. Each member also gets a private workspace for drafts.</p>
+          <p className="muted small">The one folder the whole crew works on. Everyone can read it; changing files in it needs your writ. Each member also gets a workbench of their own, and a private house for their keys.</p>
           <label className="radio"><input type="radio" name="project" checked={!ownFolder} onChange={() => setOwnFolder(false)} /> A new folder inside the vorld</label>
           <label className="radio"><input type="radio" name="project" checked={ownFolder} onChange={() => setOwnFolder(true)} /> A folder on this computer (a repo, a shared drive…)</label>
           {ownFolder && (

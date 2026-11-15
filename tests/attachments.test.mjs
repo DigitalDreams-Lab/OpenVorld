@@ -36,7 +36,7 @@ test('local reply links respect conversation folder access and reject symlink es
   const dir=fs.mkdtempSync(path.join(os.tmpdir(),'ov-links-'));t.after(()=>fs.rmSync(dir,{recursive:true,force:true}));
   const ctx={dir,id:'demo',packs:loadPacks(packRoots(dir))}, thread=createThread(ctx,{role:'guide'});
   fs.writeFileSync(path.join(dir,'grants.yaml'),'grants: []\n');
-  const workspace=path.join(dir,'workspaces/guide');fs.mkdirSync(workspace,{recursive:true});
+  const workspace=path.join(dir,'workbenches/guide');fs.mkdirSync(workspace,{recursive:true});
   fs.writeFileSync(path.join(workspace,'preview.png'),png);
   fs.writeFileSync(path.join(dir,'secret.txt'),'outside');
   fs.writeFileSync(path.join(workspace,'.env'),'KEY=secret');
@@ -66,7 +66,7 @@ test('original-path references have no upload size/count cap and do not copy or 
   assert.equal(getAttachment({...ctx},thread.id,refs[0].id).path,fs.realpathSync(huge));
   assert.ok(attachmentPrompt('Review',files).includes(fs.realpathSync(huge)));
   fs.writeFileSync(paths[1],'Updated original');assert.equal(fs.readFileSync(getAttachment(ctx,thread.id,refs[1].id).path,'utf8'),'Updated original');
-  const workspace=path.join(dir,'workspaces/guide');fs.mkdirSync(workspace,{recursive:true});
+  const workspace=path.join(dir,'workbenches/guide');fs.mkdirSync(workspace,{recursive:true});
   const reader=engineTools({ctx,role:'guide',cwd:workspace,readRoots:[files[1].path]});
   assert.equal((await reader.run('read_file',{path:files[1].path})).ok,true);
   assert.equal((await reader.run('read_file',{path:files[2].path})).ok,false,'one reference does not grant the parent folder');

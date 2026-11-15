@@ -14,7 +14,8 @@ import { Transcript } from './steps.mjs';
 import { engineTools } from './tools.mjs';
 import { appendEvent, getThread, updateThread, history, readEvents } from '../threads.mjs';
 import { grantsOf, folderGrants, consumeOnce, holds, checkScope } from '../gate.mjs';
-import { workspaceOf, projectOf } from '../workspace.mjs';
+import { benchOf, projectOf } from '../benches.mjs';
+import { heldSecrets, redactEvent, redactSecrets, vaultHelp } from '../house.mjs';
 import { browserFor } from './browse.mjs';
 import { gameFor } from '../game.mjs';
 import { attachmentPrompt, publicFiles, threadAttachments, getAttachment, saveAttachment, imageType } from '../attachments.mjs';
@@ -35,16 +36,16 @@ export function brainOf(ctx, id) {
   return { provider: b.provider, driver: Object.keys(p?.drivers ?? {})[0] ?? 'cli', model: b.model || inst.models?.[tier] || p?.models?.tiers?.[tier], cfg: inst, label: p?.label ?? b.provider };
 }
 
-function systemPrompt(ctx, id) {
+function systemPrompt(ctx, id, benchId) {
   const m = ctx.member(id);
   const crew = ctx.crew.filter((c) => c.id !== id).map((c) => `${c.name} (${c.job}${c.function ? `: ${c.function}` : ''})`).join('; ') || 'nobody yet';
   const vars = { name: m.name, job: m.job, function: m.function || 'whatever the founder asks', voice: m.voice, vorld: ctx.doc.name, about: ctx.doc.about || 'not described yet', crew,
-    project: projectOf(ctx).path, workspace: workspaceOf(ctx, id).path };
+    project: projectOf(ctx).path, workbench: benchOf(ctx, id, benchId).path };
   const base = String(m.prompt).replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
   const writs = grantsOf(ctx, id).map((g) => `${g.capability} ${g.scope}`).join('; ') || 'none';
   const env = ctx.interactions.envelope ?? {};
   return [base, `Your writs (access): ${writs}. You have no other access; if you need more, ask for it in the "access" list so the founder can grant it.`,
-    env.instructions ?? '', m.quests ? env.quest_instructions ?? '' : '', commandHelp(ctx, id)].filter(Boolean).join('\n\n');
+    env.instructions ?? '', m.quests ? env.quest_instructions ?? '' : '', vaultHelp(ctx, id), commandHelp(ctx, id)].filter(Boolean).join('\n\n');
 }
 
 /**
@@ -86,7 +87,7 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
   send({ type: 'turn.start', brain: brain.label, speaker: role, reaction: reactions['turn.start'] });
 
   // writs -> tool access
-  const ws = workspaceOf(ctx, role), cwd = ws.path;
+  const ws = benchOf(ctx, role, thread.bench), cwd = ws.path;
   fs.mkdirSync(cwd, { recursive: true });
   const writeDirs = [...new Set([...folderGrants(ctx, role, 'fs.write'), ...(ws.chosen ? [cwd] : [])])];
   const allFiles = threadAttachments(ctx, threadId);
@@ -110,7 +111,8 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
   // every driver's events fold into one ordered transcript (text, thinking, tools with results, plan)
   const tr = new Transcript(agentCfg.transcript);
   const asks = [];
-  const onEvent = (e) => {
+  const onEvent = (raw) => {
+    const e = redactEvent(ctx, role, raw);          // vault values never reach the chat or the transcript
     if (e.type === 'access') { asks.push(e); return; }
     if (e.type === 'delta') { tr.text(e.text); send({ type: 'delta', text: e.text }); return; }
     if (e.type === 'thinking') { tr.thinking(e.text); send({ type: 'thinking', text: e.text }); return; }
@@ -133,7 +135,7 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
       });
       if (step && files.length) step.attachments = files;
       let test = null;
-      if (['Bash', 'shell', 'run_command'].includes(e.name) && TEST_RE.test(e.target ?? step?.target ?? '')) { test = e.ok ? 'pass' : 'fail'; if (step) step.test = test; }
+      if (['Bash', 'shell', 'run_command', 'bash'].includes(e.name) && TEST_RE.test(e.target ?? step?.target ?? '')) { test = e.ok ? 'pass' : 'fail'; if (step) step.test = test; }
       send({ type: 'tool_result', id: step?.id ?? e.id, ok: e.ok, output: step?.output ?? '', attachments: files, ms: step?.ms ?? null, test,
         reaction: test ? reactions[`test.${test}`] : !e.ok ? reactions['tool.error'] : null });
     }
@@ -144,12 +146,12 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
 
   try {
     const web = browserFor(ctx, role, threadId, { emit, onRequest: (a) => asks.push(a) });
-    const system = [systemPrompt(ctx, role), web ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
+    const system = [systemPrompt(ctx, role, thread.bench), web ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
     const common = { system, prompt: attachmentPrompt(text, attachments), sessionId: thread.session_id, cwd, model: brain.model, signal, onEvent };
     let result;
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
-    else if (brain.provider === 'claude-code') result = await claude.run({ ...common, tools, allowed: [...allowed, ...(web?.allowed ?? [])], addDirs, mcp: web?.mcp });
-    else if (brain.provider === 'codex') result = await codex.run({ ...common, mcp: web?.mcp, addDirs: writeDirs.filter((d) => d !== cwd), writable: ws.chosen, web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
+    else if (brain.provider === 'claude-code') result = await claude.run({ ...common, env: heldSecrets(ctx, role), tools, allowed: [...allowed, ...(web?.allowed ?? [])], addDirs, mcp: web?.mcp });
+    else if (brain.provider === 'codex') result = await codex.run({ ...common, env: heldSecrets(ctx, role), mcp: web?.mcp, addDirs: writeDirs.filter((d) => d !== cwd), writable: ws.chosen, web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
     else if (brain.provider === 'antigravity') result = await antigravity.run({ ...common, addDirs, writable: writeDirs.length > 0 });
     else if (brain.driver === 'openai') {
       const et = agentCfg.engine_tools ?? {};
@@ -162,7 +164,7 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
       result = await openai.run({ ...common, history: prior, cfg: brain.cfg, tools: engine, maxRounds: et.max_rounds ?? 16 });
     } else throw new Error(`${brain.label} is not supported in this version; pick another brain in settings`);
 
-    const { text: shown, meta } = splitEnvelope(result.text ?? '', lang);
+    const { text: shown, meta } = splitEnvelope(redactSecrets(ctx, role, result.text ?? ''), lang);
     const { access, commands: askedCommands, quest, ...metaShown } = meta;
     const done = prepareCommands(ctx, role, askedCommands);
     if (done.commands.length) metaShown.did = done.commands.map((c) => c.label);

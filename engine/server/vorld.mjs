@@ -1,5 +1,5 @@
 // A vorld: one folder in <home>/vorlds/<id>/ with vorld.yaml (name, what it is for, the crew, settings), plus the
-// files the engine keeps beside it (grants.yaml, threads/, quests/, saves/, workspaces/). The context below is what
+// files the engine keeps beside it (grants.yaml, threads/, quests/, saves/, workbenches/, houses/). The context below is what
 // every other module reads: packs, the vorld document, the crew as plain member views, and the map plan.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -9,7 +9,7 @@ import YAML from 'yaml';
 import { loadPacks, packRoots, homeDir, readYaml, REPO, resolveTheme } from '../../tools/lib/packs.mjs';
 import { planScenery, newSeed } from '../../tools/lib/scenery.mjs';
 import { addCliDirs } from '../../tools/lib/cli-path.mjs';
-import { checkProject } from './workspace.mjs';
+import { checkProject } from './benches.mjs';
 
 const core = loadPacks([path.join(REPO, 'packs', 'core')]);
 addCliDirs(core.byKind.providers?.providers?.bin_dirs);
@@ -59,7 +59,7 @@ function memberView(m, order, packs, theme, doc) {
     voice: m.personality || (role === 'companion' ? theme.companion?.voice_style : theme.agent_voice) || 'a friendly voice',
     look: role === 'companion' ? { form: m.form ?? theme.companion?.form ?? 'creature', species: m.species ?? theme.companion?.species ?? 'bee' } : null,
     brain: m.brain ?? null,
-    workspace: m.workspace ?? null,
+    benches: m.benches ?? [], default_bench: m.default_bench ?? 'main',
     prompt: def.prompt ?? 'You are {name}.',
     model_tier: def.model_tier ?? 'balanced',
     quests: !!def.quests,
@@ -149,7 +149,7 @@ export function createVorld(input) {
   const bySlot = new Map();
   const crew = given.slice(0, 30).filter((c) => str(c?.name, 40)).map((c) => { const m = cleanMember({ brain, ...c }, taken); if (Number.isInteger(c.slot)) bySlot.set(c.slot, m.id); return m; });
   const dir = path.join(vorldsDir(), id);
-  fs.mkdirSync(path.join(dir, 'workspaces'), { recursive: true });
+  fs.mkdirSync(path.join(dir, 'workbenches'), { recursive: true });
   if (!project) fs.mkdirSync(path.join(dir, 'project'), { recursive: true });
   const doc = { id, name, about: str(input.about, 400), ...(project ? { project } : {}), template: template.id ?? 'blank', theme: theme.id ?? 'default', seed: newSeed(), created_at: new Date().toISOString(), crew: [companion, ...crew] };
   writeDoc(dir, doc);
