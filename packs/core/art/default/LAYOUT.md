@@ -31,7 +31,7 @@ The character stands on the bottom edge of the cell, centred, the same size and 
 | 14 | agent_13 | role agent |
 | 15 | agent_14 | role agent |
 
-## portraits.png  (4 x 4 cells = 2048 x 2048)
+## portraits.png  (4 x 4 cells = 2048 x 2048, 512 px per cell)
 
 | cell (col, row) | sprite | what to draw |
 | --- | --- | --- |
