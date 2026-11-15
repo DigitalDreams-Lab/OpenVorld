@@ -129,10 +129,13 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
   const writeDirs = [...new Set([...folderGrants(ctx, role, 'fs.write'), ...benchesOf(ctx, role).filter((b) => b.chosen).map((b) => b.path), ...(ws.chosen ? [cwd] : [])])];
   const allFiles = threadAttachments(ctx, threadId);
   const uploadDirs = [...new Set(allFiles.filter((f) => f.kind !== 'reference').map((f) => path.dirname(f.path)))];
-  const referenceFiles = allFiles.filter((f) => f.kind === 'reference').map((f) => f.path);
+  const referenceFiles = [...allFiles.filter((f) => f.kind === 'reference').map((f) => f.path)];
   // the project folder is shared: every member reads it; changing it is an fs.write writ like any other folder
   const project = projectOf(ctx);
-  const readDirs = [...new Set([...(project.exists ? [project.path] : []), ...folderGrants(ctx, role, 'fs.read'), ...uploadDirs])];
+  // a read writ names a folder, or one file the founder allowed for the session (a file is read like a reference, never added as a folder)
+  const readGrants = folderGrants(ctx, role, 'fs.read'), isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
+  referenceFiles.push(...readGrants.filter((p) => !isDir(p) && fs.existsSync(p)));
+  const readDirs = [...new Set([...(project.exists ? [project.path] : []), ...readGrants.filter(isDir), ...uploadDirs])];
   const cmdGrants = grantsOf(ctx, role).filter((g) => g.capability === 'cmd.run').map((g) => g.scope);
   const netGrants = grantsOf(ctx, role).filter((g) => g.capability === 'net.fetch').map((g) => g.scope);
   const tools = [];
@@ -192,7 +195,7 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     let result;
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
     else if (brain.provider === 'claude-code') result = await claude.run({ ...common, env: heldSecrets(ctx, role), tools, allowed: [...allowed, ...(web?.allowed ?? [])], addDirs, mcp: web?.mcp });
-    else if (brain.provider === 'codex') result = await codex.run({ ...common, env: heldSecrets(ctx, role), mcp: web?.mcp, addDirs: writeDirs.filter((d) => d !== cwd), writable: ws.chosen, web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
+    else if (brain.provider === 'codex') result = await codex.run({ ...common, env: heldSecrets(ctx, role), mcp: web?.mcp, addDirs: writeDirs.filter((d) => d !== cwd), writable: writeDirs.some((d) => d === cwd), web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
     else if (brain.provider === 'antigravity') result = await antigravity.run({ ...common, addDirs, writable: writeDirs.length > 0 });
     else if (brain.provider === 'opencode') result = await opencode.run({ ...common, addDirs, writable: writeDirs.length > 0, cmdAllow: cmdGrants, web: netGrants.length > 0 });
     else if (brain.driver === 'openai') {

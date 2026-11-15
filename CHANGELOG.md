@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.5.0 - 2026-11-15
+
+- Images show in chat messages (links to pictures render under the paragraph); a link to a file outside the chat's folders offers 'Allow this file for this session'; Codex keeps its write access after a writ is granted (resumed sessions got no sandbox settings) and the pictures it generates land in the reply; file previews open from links
+
 ## 0.4.0 - 2026-11-15
 
 - Agents can call and send home: summon, gather and send_home now work for agents on themselves and their party (also as call / back_to_work); the companion stays the admin who can reach the whole crew

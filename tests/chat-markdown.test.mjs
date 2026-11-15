@@ -31,3 +31,11 @@ test('chat escapes HTML, blocks executable URLs and serves local file links thro
   assert.doesNotMatch(html,/<script|href="javascript:|src="data:/);
   assert.match(html,/href="\/api\/vorlds\/demo\/threads\/thread-1\/file\?path=%2FUsers%2Ftest%2FMy%20Project%2Fapp.ts"/);
 });
+
+test('renderable code blocks offer previews and local artifact links open as previewable files',()=>{
+  const html=render('```html\n<h1>Report</h1>\n```\n\n```svg\n<svg xmlns="http://www.w3.org/2000/svg"></svg>\n```\n\n[Open report](</tmp/My Project/report.html>)\n\n```csv\nName,Count\nAda,3\n```');
+  assert.equal((html.match(/>Preview<\/button>/g)??[]).length,3);
+  assert.equal((html.match(/>Expand preview<\/button>/g)??[]).length,3);
+  assert.match(html,/title="Preview file"/);assert.match(html,/path=%2Ftmp%2FMy%20Project%2Freport.html/);
+  assert.doesNotMatch(html,/<h1>Report<\/h1>/,'HTML stays isolated from the chat document');
+});

@@ -6,7 +6,8 @@ import os from 'node:os';
 import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { getThread, readEvents } from './threads.mjs';
-import { folderGrants, isNever } from './gate.mjs';
+import { folderGrants, grant, holds, isNever } from './gate.mjs';
+import { partyScope } from './agents/commands.mjs';
 import { benchesOf, benchOf, projectOf } from './benches.mjs';
 
 export const MAX_FILE = 20 * 1024 * 1024;
@@ -121,20 +122,42 @@ function resolveAttachmentsFromEvents(ctx, tid, events) {
   const ids=[...new Set(events.filter(e=>e.type==='founder.message').flatMap(e=>(e.attachments??[]).map(f=>f.id)))];
   return ids.flatMap(id=>{try{return [getAttachment(ctx,tid,id)];}catch{return [];}});
 }
-/** Resolve local links from agent replies only inside this thread's granted folders. */
+/** Who a thread's replies come from: its member, or the members of its party. */
+const speakersOf=(ctx,thread)=>thread.role?[thread.role]:partyScope(ctx,thread);
+/** The file a reply link names, resolved against the chat's workbench (symlinks followed, so a link can never lead out of a folder). */
+function resolveReply(ctx,thread,requested){
+  const base=benchOf(ctx,thread.role??speakersOf(ctx,thread)[0],thread.bench).path;
+  try { return fs.realpathSync(path.resolve(base,String(requested))); } catch {return bad('File not found',404);}
+}
+/** Resolve local links from agent replies only inside this thread's granted folders (or files the founder allowed for this session). */
 export function replyFile(ctx, tid, requested) {
-  const thread=getThread(ctx,tid), roles=[thread.role];
+  const thread=getThread(ctx,tid), roles=speakersOf(ctx,thread);
   const roots=[projectOf(ctx).path,...roles.flatMap(role=>[...benchesOf(ctx,role).map(b=>b.path),...folderGrants(ctx,role,'fs.read'),...folderGrants(ctx,role,'fs.write')])];
   roots.push(dirOf(ctx,tid));
   roots.push(...threadAttachments(ctx,tid).filter(f=>f.kind==='reference').map(f=>f.path));
-  const base=benchOf(ctx,thread.role,thread.bench).path;
-  let file;
-  try { file=fs.realpathSync(path.resolve(base,String(requested))); } catch {bad('File not found',404);}
+  const file=resolveReply(ctx,thread,requested);
   const allowed=roots.some(root=>{try{const r=fs.realpathSync(root);return file===r || file.startsWith(r+path.sep);}catch{return false;}});
-  if (!allowed || isNever(ctx,'fs.read',file)) bad('This file is outside this conversation’s folder access',403);
+  // outside the conversation's folders: the chat can offer to allow this one file for the session (see allowReplyFile)
+  if (!allowed || isNever(ctx,'fs.read',file)) throw Object.assign(new Error('This file is outside this conversation’s folder access'),{status:403,...(isNever(ctx,'fs.read',file)?{}:{code:'outside',path:file})});
   const stat=fs.statSync(file);
   if (!stat.isFile()) bad('File not found',404);
   if (stat.size>MAX_FILE) bad('File is too large to preview',413);
   const data=fs.readFileSync(file);
   return {name:path.basename(file),type:imageType(data)??'application/octet-stream',data};
+}
+
+/**
+ * The founder lets the crew read ONE file that lies outside their folders, for this session only (a writ: fs.read on that exact
+ * file, "until the game closes"). It is for what the crew made somewhere else, like a picture Codex generated. Secrets and
+ * private houses stay closed (the never-list), and only a plain file that exists can be named.
+ */
+export function allowReplyFile(ctx, tid, requested) {
+  const thread=getThread(ctx,tid), roles=speakersOf(ctx,thread);
+  if (!roles.length) bad('This chat has nobody to give access to');
+  const file=resolveReply(ctx,thread,requested), stat=fs.statSync(file);
+  if (!stat.isFile()) bad('File not found',404);
+  if (isNever(ctx,'fs.read',file)) bad('This file can never be shared',403);
+  if (file.startsWith(path.join(ctx.dir,'houses')+path.sep)) bad('This file can never be shared',403);
+  for (const role of roles) if (!holds(ctx,role,'fs.read',file)) grant(ctx,{role,capability:'fs.read',scope:file,answer:'session'});
+  return {path:file,name:path.basename(file),roles};
 }

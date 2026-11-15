@@ -35,11 +35,29 @@ export async function artImage(name: string) {
   const res = await authenticatedFetch(`/api/art/${encodeURIComponent(name)}`);
   if (!res.ok) throw new Error('Art unavailable'); return res.blob();
 }
-export async function fileBlob(url: string, signal?: AbortSignal) {
+/** A link in a reply points at a file outside the folders this chat may open: the founder can allow that one file for the session. */
+export class FileAccessError extends Error { constructor(message: string, public path: string) { super(message); } }
+/** Let the crew read the one file a reply link names (until the game closes), then the link can be opened. */
+export async function allowFile(url: string) {
+  const m = url.match(/^\/api\/vorlds\/([^/]+)\/threads\/([^/]+)\/file\?path=([^&]*)/);
+  if (!m) throw new Error('This link cannot be allowed');
+  return api(`/vorlds/${m[1]}/threads/${m[2]}/file-access`, { body: { path: decodeURIComponent(m[3]) } });
+}
+export async function fileBlob(url: string, signal?: AbortSignal, maxBytes?: number) {
   if (!url.startsWith('/api/vorlds/')) throw new Error('Invalid local file URL');
   const res=await authenticatedFetch(url,{signal});
-  if (!res.ok) {const data=await res.json().catch(()=>({}));throw new Error(data.error ?? 'File unavailable');}
-  return res.blob();
+  if (!res.ok) {const data=await res.json().catch(()=>({}));throw data.code==='outside'?new FileAccessError(data.error,String(data.path??'')):new Error(data.error ?? 'File unavailable');}
+  if (!maxBytes || !res.body) return res.blob();
+  const reader = res.body.getReader(), chunks: Uint8Array<ArrayBuffer>[] = []; let size = 0;
+  try {
+    for (;;) {
+      const { value, done } = await reader.read(); if (done) break;
+      size += value.byteLength;
+      if (size > maxBytes) { await reader.cancel(); throw new Error(`This preview is limited to ${Math.round(maxBytes / 1024 / 1024)} MB. Download the file to open it.`); }
+      chunks.push(value as Uint8Array<ArrayBuffer>);
+    }
+    return new Blob(chunks, { type: res.headers.get('content-type') ?? 'application/octet-stream' });
+  } finally { reader.releaseLock(); }
 }
 export async function uploadFile(wid: string, thread: string, file: File) {
   const res=await authenticatedFetch(`/api/vorlds/${wid}/threads/${thread}/attachments`,{method:'POST',headers:{'content-type':'application/octet-stream','x-file-name':encodeURIComponent(file.name)},body:file});

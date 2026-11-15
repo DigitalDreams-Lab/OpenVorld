@@ -1,4 +1,7 @@
 // Codex CLI driver (codex exec --json). Prompt on stdin with '-'. Sandbox from writs.
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { runJsonLines } from './proc.mjs';
 import { imagesOf, kindOf, targetOf } from '../steps.mjs';
 
@@ -10,6 +13,23 @@ export const mcpArgs = (mcp) => (mcp ? [
   '-c', `mcp_servers.${mcp.name}.default_tools_approval_mode="approve"`,   // the engine checks the writs on every call; Codex has no one to ask
   '-c', `mcp_servers.${mcp.name}.env={${Object.entries(mcp.env).map(([k, v]) => `${k}=${toml(v)}`).join(', ')}}`,
 ] : []);
+/**
+ * Pictures Codex's image tool made during this turn. It saves them under CODEX_HOME/generated_images/<session>/, far outside any
+ * workbench, so the reply can only point at them. Handing them to the chat as the result of an image step shows them in the message.
+ */
+const IMAGE = { png: 'image/png', jpg: 'image/jpeg', jpeg: 'image/jpeg', webp: 'image/webp', gif: 'image/gif' };
+export function generatedImages(sessionId, since, env = null, max = 4) {
+  if (!sessionId || !/^[\w-]{8,80}$/.test(sessionId)) return [];
+  const dir = path.join(env?.CODEX_HOME ?? process.env.CODEX_HOME ?? path.join(os.homedir(), '.codex'), 'generated_images', sessionId);
+  try {
+    return fs.readdirSync(dir).flatMap((name) => {
+      const type = IMAGE[name.split('.').at(-1).toLowerCase()], file = path.join(dir, name);
+      if (!type) return [];
+      const st = fs.statSync(file);
+      return st.isFile() && st.mtimeMs >= since && st.size < 20 * 1024 * 1024 ? [{ name, file, type, at: st.mtimeMs }] : [];
+    }).sort((a, b) => a.at - b.at).slice(0, max);
+  } catch { return []; }
+}
 const plan = (it) => (it.items ?? []).map((x) => ({ text: x.text ?? '', status: x.completed ? 'completed' : 'pending' }));
 
 export async function run({ system, prompt, images = [], sessionId, cwd, addDirs = [], mcp = null, env = null, writable = false, web = false, model, signal, onEvent, onAccess = () => {} }) {
@@ -17,10 +37,15 @@ export async function run({ system, prompt, images = [], sessionId, cwd, addDirs
   // --ignore-user-config: only what OpenVorld passes applies, never the founder's own Codex plugins or MCP servers
   // (computer-use and browser plugins there could drive the founder's real apps and bypass writs)
   const base = ['--json', '--skip-git-repo-check', '--ignore-user-config', ...images.flatMap(f=>['--image',f.path]), ...(web ? ['-c', 'tools.web_search=true'] : []), ...mcpArgs(mcp)];
+  // `codex exec resume` has no -s / --add-dir: a resumed session keeps whatever sandbox it was started with, so a writ granted (or
+  // revoked) after the chat began never took effect. The same settings go in as config overrides, on every turn.
+  const sandbox = ['-c', `sandbox_mode=${toml(writable ? 'workspace-write' : 'read-only')}`,
+    ...(writable && addDirs.length ? ['-c', `sandbox_workspace_write.writable_roots=[${addDirs.map(toml).join(', ')}]`] : [])];
   const args = sessionId
-    ? ['exec', 'resume', sessionId, ...base, ...(model ? ['-m', model] : []), '-']
+    ? ['exec', 'resume', sessionId, ...base, ...sandbox, ...(model ? ['-m', model] : []), '-']
     : ['exec', ...base, '-C', cwd, '-s', writable ? 'workspace-write' : 'read-only', ...addDirs.flatMap((d) => ['--add-dir', d]), ...(model ? ['-m', model] : []), '-'];
   let sid = sessionId, text = '', failed = '';
+  const startedAt = Date.now() - 2000;
   const searches = new Set();
   await runJsonLines({
     cmd: 'codex', args, cwd, env, signal,
@@ -64,5 +89,10 @@ export async function run({ system, prompt, images = [], sessionId, cwd, addDirs
     },
   });
   if (failed && !text) throw new Error(failed);
+  for (const img of generatedImages(sid, startedAt, env)) {
+    const id = `image:${img.name}`;
+    onEvent({ type: 'tool', id, kind: 'tool.write', name: 'image_gen', target: img.name });
+    onEvent({ type: 'tool_result', id, ok: true, name: 'image_gen', target: img.name, output: 'generated image', images: [{ data: fs.readFileSync(img.file).toString('base64'), type: img.type }] });
+  }
   return { sessionId: sid, text };
 }

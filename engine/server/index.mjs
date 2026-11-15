@@ -12,7 +12,7 @@ import { gameFor } from './game.mjs';
 import { listThreads, createThread, getThread, updateThread, readEvents, appendEvent } from './threads.mjs';
 import { runTurn, stopTurn, stopAllTurns, activeTurnCount, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
 import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, stopAllParties, partyBusy } from './parties.mjs';
-import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, addReferences } from './attachments.mjs';
+import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, allowReplyFile, addReferences } from './attachments.mjs';
 import { listGrants, grant, revoke, checkFolder, checkScope, deny, holds } from './gate.mjs';
 import { browseFolder, pickNative, nativeDialog, browseConfig } from './browse.mjs';
 import { benchesOf, benchOf, benchBase, checkBench, newBenchId, projectOf, checkProject, MAX_BENCHES } from './benches.mjs';
@@ -291,6 +291,7 @@ route('POST', '/api/vorlds/:id/threads/:tid/attachments', async ({ p, req }) => 
   return saveAttachmentStream(ctx, p.tid, name, req);
 });
 route('GET', '/api/vorlds/:id/threads/:tid/attachments/:aid', ({ p, q, res }) => sendFile(res, getAttachment(W(p), p.tid, p.aid), q.has('download')));
+route('POST', '/api/vorlds/:id/threads/:tid/file-access', async ({ p, req }) => allowReplyFile(W(p), p.tid, (await body(req)).path));
 route('GET', '/api/vorlds/:id/threads/:tid/file', ({ p, q, res }) => sendFile(res, replyFile(W(p), p.tid, q.get('path')), q.has('download')));
 
 // writs
@@ -409,7 +410,7 @@ const server = http.createServer(async (req, res) => {
     json(res, 404, { error: 'not found' });
   } catch (e) {
     if (res.headersSent) { res.destroy?.(); return; }
-    json(res, e.status ?? 500, { error: e.message });
+    json(res, e.status ?? 500, { error: e.message, ...(e.code ? { code: e.code, path: e.path } : {}) });
     if (!e.status) console.error(e);
   }
 });
