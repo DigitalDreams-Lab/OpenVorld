@@ -90,9 +90,7 @@ export function Onboarding({ boot, onDone, onCancel }: { boot: any; onDone: (id:
             <h3>Your companion</h3>
             <label>Name<input className="field" value={companion.name} maxLength={40} onChange={(e) => setCompanion({ ...companion, name: e.target.value })} /></label>
             <label>Looks like<select className="field" value={companion.form} onChange={(e) => setCompanion({ ...companion, form: e.target.value })}>
-              <option value="creature">a creature</option><option value="robot">a robot</option><option value="person">a person</option></select></label>
-            {companion.form === 'creature' && <label>Kind<select className="field" value={companion.species} onChange={(e) => setCompanion({ ...companion, species: e.target.value })}>
-              {Object.entries(boot.creatures ?? {}).map(([id, label]: any) => <option key={id} value={id}>{label}</option>)}</select></label>}
+              <option value="creature">a bee</option><option value="robot">a robot</option><option value="person">a person</option></select></label>
           </div>
           <div>
             <h3>Brain</h3>
