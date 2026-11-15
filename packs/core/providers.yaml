@@ -1,10 +1,10 @@
 # Brains for the crew. A provider is "how to talk to an agent or a model". Each member picks one in its settings.
-#   cli     spawn a headless agent CLI per turn and stream its JSON events (Claude Code, Codex, Antigravity)
+#   cli     spawn a headless agent CLI per turn and stream its JSON events (Claude Code, Codex, Antigravity, OpenCode)
 #   openai  any OpenAI-compatible HTTP API; the ENGINE runs the tool loop and offers only granted tools
 # models.source: where the model picker gets its list (static values, a CLI command, a file the tool keeps, or the endpoint's /models).
 kind: providers
 version: 1
-bin_dirs: ["~/.local/bin", "~/.claude/local", "~/.gemini/bin", "/opt/homebrew/bin", "/usr/local/bin"]
+bin_dirs: ["~/.local/bin", "~/.claude/local", "~/.gemini/bin", "~/.opencode/bin", "/opt/homebrew/bin", "/usr/local/bin"]
 providers:
   claude-code:
     label: Claude Code
@@ -23,6 +23,11 @@ providers:
       source: command
       command: [agy, models]
       tiers: { fast: gemini-3.8-flash-medium, balanced: gemini-4-argon-medium, deep: gemini-4-hydrogen-high }
+
+  opencode:
+    label: OpenCode
+    drivers: { cli: { detect: [opencode, --version] } }
+    models: { source: command, command: [opencode, models] }
 
   openai-compatible:
     label: OpenAI-compatible API

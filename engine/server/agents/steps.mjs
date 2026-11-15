@@ -2,13 +2,13 @@
 // looks the same: a kind (game reaction), a short target (what it touched) and an optional detail
 // (the edit or file being written) that the chat can expand.
 export const KIND = {
-  Read: 'tool.read', read_file: 'tool.read', read_image: 'tool.read', NotebookRead: 'tool.read',
-  Grep: 'tool.search', Glob: 'tool.search', LS: 'tool.search', search: 'tool.search', list_files: 'tool.search',
-  Edit: 'tool.edit', MultiEdit: 'tool.edit', NotebookEdit: 'tool.edit', edit_file: 'tool.edit', patch: 'tool.edit',
-  Write: 'tool.write', write_file: 'tool.write',
-  Bash: 'tool.run', shell: 'tool.run', run_command: 'tool.run',
+  Read: 'tool.read', read: 'tool.read', read_file: 'tool.read', read_image: 'tool.read', NotebookRead: 'tool.read',
+  Grep: 'tool.search', grep: 'tool.search', Glob: 'tool.search', glob: 'tool.search', LS: 'tool.search', list: 'tool.search', search: 'tool.search', list_files: 'tool.search',
+  Edit: 'tool.edit', edit: 'tool.edit', MultiEdit: 'tool.edit', NotebookEdit: 'tool.edit', edit_file: 'tool.edit', patch: 'tool.edit', apply_patch: 'tool.edit',
+  Write: 'tool.write', write: 'tool.write', write_file: 'tool.write',
+  Bash: 'tool.run', bash: 'tool.run', shell: 'tool.run', run_command: 'tool.run',
   game_command: 'tool.vorld', vorld_info: 'tool.vorld',
-  WebFetch: 'tool.web', WebSearch: 'tool.web', fetch_url: 'tool.web', web: 'tool.web',
+  WebFetch: 'tool.web', webfetch: 'tool.web', WebSearch: 'tool.web', websearch: 'tool.web', fetch_url: 'tool.web', web: 'tool.web',
 };
 // the browser tools arrive as browser_open, or as mcp__ov_browser__browser_open from Claude Code, or ov_browser.browser_open from Codex
 const isBrowser = (name) => /(^|[_.])browser_(open|read|click|type|back)$/.test(String(name));
@@ -16,8 +16,8 @@ export const kindOf = (name) => (isBrowser(name) ? 'tool.web' : KIND[name] ?? 't
 
 export function targetOf(name, input = {}) {
   if (isBrowser(name) && /(click|type)$/.test(name)) return `#${input.id}${input.text ? ` "${String(input.text).slice(0, 40)}"` : ''}`;
-  const t = input.file_path ?? input.path ?? input.notebook_path ?? input.command ?? input.url ?? input.query ?? input.pattern ?? '';
-  const extra = name === 'Grep' || name === 'search' ? (input.path ? ` in ${input.path}` : '') : '';
+  const t = input.file_path ?? input.filePath ?? input.filepath ?? input.path ?? input.notebook_path ?? input.command ?? input.url ?? input.query ?? input.pattern ?? '';
+  const extra = name === 'Grep' || name === 'grep' || name === 'search' ? (input.path ? ` in ${input.path}` : '') : '';
   return String(t || name).slice(0, 240) + extra;
 }
 
@@ -25,10 +25,11 @@ const cut = (s, n) => { const t = String(s ?? ''); return t.length > n ? t.slice
 
 /** What the chat can expand for a tool call: edits as before/after, writes as the new text. */
 export function detailOf(name, input = {}, max = 1500) {
-  if (input.old_string !== undefined || input.new_string !== undefined) return { edits: [{ old: cut(input.old_string, max), new: cut(input.new_string, max) }] };
+  const oldStr = input.old_string ?? input.oldString, newStr = input.new_string ?? input.newString;
+  if (oldStr !== undefined || newStr !== undefined) return { edits: [{ old: cut(oldStr, max), new: cut(newStr, max) }] };
   if (Array.isArray(input.edits)) return { edits: input.edits.slice(0, 6).map((e) => ({ old: cut(e.old_string, max / 2), new: cut(e.new_string, max / 2) })) };
   if (typeof input.content === 'string') return { write: cut(input.content, max) };
-  if (name === 'Bash' || name === 'run_command') return input.description ? { note: String(input.description).slice(0, 200) } : null;
+  if (name === 'Bash' || name === 'bash' || name === 'run_command') return input.description ? { note: String(input.description).slice(0, 200) } : null;
   return null;
 }
 

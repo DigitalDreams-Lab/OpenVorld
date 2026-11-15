@@ -9,6 +9,7 @@ import { TEX } from './pixels';
 import { makeBuilding, makeMember, makePillar, makeWorldArt } from './sprites';
 import { companionOf, generatedRevision, movementDirection, type Direction } from './pixels';
 import { homeGeometry, propGeometry } from './geometry';
+import { clearWalk, walkingPath } from './navigation';
 import { BODY_FONT } from '../theme';
 const bodyFont = () => BODY_FONT;
 
@@ -29,6 +30,7 @@ export class VorldScene extends Phaser.Scene {
   plan: any;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
   npcs = new Map<string, Npc>();
+  routes = new Map<string, { target: Pt; points: Pt[] }>();
   solids!: Phaser.Physics.Arcade.StaticGroup;
   prompt!: Phaser.GameObjects.Text;
   near: string | null = null;
@@ -51,7 +53,7 @@ export class VorldScene extends Phaser.Scene {
   init(data: { vorld: any; position?: {x:number;y:number} }) { this.vorld = data.vorld; this.startPosition = data.position ?? null; }
 
   create() {
-    this.npcs.clear(); this.unsub = []; this.near = null; this.walkTo = null; this.homeRects = []; this.beeTask = null; this.beeReturn = false;
+    this.npcs.clear(); this.routes.clear(); this.unsub = []; this.near = null; this.walkTo = null; this.homeRects = []; this.beeTask = null; this.beeReturn = false;
     this.playerDir = this.companionDir = 'down';
     this.atlasRev = generatedRevision();
     const pal = this.vorld.theme.palette ?? {};
@@ -83,6 +85,9 @@ export class VorldScene extends Phaser.Scene {
     // homes take the plan's plots in crew order (a crew larger than the map's plots has no house for the rest)
     const homes = this.vorld.crew.filter((c: any) => c.id !== this.companionId);
     homes.slice(0, plan.slots.length).forEach((c: any, i: number) => this.addHome(c, plan.slots[i], pal, i));
+    // Street layouts can put a neighbour's roof over a door. Pick standing room
+    // after every house is registered, so both spawning and returning home are safe.
+    this.placeCrewAtHome();
 
     // founder + companion
     const start = this.startPosition && this.walkable(this.startPosition.x, this.startPosition.y) ? this.startPosition : { x: plan.spawn.x * T + 8, y: plan.spawn.y * T };
@@ -150,7 +155,9 @@ export class VorldScene extends Phaser.Scene {
     const house = makeBuilding(this, c.id, this.vorld.art, { seed: this.plan.seed, biome: this.plan.biome, mood: this.plan.mood, order: c.order });
     const size = house?.size;
     const geo = homeGeometry(this.plan.doors[i] ?? { x: slot.x, y: slot.y + 2 }, T, size, house?.block);
-    this.homeRects.push({ x: geo.solid.x - geo.solid.w / 2 - 4, y: geo.top + 6, w: geo.solid.w + 8, h: geo.solid.y + geo.solid.h / 2 - geo.top - 2 });
+    // Keep crew outside the whole illustration, including roof overhangs and side walls.
+    // The foot anchor at the door stays in front of the building's depth.
+    this.homeRects.push({ x: geo.x - (size?.w ?? 64) / 2 - 4, y: geo.top, w: (size?.w ?? 64) + 8, h: geo.y - geo.top });
     const bx = geo.x, by = geo.y;
     // the home is a container of block sprites (walls, roof rows, door, windows, chimney, extras), not one image
     const building = this.add.container(bx, geo.bottom).setDepth(by - 1);
@@ -316,6 +323,38 @@ export class VorldScene extends Phaser.Scene {
     if (!c || !'0123pPb'.includes(c)) return false;
     return !this.homeRects.some((r) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h);
   }
+  placeCrewAtHome() {
+    for (const n of this.npcs.values()) {
+      if (this.walkable(n.home.x, n.home.y)) continue;
+      let best: Pt | null = null, distance = Infinity;
+      // Prefer the front or sides of the door, never the back of its roof.
+      for (let dy = 0; dy <= T * 8; dy += 4) for (let dx = -T * 8; dx <= T * 8; dx += 4) {
+        const d = Math.hypot(dx, dy), x = n.home.x + dx, y = n.home.y + dy;
+        if (d < distance && this.walkable(x, y)) { best = { x, y }; distance = d; }
+      }
+      if (best) { n.home = best; n.sprite.setPosition(best.x, best.y); n.lastX = best.x; n.lastY = best.y; }
+    }
+  }
+  /** Walk each route segment rather than taking a straight line through a house. */
+  moveMember(n: Npc, distance: number) {
+    if (!n.target) { this.routes.delete(n.id); return; }
+    const walkable = (x: number, y: number) => this.walkable(x, y);
+    let route = this.routes.get(n.id);
+    if (!route || route.target.x !== n.target.x || route.target.y !== n.target.y || (route.points[0] && !clearWalk(n.sprite, route.points[0], walkable))) {
+      const points = walkingPath(n.sprite, n.target, walkable, this.plan.w * T, this.plan.h * T);
+      if (!points) { n.target = null; this.routes.delete(n.id); return; }
+      route = { target: { ...n.target }, points }; this.routes.set(n.id, route);
+    }
+    while (route.points.length) {
+      const at = route.points[0], dx = at.x - n.sprite.x, dy = at.y - n.sprite.y, d = Math.hypot(dx, dy);
+      if (d > distance) {
+        n.sprite.setPosition(n.sprite.x + dx / d * distance, n.sprite.y + dy / d * distance);
+        return;
+      }
+      n.sprite.setPosition(at.x, at.y); distance -= d; route.points.shift();
+    }
+    n.target = null; this.routes.delete(n.id);
+  }
   /** A random spot in front of the member's home, so they potter about instead of standing still. */
   wanderTarget(n: Npc) {
     for (let k = 0; k < 8; k++) {
@@ -467,7 +506,7 @@ export class VorldScene extends Phaser.Scene {
     if (this.companionForm !== 'creature') fixed.push({ x: this.bee.x, y: this.bee.y });
     const push = (n: Npc, px: number, py: number) => {
       const x = n.sprite.x + px, y = n.sprite.y + py;
-      if (this.walkable(x, y)) n.sprite.setPosition(x, y);
+      if (clearWalk(n.sprite, { x, y }, (x, y) => this.walkable(x, y))) n.sprite.setPosition(x, y);
     };
     for (let i = 0; i < movers.length; i++) {
       const a = movers[i];
@@ -534,10 +573,8 @@ export class VorldScene extends Phaser.Scene {
       if (n.mode === 'summoned' && dp > 40) n.target = this.spotFor(n);       // keep up with the founder
       if (!n.target && n.mode === 'home' && !busy) { n.rest -= dt; if (n.rest <= 0) { n.target = this.wanderTarget(n); n.rest = 2500 + Math.random() * 4500; } }
       if (n.target && !(busy && n.mode === 'home')) {
-        const dx = n.target.x - n.sprite.x, dy = n.target.y - n.sprite.y, dist = Math.hypot(dx, dy);
         const speed = (n.mode === 'home' ? 26 : 62) * dt / 1000;
-        if (dist <= speed) { n.sprite.setPosition(n.target.x, n.target.y); n.target = null; }
-        else n.sprite.setPosition(n.sprite.x + (dx / dist) * speed, n.sprite.y + (dy / dist) * speed);
+        this.moveMember(n, speed);
       }
       const mx = n.sprite.x - n.lastX, my = n.sprite.y - n.lastY;
       const walking = Math.hypot(mx, my) > 0.01;

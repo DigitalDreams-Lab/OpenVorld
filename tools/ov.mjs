@@ -14,7 +14,7 @@ const { detected, listVorlds, HOME } = await import('../engine/server/vorld.mjs'
 
 if (cmd === 'providers') {
   const found = detected(true);
-  console.log(found.length ? found.map((d) => `${d.label.padEnd(20)} ${d.version}`).join('\n') : 'No agent CLI found (Claude Code: claude, Codex: codex, Antigravity: agy). OpenAI-compatible APIs can be added in Settings.');
+  console.log(found.length ? found.map((d) => `${d.label.padEnd(20)} ${d.version}`).join('\n') : 'No agent CLI found (Claude Code: claude, Codex: codex, Antigravity: agy, OpenCode: opencode). OpenAI-compatible APIs can be added in Settings.');
 } else if (cmd === 'validate') {
   const packs = loadPacks(packRoots(HOME));
   const problems = [...packs.problems];
