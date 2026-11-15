@@ -11,7 +11,8 @@ const { createThread, readEvents } = await import('../engine/server/threads.mjs'
 const { runTurn } = await import('../engine/server/agents/runner.mjs');
 const { engineTools } = await import('../engine/server/agents/tools.mjs');
 const { splitEnvelope } = await import('../engine/server/agents/envelope.mjs');
-const { prepareCommands, commandHelp, vorldFacts, vorldInfo } = await import('../engine/server/agents/commands.mjs');
+const { prepareCommands, commandHelp, vorldFacts, vorldInfo, partyScope } = await import('../engine/server/agents/commands.mjs');
+const { saveParty, createPartyChat } = await import('../engine/server/parties.mjs');
 
 const sse = (deltas) => new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(deltas.map((d) => `data: ${JSON.stringify({ choices: [{ delta: d }] })}\n\n`).join('') + 'data: [DONE]\n\n')); c.close(); } }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
 
@@ -47,7 +48,7 @@ test('commands are checked: roles, the map, the crew, limits and plain text', as
   assert.match(ok.commands[4].label, /./);
   assert.equal(ok.commands[2].label, 'walks to the plaza');
 
-  const bad = prepareCommands(ctx, a.id, [{ do: 'fly' }, { do: 'emote', kind: 'explode' }, { do: 'walk_to', to: 'the moon' }, { do: 'interact', with: 'spaceship' }, { do: 'say' }, { do: 'summon', who: 'all' }, { do: 'show', panel: 'deeds' }, { do: 'rm -rf /' }]);
+  const bad = prepareCommands(ctx, a.id, [{ do: 'fly' }, { do: 'emote', kind: 'explode' }, { do: 'walk_to', to: 'the moon' }, { do: 'interact', with: 'spaceship' }, { do: 'say' }, { do: 'summon', who: b.name }, { do: 'show', panel: 'deeds' }, { do: 'rm -rf /' }]);
   assert.deepEqual(bad.commands, []);
   assert.equal(bad.dropped.length, 8, 'every bad one says why');
   assert.ok(bad.dropped.some((d) => /not for agents/.test(d)));
@@ -67,11 +68,47 @@ test('commands are checked: roles, the map, the crew, limits and plain text', as
   assert.equal(comp.commands.filter((x) => x.do === 'show').length, 1, 'only real screens');
 });
 
+test('an agent calls and sends home only itself and its party (write access, not admin); the companion reaches everyone', async () => {
+  const { ctx, companion, agents } = vorld();
+  const [a, b, c] = agents, solo = {}, party = { party: [a.id, b.id] };
+  // alone in a chat: itself only
+  const mine = prepareCommands(ctx, a.id, [{ do: 'summon', who: 'me' }, { do: 'send_home' }], solo);
+  assert.deepEqual(mine.commands.map((x) => [x.do, x.who, x.label]), [['summon', [a.id], 'comes over to the founder'], ['send_home', [a.id], 'gets back to work']]);
+  const others = prepareCommands(ctx, a.id, [{ do: 'summon', who: b.name }, { do: 'send_home', who: 'all' }, { do: 'gather', who: 'me' }], solo);
+  assert.deepEqual(others.commands.map((x) => [x.do, x.who]), [['send_home', [a.id]]], '"all" is only me when there is no party; a stranger is refused; gather needs a party');
+  assert.ok(others.dropped.some((d) => /Bo is not in your party/.test(d)) && others.dropped.some((d) => /only in a party chat/.test(d)));
+  assert.equal(others.dropped.length, 2, 'one reason per dropped command');
+  // in a party chat: itself and the party, not the rest of the crew
+  const inParty = prepareCommands(ctx, a.id, [{ do: 'gather', who: 'party' }, { do: 'call', who: [b.name, c.name] }, { do: 'back_to_work', who: 'party' }], party);
+  assert.deepEqual(inParty.commands.map((x) => [x.do, x.who.sort()]), [['gather', [a.id, b.id].sort()], ['summon', [b.id]], ['send_home', [a.id, b.id].sort()]], 'call and back_to_work are the same commands');
+  assert.ok(inParty.dropped.some((d) => /Cy is not in your party/.test(d)));
+  // whatever else the agent does comes first: calling its party ends its own choreography
+  const order = prepareCommands(ctx, a.id, [{ do: 'summon', who: 'me' }, { do: 'say', text: 'Coming!' }], solo).commands.map((x) => x.do);
+  assert.deepEqual(order, ['say', 'summon']);
+  // the companion is the admin: anyone, but never itself
+  const admin = prepareCommands(ctx, companion, [{ do: 'send_home', who: 'all' }, { do: 'summon', who: [c.name] }], party);
+  assert.deepEqual(admin.commands.map((x) => x.who.sort()), [[a.id, b.id, c.id].sort(), [c.id]]);
+  assert.equal(prepareCommands(ctx, companion, [{ do: 'summon', who: 'me' }]).commands.length, 0, 'me means nobody for the companion');
+});
+
+test('a party chat knows its members, so its agents may call them; a one-to-one chat does not', async () => {
+  const { ctx, agents } = vorld();
+  const [a, b, c] = agents, party = saveParty(ctx, { name: 'Crew', goal: 'ship it', members: [a.id, b.id] }), room = createPartyChat(ctx, party.id, 'Room');
+  assert.deepEqual(partyScope(ctx, room), [a.id, b.id]);
+  assert.deepEqual(partyScope(ctx, createThread(ctx, { role: a.id, kind: 'chat' })), [], 'a private chat has no party');
+  assert.deepEqual(partyScope(ctx, null), []);
+  const help = commandHelp(ctx, a.id, { party: partyScope(ctx, room) });
+  assert.match(help, new RegExp(`your party \\(${b.name}\\)`));
+  assert.doesNotMatch(help, new RegExp(`your party \\([^)]*${c.name}`));
+});
+
 test('every brain is taught what it can do on this map, the companion more than an agent', async () => {
   const { ctx, companion, agents } = vorld();
   const agentHelp = commandHelp(ctx, agents[0].id), compHelp = commandHelp(ctx, companion);
   for (const w of ['walk_to', 'interact', 'emote', 'say', 'go_home']) assert.match(agentHelp, new RegExp(w));
-  for (const w of ['summon', 'gather', 'send_home', 'point_to', 'show']) { assert.doesNotMatch(agentHelp, new RegExp(`- ${w}:`)); assert.match(compHelp, new RegExp(`- ${w}:`)); }
+  for (const w of ['summon', 'gather', 'send_home']) { assert.match(agentHelp, new RegExp(`- ${w}:`), 'agents may call and send home, on themselves and their party'); assert.match(compHelp, new RegExp(`- ${w}:`)); }
+  for (const w of ['point_to', 'show']) { assert.doesNotMatch(agentHelp, new RegExp(`- ${w}:`)); assert.match(compHelp, new RegExp(`- ${w}:`)); }
+  assert.match(agentHelp, /write access, not admin/);
   assert.match(agentHelp, new RegExp([...vorldFacts(ctx).props.keys()][0]), 'names the things on this very map');
   assert.match(agentHelp, new RegExp(agents[1].name.split(' ')[0]), 'and the people');
   assert.match(vorldInfo(ctx, agents[0].id), /Places:.*plaza/);

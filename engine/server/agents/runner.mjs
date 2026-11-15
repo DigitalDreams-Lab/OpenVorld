@@ -10,7 +10,7 @@ import * as opencode from './drivers/opencode.mjs';
 import * as openai from './drivers/openai.mjs';
 import * as scripted from './drivers/scripted.mjs';
 import { splitEnvelope } from './envelope.mjs';
-import { commandHelp, prepareCommands } from './commands.mjs';
+import { commandHelp, partyScope, prepareCommands } from './commands.mjs';
 import { Transcript } from './steps.mjs';
 import { engineTools } from './tools.mjs';
 import { appendEvent, getThread, updateThread, history, readEvents } from '../threads.mjs';
@@ -43,7 +43,7 @@ export function brainOf(ctx, id) {
   return { provider: b.provider, driver: Object.keys(p?.drivers ?? {})[0] ?? 'cli', model: b.model || inst.models?.[tier] || p?.models?.tiers?.[tier], cfg: inst, label: p?.label ?? b.provider };
 }
 
-function systemPrompt(ctx, id, benchId) {
+function systemPrompt(ctx, id, benchId, scope = {}) {
   const m = ctx.member(id);
   const crew = ctx.crew.filter((c) => c.id !== id).map((c) => `${c.name} (${c.job}${c.function ? `: ${c.function}` : ''})`).join('; ') || 'nobody yet';
   const vars = { name: m.name, job: m.job, function: m.function || 'whatever the founder asks', voice: m.voice, vorld: ctx.doc.name, about: ctx.doc.about || 'not described yet', crew,
@@ -55,7 +55,7 @@ function systemPrompt(ctx, id, benchId) {
   const writs = grantsOf(ctx, id).map((g) => `${g.capability} ${g.scope}`).join('; ') || 'none';
   const env = ctx.interactions.envelope ?? {};
   return [base, benchNote, `Your writs (access): ${writs}. You have no other access; if you need more, ask for it in the "access" list so the founder can grant it.`,
-    env.instructions ?? '', vaultHelp(ctx, id), commandHelp(ctx, id)].filter(Boolean).join('\n\n');
+    env.instructions ?? '', vaultHelp(ctx, id), commandHelp(ctx, id, scope)].filter(Boolean).join('\n\n');
 }
 
 /**
@@ -183,7 +183,8 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
 
   try {
     const web = browserFor(ctx, role, threadId, { emit, onRequest: (a) => asks.push(a) });
-    const system = [systemPrompt(ctx, role, thread.bench), web ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
+    const scope = { party: partyScope(ctx, thread) };
+    const system = [systemPrompt(ctx, role, thread.bench, scope), web ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
     // with no session to resume, a CLI brain is told the conversation so far; the API driver is handed the history itself
     const drive = async (sessionId) => {
     const catchup = !inRoom && !sessionId && brain.driver !== 'openai' ? catchUp(history(ctx, threadId).slice(0, -1)) : '';
@@ -196,7 +197,7 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     else if (brain.provider === 'opencode') result = await opencode.run({ ...common, addDirs, writable: writeDirs.length > 0, cmdAllow: cmdGrants, web: netGrants.length > 0 });
     else if (brain.driver === 'openai') {
       const et = agentCfg.engine_tools ?? {};
-      const engine = et.enabled === false ? null : engineTools({ ctx, role, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, browser: web?.call, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });
+      const engine = et.enabled === false ? null : engineTools({ ctx, role, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, browser: web?.call, scope, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });
       const prior = (inRoom ? [] : history(ctx, threadId).slice(0, -1)).map((turn) => {
         if (!turn.attachments?.length) return turn;
         const files = turn.attachments.flatMap((f) => { try { return [getAttachment(ctx, threadId, f.id)]; } catch { return []; } });
@@ -213,7 +214,7 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
 
     const { text: shown, meta } = splitEnvelope(redactSecrets(ctx, role, result.text ?? ''), lang);
     const { access, commands: askedCommands, ...metaShown } = meta;
-    const done = prepareCommands(ctx, role, askedCommands);
+    const done = prepareCommands(ctx, role, askedCommands, scope);
     if (done.commands.length) metaShown.did = done.commands.map((c) => c.label);
     appendEvent(ctx, threadId, { type: 'agent.text', role, text: shown, meta: metaShown, steps: steps() });
     requestAccess(ctx, thread, role, [...asks, ...(access ?? [])], send);

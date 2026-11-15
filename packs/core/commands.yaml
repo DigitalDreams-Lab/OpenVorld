@@ -3,7 +3,7 @@
 # and the vorld (a place or prop that does not exist is dropped), then the map acts it out. They only move and animate
 # characters and open screens: they never touch files, run programs, spend or post anything, so they need no writ.
 #
-# A command is JSON: {"do": "walk_to", "to": "plaza"}. Roles: `agent` is every agent, `companion` is the guide.
+# A command is JSON: {"do": "walk_to", "to": "plaza"}. Roles: `agent` is every agent, `companion` is the guide (it may also act on the whole crew).
 kind: game_commands
 version: 1
 
@@ -52,8 +52,9 @@ commands:
   interact:  { roles: [agent, companion], phrase: '{verb}',               help: 'walk to the nearest one and use it: {props}. {"do":"interact","with":"bench"}' }
   wait:      { roles: [agent, companion], phrase: 'waits',                help: 'pause for a few seconds (1-{wait_max}). {"do":"wait","seconds":3}' }
   go_home:   { roles: [agent, companion], phrase: 'goes home',            help: 'walk back to your home. {"do":"go_home"}' }
-  summon:    { roles: [companion],        phrase: 'calls {who} over',     help: 'call crew members over to the founder: a name, a list of names or "all". {"do":"summon","who":"Quinn"}' }
-  gather:    { roles: [companion],        phrase: 'gathers {who} at the plaza', help: 'call crew members to the Party Hall for a meeting. {"do":"gather","who":["Quinn","Nico"]}' }
-  send_home: { roles: [companion],        phrase: 'sends {who} home',     help: 'send crew members back to their homes: a name, a list of names or "all". {"do":"send_home","who":"all"}' }
+  # The companion is the guide (admin): it may call anyone. An agent may use these on itself and, in a party chat, on its party; never on others.
+  summon:    { roles: [agent, companion], phrase: 'calls {who} over', phrase_self: 'comes over to the founder', help: 'call crew members over to the founder: a name, a list of names or "all". {"do":"summon","who":"Quinn"}', help_agent: 'come over to the founder (or call your party over): {"do":"summon","who":"me"}, a party member by name, or "party". Use it when you need the founder''s attention or answer.' }
+  gather:    { roles: [agent, companion], phrase: 'gathers {who} at the plaza', phrase_self: 'heads to the Party Hall', help: 'call crew members to the Party Hall for a meeting. {"do":"gather","who":["Quinn","Nico"]}', help_agent: 'meet at the Party Hall (you, or your whole party): {"do":"gather","who":"party"}. Only in a party chat.' }
+  send_home: { roles: [agent, companion], phrase: 'sends {who} back to work', phrase_self: 'gets back to work', help: 'send crew members back to their homes: a name, a list of names or "all". {"do":"send_home","who":"all"}', help_agent: 'get back to work, home to your workbench (or send your party back): {"do":"send_home","who":"me"} or "party".' }
   point_to:  { roles: [companion],        phrase: 'points to {to}',       help: 'walk ahead and show the founder a place (same places as walk_to). {"do":"point_to","to":"well"}' }
   show:      { roles: [companion],        phrase: 'opens {panel}',        help: 'open a screen for the founder, only when they ask to see it: {panels}. {"do":"show","panel":"deeds"}' }

@@ -2,10 +2,16 @@
 // this module (1) tells a brain what it can do on THIS map, (2) checks what a brain asked for and (3) turns it into plain
 // instructions the map acts out. Commands only move and animate characters and open screens. They never touch files,
 // run programs, spend or publish, so they need no writ, and everything unknown is dropped quietly.
+// The companion is the guide: it may call, gather and send home anyone. An agent has write access, not admin: it may do those
+// only to itself and, in a party chat, to the members of that party.
+import fs from 'node:fs';
+import path from 'node:path';
 
 const cfgOf = (ctx) => ctx.packs.byKind.game_commands?.game_commands ?? null;
 const norm = (s) => String(s ?? '').toLowerCase().trim().replace(/[\s-]+/g, '_').replace(/[^a-z0-9_]/g, '');
 const roleOf = (ctx, id) => (ctx.member(id)?.role === 'companion' ? 'companion' : 'agent');
+/** Words a model reaches for that mean one of our commands. */
+const ALIASES = { call: 'summon', call_over: 'summon', come_here: 'summon', come: 'summon', meet: 'gather', back_to_work: 'send_home', get_back_to_work: 'send_home', dismiss: 'send_home' };
 const clean = (s, n) => String(s ?? '').replace(/<[^>]*>/g, '').replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
 
 /** What exists on this map: the kinds of props, and who lives here. */
@@ -31,13 +37,37 @@ function resolvePlace(raw, facts, selfId, cfg) {
   if (facts.props.has(k)) return { kind: 'prop', ref: k };
   return null;
 }
-/** Members a companion command names ("all", a name, or a list). Never the companion itself. */
-function resolveWho(raw, facts, selfId, ctx) {
-  const list = raw === 'all' || (Array.isArray(raw) && raw.includes('all')) ? facts.people.map((c) => c.id) : (Array.isArray(raw) ? raw : [raw]).flatMap((r) => {
-    const k = norm(r), c = facts.people.find((x) => norm(x.id) === k || norm(x.name) === k || norm(x.first) === k);
-    return c ? [c.id] : [];
-  });
-  return [...new Set(list)].filter((id) => id !== selfId && ctx.member(id)?.role !== 'companion' && !!ctx.member(id));
+/** The members of the party a chat belongs to ([] for a one-to-one chat or when the party is gone). Read straight from the party's file. */
+export function partyScope(ctx, thread) {
+  const id = thread?.kind === 'party' ? String(thread.party ?? '') : '';
+  if (!/^[\w-]{6,64}$/.test(id)) return [];
+  try { return (JSON.parse(fs.readFileSync(path.join(ctx.dir, 'parties', `${id}.json`), 'utf8')).members ?? []).filter((m) => !!ctx.member(m)); } catch { return []; }
+}
+
+/**
+ * Members a command names ("all", a name, or a list).
+ * The companion (admin) reaches anyone but itself and other companions. An agent reaches only itself ("me") and its party
+ * ("party" or "all" mean the party; a name must be a member of it), so asking for someone else is dropped.
+ */
+function resolveWho(raw, facts, selfId, ctx, scope) {
+  const items = Array.isArray(raw) ? raw : [raw];
+  if (roleOf(ctx, selfId) === 'companion') {
+    const list = items.includes('all') ? facts.people.map((c) => c.id) : items.flatMap((r) => {
+      const k = norm(r), c = facts.people.find((x) => norm(x.id) === k || norm(x.name) === k || norm(x.first) === k);
+      return c ? [c.id] : [];
+    });
+    return { ids: [...new Set(list)].filter((id) => id !== selfId && ctx.member(id)?.role !== 'companion' && !!ctx.member(id)), refused: [] };
+  }
+  const party = (scope?.party ?? []).filter((id) => ctx.member(id)?.role !== 'companion'), mine = new Set([selfId, ...party]), ids = new Set(), refused = [];
+  for (const r of items) {
+    const k = norm(r);
+    if (['me', 'myself', 'self', 'i'].includes(k)) { ids.add(selfId); continue; }
+    if (k === 'all' || k === 'party' || k === 'team' || k === 'everyone') { (party.length ? party : [selfId]).forEach((id) => ids.add(id)); continue; }
+    const c = facts.people.find((x) => norm(x.id) === k || norm(x.name) === k || norm(x.first) === k);
+    if (!c) continue;
+    if (mine.has(c.id)) ids.add(c.id); else refused.push(c.first);
+  }
+  return { ids: [...ids], refused };
 }
 
 const say = (template, vars) => template.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
@@ -46,15 +76,15 @@ const say = (template, vars) => template.replace(/\{(\w+)\}/g, (_, k) => vars[k]
  * Check what a brain asked for. Returns { commands, dropped }: commands are ready for the map (each with a plain-words
  * `text`), dropped says why the others were ignored (for the transcript, never for the founder).
  */
-export function prepareCommands(ctx, role, raw) {
+export function prepareCommands(ctx, role, raw, scope = {}) {
   const cfg = cfgOf(ctx);
   if (!cfg || !Array.isArray(raw)) return { commands: [], dropped: [] };
   const facts = vorldFacts(ctx), me = roleOf(ctx, role), lim = cfg.limits ?? {};
   const out = [], dropped = [];
-  const names = (ids) => (ids.length === facts.people.length - 1 ? 'everyone' : ids.map((id) => facts.people.find((c) => c.id === id)?.first ?? id).join(', '));
+  const names = (ids) => (me === 'companion' && ids.length === facts.people.length - 1 ? 'everyone' : ids.map((id) => facts.people.find((c) => c.id === id)?.first ?? id).join(', '));
   for (const item of raw.slice(0, 24)) {
     if (out.length >= (lim.per_reply ?? 6)) { dropped.push('too many commands in one reply'); break; }
-    const name = norm(item?.do ?? item?.command);
+    const asked = norm(item?.do ?? item?.command), name = ALIASES[asked] ?? asked;
     const def = cfg.commands?.[name];
     if (!def) { dropped.push(`unknown command "${clean(name, 20)}"`); continue; }
     if (!(def.roles ?? []).includes(me)) { dropped.push(`${name} is not for ${me === 'agent' ? 'agents' : 'the companion'}`); continue; }
@@ -72,8 +102,13 @@ export function prepareCommands(ctx, role, raw) {
       case 'wait': { const s = Number(item.seconds); cmd.ms = Math.round(Math.max(1, Math.min(lim.wait_max ?? 10, Number.isFinite(s) ? s : 2)) * 1000); break; }
       case 'go_home': break;
       case 'summon': case 'gather': case 'send_home': {
-        const who = resolveWho(item.who, facts, role, ctx); if (!who.length) { dropped.push(`${name}: nobody to ${name}`); continue; }
-        cmd.who = who; vars.who = names(who); break;
+        const { ids: who, refused } = resolveWho(item.who ?? (me === 'agent' ? 'me' : undefined), facts, role, ctx, scope);
+        if (refused.length) dropped.push(`${name}: ${refused.join(', ')} ${refused.length > 1 ? 'are' : 'is'} not in your party (agents act only on themselves and their party)`);
+        if (name === 'gather' && me === 'agent' && !scope.party?.length) { dropped.push('gather: only in a party chat'); continue; }
+        if (!who.length) { if (!refused.length) dropped.push(`${name}: nobody to ${name}`); continue; }
+        cmd.who = who; vars.who = names(who);
+        if (me === 'agent' && who.length === 1 && who[0] === role && def.phrase_self) { cmd.label = def.phrase_self; out.push(cmd); continue; }
+        break;
       }
       case 'show': { const panel = norm(item.panel); if (!(cfg.panels ?? []).includes(panel)) { dropped.push(`unknown screen "${clean(panel, 20)}"`); continue; } cmd.panel = vars.panel = panel; break; }
       default: continue;
@@ -81,6 +116,8 @@ export function prepareCommands(ctx, role, raw) {
     cmd.label = say(def.phrase ?? name, vars);       // plain words for the chat; `text` stays what a character says out loud
     out.push(cmd);
   }
+  // calling the party over (or going home) ends an agent's own choreography: do it last, so the rest of its steps are not cut off
+  if (me === 'agent') out.sort((x, y) => Number(['summon', 'gather', 'send_home'].includes(x.do)) - Number(['summon', 'gather', 'send_home'].includes(y.do)));
   return { commands: out, dropped };
 }
 
@@ -90,16 +127,18 @@ const fill = (s, cfg, facts) => say(String(s ?? ''), {
 });
 
 /** The part of a crew member's system prompt that teaches it the commands it may use on this map. */
-export function commandHelp(ctx, role) {
+export function commandHelp(ctx, role, scope = {}) {
   const cfg = cfgOf(ctx);
   if (!cfg) return '';
   const facts = vorldFacts(ctx), me = roleOf(ctx, role);
-  const lines = Object.entries(cfg.commands ?? {}).filter(([, d]) => (d.roles ?? []).includes(me)).map(([n, d]) => `- ${n}: ${fill(d.help, cfg, facts)}`);
+  const lines = Object.entries(cfg.commands ?? {}).filter(([, d]) => (d.roles ?? []).includes(me)).map(([n, d]) => `- ${n}: ${fill(me === 'agent' && d.help_agent ? d.help_agent : d.help, cfg, facts)}`);
+  const party = (scope.party ?? []).filter((id) => id !== role).map((id) => facts.people.find((c) => c.id === id)?.name).filter(Boolean);
+  const reach = me === 'agent' ? `\nSummon, gather and send_home work on you${party.length ? ` and your party (${party.join(', ')})` : ' only (this is not a party chat)'}, never on other crew members: you have write access, not admin. Ask the companion to call anyone else.` : '';
   const others = facts.people.filter((c) => c.id !== role && c.role !== 'companion').map((c) => c.name).join(', ');
   return `Acting in the vorld: you live in this vorld and can act in it, not only talk. Add a "commands" list to the ov block (at most ${cfg.limits?.per_reply ?? 6} per reply); they happen on the map after your reply, in order.
 Use them when they fit what you are saying or doing, or when the founder asks; most replies need none. Commands never change files or spend anything.
 ${lines.join('\n')}
-Crew members you can name: ${others || 'none yet'}. Example: "commands": [{"do":"walk_to","to":"plaza"},{"do":"emote","kind":"wave"},{"do":"say","text":"Over here!"}]`;
+Crew members you can name: ${others || 'none yet'}. Example: "commands": [{"do":"walk_to","to":"plaza"},{"do":"emote","kind":"wave"},{"do":"say","text":"Over here!"}]${reach}`;
 }
 
 /** A short description of the map for an API brain's vorld_info tool. */

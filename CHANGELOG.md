@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.4.0 - 2026-11-15
+
+- Agents can call and send home: summon, gather and send_home now work for agents on themselves and their party (also as call / back_to_work); the companion stays the admin who can reach the whole crew
+
 ## 0.3.3 - 2026-11-15
 
 - Several balloons no longer pile on each other: they stack (compact, stemmed to their character, spilling under the group when there is no room above), and a balloon placed below a character sits under its feet instead of over it
