@@ -1,9 +1,9 @@
 # Permissions ("Writs"). Every crew member starts with NOTHING: an empty private workspace inside the
-# world folder and the ability to talk. Anything else is a grant the founder approves in the game.
+# vorld folder and the ability to talk. Anything else is a grant the founder approves in the game.
 #
 # Flow: a crew member calls the engine tool `request_access(capability, scope, reason)` -> the game shows
 # a Writ dialog (who, what, exact scope, why, risk) -> founder picks one of `answers` -> the grant is
-# stored in <world>/grants.yaml and enforced by the engine on every tool call (and by the agent CLI's
+# stored in <vorld>/grants.yaml and enforced by the engine on every tool call (and by the agent CLI's
 # own sandbox flags as a second layer). Founders can review and revoke writs any time (Settings > Writs).
 kind: permissions
 version: 1
@@ -31,9 +31,9 @@ browse:
 
 defaults:
   unknown_capability: deny
-  expire_always_after_days: null      # null = never; a world can set e.g. 90
+  expire_always_after_days: null      # null = never; a vorld can set e.g. 90
   ask_timeout_seconds: 300            # unanswered request = deny
-  audit_log: true                     # every call, allowed or denied, goes to <world>/audit.log
+  audit_log: true                     # every call, allowed or denied, goes to <vorld>/audit.log
 
 capabilities:
   fs.read:
@@ -45,7 +45,7 @@ capabilities:
     label: "change files in"                 # "<name> asks to <label> <scope>"
     risk: medium
     scope: path
-    never: ["~/.ssh/**", "<world>/grants.yaml"]
+    never: ["~/.ssh/**", "<vorld>/grants.yaml"]
   cmd.run:
     label: "run the command"                 # "<name> asks to <label> <scope>"
     risk: high

@@ -1,4 +1,4 @@
-// Game commands: what crew members DO in their world. Checked against the pack and the world, taught to every brain in its
+// Game commands: what crew members DO in their vorld. Checked against the pack and the vorld, taught to every brain in its
 // prompt, sent by API brains through a tool and by every brain through the `ov` block, and acted out by the map.
 import test from 'node:test';
 import assert from 'node:assert/strict';
@@ -6,19 +6,19 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { clientModule } from './helpers/client.mjs';
-import { home, makeWorld, saveWorld } from './helpers/world.mjs';
+import { home, makeVorld, saveVorld } from './helpers/vorld.mjs';
 const { createThread, readEvents } = await import('../engine/server/threads.mjs');
 const { runTurn } = await import('../engine/server/agents/runner.mjs');
 const { engineTools } = await import('../engine/server/agents/tools.mjs');
 const { splitEnvelope } = await import('../engine/server/agents/envelope.mjs');
-const { prepareCommands, commandHelp, worldFacts, worldInfo } = await import('../engine/server/agents/commands.mjs');
+const { prepareCommands, commandHelp, vorldFacts, vorldInfo } = await import('../engine/server/agents/commands.mjs');
 
 const sse = (deltas) => new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode(deltas.map((d) => `data: ${JSON.stringify({ choices: [{ delta: d }] })}\n\n`).join('') + 'data: [DONE]\n\n')); c.close(); } }), { status: 200, headers: { 'content-type': 'text/event-stream' } });
 
 const CREW = [{ name: 'Ada Brook', job: 'Writer' }, { name: 'Bo Reed', job: 'Editor' }, { name: 'Cy Moss', job: 'Researcher' }];
-function world(brain) {
-  let ctx = makeWorld({ crew: CREW, ...(brain ? { brain } : {}) });
-  if (brain) ctx = saveWorld(ctx, (d) => { d.providers = [{ id: 'openai-compatible', name: 'local', base_url: 'http://local.test/v1' }]; });
+function vorld(brain) {
+  let ctx = makeVorld({ crew: CREW, ...(brain ? { brain } : {}) });
+  if (brain) ctx = saveVorld(ctx, (d) => { d.providers = [{ id: 'openai-compatible', name: 'local', base_url: 'http://local.test/v1' }]; });
   return { ctx, companion: ctx.companionId, agents: ctx.crew.filter((c) => c.role === 'agent') };
 }
 const API = { provider: 'openai-compatible', model: 'm', name: 'local' };
@@ -30,8 +30,8 @@ test('the envelope carries commands through, capped and plain', () => {
 });
 
 test('commands are checked: roles, the map, the crew, limits and plain text', async () => {
-  const { ctx, companion, agents } = world();
-  const [a, b, c] = agents, facts = worldFacts(ctx);
+  const { ctx, companion, agents } = vorld();
+  const [a, b, c] = agents, facts = vorldFacts(ctx);
   assert.ok(facts.props.size > 3, 'the map has things to use');
   const prop = [...facts.props.keys()].find((k) => ctx.packs.byKind.game_commands.game_commands.interactions[k]);
   const ok = prepareCommands(ctx, a.id, [
@@ -68,28 +68,28 @@ test('commands are checked: roles, the map, the crew, limits and plain text', as
 });
 
 test('every brain is taught what it can do on this map, the companion more than an agent', async () => {
-  const { ctx, companion, agents } = world();
+  const { ctx, companion, agents } = vorld();
   const agentHelp = commandHelp(ctx, agents[0].id), compHelp = commandHelp(ctx, companion);
   for (const w of ['walk_to', 'interact', 'emote', 'say', 'go_home']) assert.match(agentHelp, new RegExp(w));
   for (const w of ['summon', 'gather', 'send_home', 'point_to', 'show']) { assert.doesNotMatch(agentHelp, new RegExp(`- ${w}:`)); assert.match(compHelp, new RegExp(`- ${w}:`)); }
-  assert.match(agentHelp, new RegExp([...worldFacts(ctx).props.keys()][0]), 'names the things on this very map');
+  assert.match(agentHelp, new RegExp([...vorldFacts(ctx).props.keys()][0]), 'names the things on this very map');
   assert.match(agentHelp, new RegExp(agents[1].name.split(' ')[0]), 'and the people');
-  assert.match(worldInfo(ctx, agents[0].id), /Places:.*plaza/);
+  assert.match(vorldInfo(ctx, agents[0].id), /Places:.*plaza/);
 });
 
 test('an API brain acts through the game_command tool, others through the ov block; the reply shows what was done', async t => {
-  const { ctx, companion, agents } = world(API);
+  const { ctx, companion, agents } = vorld(API);
   const role = agents[0].id;
   // 1. the tool
   const seen = [];
   const tools = engineTools({ ctx, role, cwd: ctx.dir, onCommand: (c) => seen.push(...c) });
-  assert.ok(tools.specs.some((s) => s.function.name === 'game_command') && tools.specs.some((s) => s.function.name === 'world_info'));
+  assert.ok(tools.specs.some((s) => s.function.name === 'game_command') && tools.specs.some((s) => s.function.name === 'vorld_info'));
   assert.equal(engineTools({ ctx, role, cwd: ctx.dir }).specs.some((s) => s.function.name === 'game_command'), false, 'not offered where nothing can show it');
   const r = await tools.run('game_command', { commands: [{ do: 'emote', kind: 'cheer' }, { do: 'walk_to', to: 'nowhere' }] });
   assert.equal(r.ok, true); assert.match(r.output, /Done: does a cheer/); assert.match(r.output, /Ignored/);
   assert.deepEqual(seen.map((c) => c.do), ['emote']);
   assert.equal((await tools.run('game_command', { commands: [{ do: 'fly' }] })).ok, false, 'nothing valid is an error the model can read');
-  assert.match((await tools.run('world_info', {})).output, /Things on the map/);
+  assert.match((await tools.run('vorld_info', {})).output, /Things on the map/);
 
   // 2. a whole turn: the ov block of the reply
   let prompt = '';
@@ -97,7 +97,7 @@ test('an API brain acts through the game_command tool, others through the ov blo
   const thread = createThread(ctx, { role });
   const sent = [];
   await runTurn(ctx, thread.id, 'join the others at the square', (e) => sent.push(e));
-  assert.match(prompt, /Acting in the world/, 'the prompt teaches the commands');
+  assert.match(prompt, /Acting in the vorld/, 'the prompt teaches the commands');
   const cmd = sent.find((e) => e.type === 'command');
   assert.ok(cmd && cmd.role === role && cmd.thread === thread.id);
   assert.deepEqual(cmd.commands.map((c) => c.do), ['walk_to', 'say']);
@@ -107,7 +107,7 @@ test('an API brain acts through the game_command tool, others through the ov blo
 });
 
 test('a reply with no commands sends none', async t => {
-  const { ctx, agents } = world(API);
+  const { ctx, agents } = vorld(API);
   const role = agents[0].id;
   t.mock.method(globalThis, 'fetch', async () => sse([{ content: 'Just words.\n```ov\n{"mood":"neutral"}\n```' }]));
   const thread = createThread(ctx, { role }), sent = [];

@@ -36,13 +36,13 @@ export async function artImage(name: string) {
   if (!res.ok) throw new Error('Art unavailable'); return res.blob();
 }
 export async function fileBlob(url: string, signal?: AbortSignal) {
-  if (!url.startsWith('/api/worlds/')) throw new Error('Invalid local file URL');
+  if (!url.startsWith('/api/vorlds/')) throw new Error('Invalid local file URL');
   const res=await authenticatedFetch(url,{signal});
   if (!res.ok) {const data=await res.json().catch(()=>({}));throw new Error(data.error ?? 'File unavailable');}
   return res.blob();
 }
 export async function uploadFile(wid: string, thread: string, file: File) {
-  const res=await authenticatedFetch(`/api/worlds/${wid}/threads/${thread}/attachments`,{method:'POST',headers:{'content-type':'application/octet-stream','x-file-name':encodeURIComponent(file.name)},body:file});
+  const res=await authenticatedFetch(`/api/vorlds/${wid}/threads/${thread}/attachments`,{method:'POST',headers:{'content-type':'application/octet-stream','x-file-name':encodeURIComponent(file.name)},body:file});
   const data=await res.json();if(!res.ok)throw new Error(data.error??'Upload failed');return data;
 }
 export async function api<T = any>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
@@ -56,14 +56,14 @@ export async function api<T = any>(path: string, opts: { method?: string; body?:
   return data as T;
 }
 
-/** Live events for one world, reconnecting with backoff. Returns a close function. */
+/** Live events for one vorld, reconnecting with backoff. Returns a close function. */
 export function connect(wid: string, onMsg: (m: any) => void): () => void {
   let ws: WebSocket | null = null, closed = false, delay = 500, connected = false;
   let retry: ReturnType<typeof setTimeout> | undefined;
   const open = () => {
     if (closed) return;
     const proto = location.protocol === 'https:' ? 'wss' : 'ws';
-    ws = new WebSocket(`${proto}://${location.host}/ws?t=${encodeURIComponent(TOKEN)}&world=${encodeURIComponent(wid)}`);
+    ws = new WebSocket(`${proto}://${location.host}/ws?t=${encodeURIComponent(TOKEN)}&vorld=${encodeURIComponent(wid)}`);
     ws.onopen = () => { delay = 500; if (connected) onMsg({ type: 'connection.restored' }); connected = true; };
     ws.onmessage = (e) => { try { onMsg(JSON.parse(e.data)); } catch { /* ignore */ } };
     ws.onclose = () => {

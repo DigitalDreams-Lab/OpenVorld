@@ -1,4 +1,4 @@
-// Pixel icon cut from the world's UI sprite sheet (the world's own style), by icon name.
+// Pixel icon cut from the vorld's UI sprite sheet (the vorld's own style), by icon name.
 import { useEffect, useMemo, useState } from 'react';
 import { iconUrl, onAtlas } from '../game/pixels';
 

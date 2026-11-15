@@ -1,6 +1,6 @@
-// A world: one folder in <home>/worlds/<id>/ with world.yaml (name, what it is for, the crew, settings), plus the
+// A vorld: one folder in <home>/vorlds/<id>/ with vorld.yaml (name, what it is for, the crew, settings), plus the
 // files the engine keeps beside it (grants.yaml, threads/, quests/, saves/, workspaces/). The context below is what
-// every other module reads: packs, the world document, the crew as plain member views, and the map plan.
+// every other module reads: packs, the vorld document, the crew as plain member views, and the map plan.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -9,10 +9,11 @@ import YAML from 'yaml';
 import { loadPacks, packRoots, homeDir, readYaml, REPO, resolveTheme } from '../../tools/lib/packs.mjs';
 import { planScenery, newSeed } from '../../tools/lib/scenery.mjs';
 import { addCliDirs } from '../../tools/lib/cli-path.mjs';
+import { checkProject } from './workspace.mjs';
 
 const core = loadPacks([path.join(REPO, 'packs', 'core')]);
 export const HOME = process.env.OPENVORLD_HOME ? path.resolve(process.env.OPENVORLD_HOME) : homeDir(core.byKind.defaults?.defaults);
-const worldsDir = () => path.join(HOME, 'worlds');
+const vorldsDir = () => path.join(HOME, 'vorlds');
 export const allPacks = () => loadPacks(packRoots(HOME));
 
 const bad = (msg, status = 400) => { throw Object.assign(new Error(msg), { status }); };
@@ -37,10 +38,10 @@ export function detected(force = false) {
 }
 
 // ---------- listing and loading ----------
-export function listWorlds() {
-  if (!fs.existsSync(worldsDir())) return [];
-  return fs.readdirSync(worldsDir()).filter((id) => fs.existsSync(path.join(worldsDir(), id, 'world.yaml'))).map((id) => {
-    const w = readYaml(path.join(worldsDir(), id, 'world.yaml'));
+export function listVorlds() {
+  if (!fs.existsSync(vorldsDir())) return [];
+  return fs.readdirSync(vorldsDir()).filter((id) => fs.existsSync(path.join(vorldsDir(), id, 'vorld.yaml'))).map((id) => {
+    const w = readYaml(path.join(vorldsDir(), id, 'vorld.yaml'));
     return { id, name: w.name, about: w.about, created_at: w.created_at };
   }).sort((a, b) => String(b.created_at).localeCompare(String(a.created_at)));
 }
@@ -62,18 +63,18 @@ function memberView(m, order, packs, theme, doc) {
     model_tier: def.model_tier ?? 'balanced',
     quests: !!def.quests,
     home: m.home ?? `${m.name ?? m.id}'s house`,
-    world: doc.name,
+    vorld: doc.name,
   };
 }
 
 const cache = new Map();
-export function worldCtx(id, { fresh = false } = {}) {
-  if (!/^[a-z0-9][a-z0-9-]{0,60}$/.test(String(id))) bad('bad world id');
-  const dir = path.join(worldsDir(), id);
-  if (!fs.existsSync(path.join(dir, 'world.yaml'))) bad('world not found', 404);
+export function vorldCtx(id, { fresh = false } = {}) {
+  if (!/^[a-z0-9][a-z0-9-]{0,60}$/.test(String(id))) bad('bad vorld id');
+  const dir = path.join(vorldsDir(), id);
+  if (!fs.existsSync(path.join(dir, 'vorld.yaml'))) bad('vorld not found', 404);
   if (!fresh && cache.has(id)) return cache.get(id);
   const packs = loadPacks(packRoots(HOME, dir));
-  const doc = readYaml(path.join(dir, 'world.yaml'));
+  const doc = readYaml(path.join(dir, 'vorld.yaml'));
   const theme = resolveTheme(packs.byKind, doc.theme ?? packs.byKind.defaults?.defaults?.theme ?? 'default') ?? {};
   const crew = (doc.crew ?? []).map((m, i) => memberView(m, i, packs, theme, doc));
   const ctx = {
@@ -88,18 +89,18 @@ export function worldCtx(id, { fresh = false } = {}) {
   return ctx;
 }
 
-/** Edit world.yaml through a function, then reload the context. */
-export function saveWorld(ctx, mutate) {
-  const file = path.join(ctx.dir, 'world.yaml');
+/** Edit vorld.yaml through a function, then reload the context. */
+export function saveVorld(ctx, mutate) {
+  const file = path.join(ctx.dir, 'vorld.yaml');
   const doc = readYaml(file);
   mutate(doc);
   writeDoc(ctx.dir, doc);
   cache.delete(ctx.id);
-  return worldCtx(ctx.id);
+  return vorldCtx(ctx.id);
 }
-const writeDoc = (dir, doc) => fs.writeFileSync(path.join(dir, 'world.yaml'), `# An openVorld world. Edit freely while the game is closed.\n${YAML.stringify(doc)}`);
+const writeDoc = (dir, doc) => fs.writeFileSync(path.join(dir, 'vorld.yaml'), `# An openVorld vorld. Edit freely while the game is closed.\n${YAML.stringify(doc)}`);
 
-/** The map: houses for every agent around the plaza, seeded so two worlds differ. */
+/** The map: houses for every agent around the plaza, seeded so two vorlds differ. */
 function planOf(ctx) {
   const defs = ctx.packs.byKind.scenery?.scenery ?? {};
   return planScenery(defs, { seed: ctx.doc.seed ?? ctx.id, mood: ctx.doc.mood ?? 'auto', biome: ctx.doc.biome ?? 'auto', homes: ctx.crew.filter((c) => c.role !== 'companion').length });
@@ -123,20 +124,22 @@ export function cleanMember(input, taken, role = 'agent') {
   return m;
 }
 
-// ---------- creating a world ----------
+// ---------- creating a vorld ----------
 /**
- * Found a world from the onboarding form: { name, about, template, companion: {name, form, species, brain}, crew: [{name, job, function}], brain }.
+ * Found a vorld from the onboarding form: { name, about, template, project, companion: {name, form, species, brain}, crew: [{name, job, function}], brain }.
+ * `project` is an existing folder the crew works on together; without one the vorld gets its own <vorld>/project.
  * The template adds its starter quests (steps point at crew members by their index in the template's crew).
  */
-export function createWorld(input) {
+export function createVorld(input) {
   const packs = allPacks();
   const theme = resolveTheme(packs.byKind, packs.byKind.defaults?.defaults?.theme ?? 'default') ?? {};
   const name = str(input.name, 60);
-  if (!name) bad('give your world a name');
+  if (!name) bad('give your vorld a name');
   const template = packs.byKind.template?.[input.template] ?? packs.byKind.template?.blank ?? { crew: [], quests: [] };
-  let id = slug(name) || 'world', n = 1;
-  fs.mkdirSync(worldsDir(), { recursive: true });
-  while (fs.existsSync(path.join(worldsDir(), id))) id = `${slug(name) || 'world'}-${++n}`;
+  let id = slug(name) || 'vorld', n = 1;
+  fs.mkdirSync(vorldsDir(), { recursive: true });
+  while (fs.existsSync(path.join(vorldsDir(), id))) id = `${slug(name) || 'vorld'}-${++n}`;
+  const project = input.project ? checkProject({ packs, dir: path.join(vorldsDir(), id) }, String(input.project).trim()) : null;
   const taken = new Set(['founder']);
   const brain = BRAIN(input.brain);
   const companion = cleanMember({ ...theme.companion, ...(input.companion ?? {}), brain: input.companion?.brain ?? brain }, taken, 'companion');
@@ -144,9 +147,10 @@ export function createWorld(input) {
   const given = Array.isArray(input.crew) ? input.crew : (template.crew ?? []).map((c, i) => ({ ...c, name: theme.agent_names?.[i], slot: i }));
   const bySlot = new Map();
   const crew = given.slice(0, 30).filter((c) => str(c?.name, 40)).map((c) => { const m = cleanMember({ brain, ...c }, taken); if (Number.isInteger(c.slot)) bySlot.set(c.slot, m.id); return m; });
-  const dir = path.join(worldsDir(), id);
+  const dir = path.join(vorldsDir(), id);
   fs.mkdirSync(path.join(dir, 'workspaces'), { recursive: true });
-  const doc = { id, name, about: str(input.about, 400), template: template.id ?? 'blank', theme: theme.id ?? 'default', seed: newSeed(), created_at: new Date().toISOString(), crew: [companion, ...crew] };
+  if (!project) fs.mkdirSync(path.join(dir, 'project'), { recursive: true });
+  const doc = { id, name, about: str(input.about, 400), ...(project ? { project } : {}), template: template.id ?? 'blank', theme: theme.id ?? 'default', seed: newSeed(), created_at: new Date().toISOString(), crew: [companion, ...crew] };
   writeDoc(dir, doc);
   return { id, starters: (template.quests ?? []).map((q) => ({ ...q, steps: (q.steps ?? []).map((s) => ({ ...s, agent: typeof s.agent === 'number' ? bySlot.get(s.agent) : s.agent})).filter((s) => s.agent) })) };
 }

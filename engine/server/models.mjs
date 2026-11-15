@@ -42,7 +42,7 @@ async function fromEndpoint(def, inst, env, fetcher) {
 
 /**
  * @param {object} o
- * @param {string} o.id provider id; o.def its providers.yaml entry; o.instance the world's configured instance (or undefined)
+ * @param {string} o.id provider id; o.def its providers.yaml entry; o.instance the vorld's configured instance (or undefined)
  * @param {string[]} [o.current] model names that must stay selectable (what is chosen now)
  * @returns {Promise<{ source: string, models: string[], tiers: Record<string,string> }>}
  */

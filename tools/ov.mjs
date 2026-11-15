@@ -2,7 +2,7 @@
 // openVorld command line.
 //   npm run ov -- providers     agent CLIs found on this machine
 //   npm run ov -- validate      load every pack and report problems
-//   npm run ov -- worlds        list your worlds
+//   npm run ov -- vorlds        list your vorlds
 import path from 'node:path';
 import { loadPacks, packRoots, homeDir, REPO } from './lib/packs.mjs';
 import { parse } from './lib/dsl.mjs';
@@ -10,7 +10,7 @@ import { parse } from './lib/dsl.mjs';
 const [cmd] = process.argv.slice(2);
 const core = loadPacks([path.join(REPO, 'packs', 'core')]);
 process.env.OPENVORLD_HOME ??= homeDir(core.byKind.defaults?.defaults);
-const { detected, listWorlds, HOME } = await import('../engine/server/world.mjs');
+const { detected, listVorlds, HOME } = await import('../engine/server/vorld.mjs');
 
 if (cmd === 'providers') {
   const found = detected(true);
@@ -23,9 +23,9 @@ if (cmd === 'providers') {
   for (const p of problems) console.log(`${p.level === 'error' ? 'ERROR' : 'warn '} ${p.msg}`);
   console.log(problems.some((p) => p.level === 'error') ? 'packs have errors' : 'packs ok');
   process.exit(problems.some((p) => p.level === 'error') ? 1 : 0);
-} else if (cmd === 'worlds') {
-  const list = listWorlds();
-  console.log(list.length ? list.map((w) => `${w.id.padEnd(24)} ${w.name}`).join('\n') : `No worlds yet in ${HOME}.`);
+} else if (cmd === 'vorlds') {
+  const list = listVorlds();
+  console.log(list.length ? list.map((w) => `${w.id.padEnd(24)} ${w.name}`).join('\n') : `No vorlds yet in ${HOME}.`);
 } else {
-  console.log('usage: npm run ov -- providers | validate | worlds');
+  console.log('usage: npm run ov -- providers | validate | vorlds');
 }

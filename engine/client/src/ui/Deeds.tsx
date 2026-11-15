@@ -1,17 +1,17 @@
-// Deeds: the achievements of this world. Hidden ones show only their hint until found.
+// Deeds: the achievements of this vorld. Hidden ones show only their hint until found.
 import { setState, useStore } from '../store';
 import { Icon } from './Icon';
 
 export function Deeds() {
-  const world = useStore((s) => s.world);
-  const got = world.state.deeds ?? {};
+  const vorld = useStore((s) => s.vorld);
+  const got = vorld.state.deeds ?? {};
   return (
     <div className="modal-bg" onClick={() => setState({ modal: null })}>
       <div className="modal panel deeds" onClick={(e) => e.stopPropagation()}>
-        <header className="row between"><h2>Deeds <small>{Object.keys(got).length}/{world.deeds.length}</small></h2><button className="x" onClick={() => setState({ modal: null })}>✕</button></header>
-        <p className="muted">Level {world.state.level} · {world.state.xp} XP. XP comes from finished quests, seals and a little from chatting.</p>
+        <header className="row between"><h2>Deeds <small>{Object.keys(got).length}/{vorld.deeds.length}</small></h2><button className="x" onClick={() => setState({ modal: null })}>✕</button></header>
+        <p className="muted">Level {vorld.state.level} · {vorld.state.xp} XP. XP comes from finished quests, seals and a little from chatting.</p>
         <div className="deed-grid">
-          {world.deeds.map((d: any) => {
+          {vorld.deeds.map((d: any) => {
             const done = !!got[d.id], secret = d.hidden && !done;
             return (
               <div key={d.id} className={`deed ${done ? 'done' : 'locked'}`}>

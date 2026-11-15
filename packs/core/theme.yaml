@@ -1,9 +1,9 @@
-# The default theme: the names, words, palette and sounds of a world. A user pack can override any of it
-# (~/.openvorld/packs or <world>/packs), so the same engine can be a village, a space station or an office.
+# The default theme: the names, words, palette and sounds of a vorld. A user pack can override any of it
+# (~/.openvorld/packs or <vorld>/packs), so the same engine can be a village, a space station or an office.
 kind: theme
 id: default
 version: 1
-label: Default world
+label: Default vorld
 palette: { ink: "#1b1622", parchment: "#f1e2bf", gold: "#d9a441", lapis: "#2c4f9e", turquoise: "#3fb5a8", clay: "#b5653b", danger: "#b8322a" }
 
 companion: { name: Buzz, form: creature, species: bee, voice_style: "short, warm, playful sentences" }
@@ -36,7 +36,7 @@ strings:
     needs_writ: "Needs access"
     quest_done: "Quest done!"
   deeds:
-    world_founded:  { name: First Stone, desc: Found your world. }
+    vorld_founded:  { name: First Stone, desc: Found your vorld. }
     first_words:    { name: Hello There, desc: Talk to a crew member for the first time. }
     first_writ:     { name: Keys Handed Over, desc: Grant your first writ. }
     first_refusal:  { name: Not This Time, desc: Refuse a writ., hint: Not every request deserves a yes. }

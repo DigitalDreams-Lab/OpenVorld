@@ -12,7 +12,7 @@
 * { box-sizing: border-box; }
 html, body, #root { margin: 0; height: 100%; background: var(--ink); color: var(--ink); font-family: var(--font); font-size: var(--text); line-height: 1.45; overflow: hidden; -webkit-font-smoothing: antialiased; }
 /* titles, names and numbers keep the pixel look */
-.logo, .world-name, .hud-title, .lv, .cp-name, .toast-title, .modal h2, .deed-name, h1, h2, h3  { font-family: var(--display); font-weight: var(--display-weight) !important; letter-spacing: .02em; }
+.logo, .vorld-name, .hud-title, .lv, .cp-name, .toast-title, .modal h2, .deed-name, h1, h2, h3  { font-family: var(--display); font-weight: var(--display-weight) !important; letter-spacing: .02em; }
 .btn, .option, .thread-tab, .chip { font-weight: 700; }
 button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .fatal { color: var(--parchment); padding: 40px; font-size: 18px; }
@@ -42,10 +42,10 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .title-card { width: min(460px, 92vw); padding: 28px; text-align: center; }
 .logo { font-size: calc(44px * var(--display-scale)); margin: 0; letter-spacing: 1px; color: var(--ink); text-shadow: 3px 3px 0 var(--gold); }
 .tagline { margin: 4px 0 20px; }
-.world-list { display: grid; gap: 8px; margin-bottom: 16px; max-height: 40vh; overflow: auto; }
-.world-item { display: grid; text-align: left; padding: 10px 12px; border: 2px solid var(--ink); background: #fffaf0; cursor: pointer; }
-.world-item:hover { background: color-mix(in srgb, var(--gold) 30%, #fffaf0); }
-.world-name { font-size: calc(19px * var(--display-scale)); font-weight: 600; } .world-sub { font-size: 13px; opacity: .7; }
+.vorld-list { display: grid; gap: 8px; margin-bottom: 16px; max-height: 40vh; overflow: auto; }
+.vorld-item { display: grid; text-align: left; padding: 10px 12px; border: 2px solid var(--ink); background: #fffaf0; cursor: pointer; }
+.vorld-item:hover { background: color-mix(in srgb, var(--gold) 30%, #fffaf0); }
+.vorld-name { font-size: calc(19px * var(--display-scale)); font-weight: 600; } .vorld-sub { font-size: 13px; opacity: .7; }
 
 /* onboarding */
 .onboarding { height: 100%; display: grid; grid-template-rows: auto 1fr; background: linear-gradient(var(--ink), color-mix(in srgb, var(--lapis) 50%, var(--ink))); padding: 16px; }
@@ -63,10 +63,10 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .phaser-host { position: absolute; inset: 0; }
 .phaser-host canvas { display: block; }
 .hint { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); color: var(--parchment); background: rgba(0,0,0,.45); padding: 4px 10px; font-size: 14px; pointer-events: none; }
-/* World lighting sits at layer 1; interface panels must stay above its tint/vignette. */
+/* Vorld lighting sits at layer 1; interface panels must stay above its tint/vignette. */
 .hud { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 14px; align-items: flex-start; pointer-events: none; z-index: 3; }
 .hud > * { pointer-events: auto; }
-/* Keep status readable even when a generated world uses muted metal and dark accents. */
+/* Keep status readable even when a generated vorld uses muted metal and dark accents. */
 .hud-left { display: flex; gap: 10px; padding: 8px 12px; align-items: center; min-width: 260px; background: color-mix(in srgb, var(--parchment) 25%, #fffaf0); }
 .hud-left > .portrait { background: color-mix(in srgb, var(--turquoise) 15%, #f7faf9); }
 .hud-title { font-size: calc(18px * var(--display-scale)); font-weight: 600; } .lv { background: color-mix(in srgb, var(--gold) 20%, #ffe09a); color: var(--ink); border: 1px solid var(--ink); padding: 0 6px; margin-left: 4px; font-size: calc(14px * var(--display-scale)); }
@@ -125,15 +125,15 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .toast.level { background: var(--gold); } .toast.error { background: color-mix(in srgb, var(--danger) 25%, var(--parchment)); }
 
 /* modals */
-.modal-bg { position: absolute; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; z-index: 20; }
-.modal { width: min(940px, 94vw); max-height: 88vh; overflow: auto; padding: 16px 18px; }
+.modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; z-index: 20; }
+.modal { width: min(940px, 94vw); max-height: 88vh; overflow: auto; overscroll-behavior: contain; padding: 16px 18px; }
 .modal h2 { margin: 0; } .modal h2 small { font-size: 14px; opacity: .7; } .modal h3 { margin: 18px 0 6px; }
 .deed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
 .deed { border: 2px solid var(--ink); background: #fffaf0; padding: 10px 8px; display: grid; justify-items: center; text-align: center; gap: 4px; opacity: .55; filter: grayscale(.8); } .deed-name { font-weight: 600; font-size: calc(14px * var(--display-scale)); } .deed-desc { font-size: 13px; } .deed-meta { font-size: 12px; opacity: .7; }
 .brains { width: 100%; border-collapse: collapse; } .brains td { padding: 4px; border-bottom: 1px dashed rgba(0,0,0,.2); vertical-align: middle; } .brains td:first-child { width: 34%; }
 .endpoint { display: grid; grid-template-columns: 120px 1fr 1fr; gap: 6px; align-items: center; margin-bottom: 6px; }
 
-.crew-bar { position: absolute; left: 12px; top: 104px; display: flex; flex-direction: column; gap: 6px; padding: 6px; z-index: 4; max-height: calc(100% - 150px); overflow-y: auto; }
+.crew-bar { position: absolute; left: 12px; top: 104px; display: flex; flex-direction: column; gap: 6px; padding: 6px; z-index: 4; max-height: calc(100% - 150px); overflow-y: auto; overscroll-behavior: contain; }
 .cb-item { position: relative; padding: 0; border: none; background: none; cursor: pointer; line-height: 0; }
 .cb-item .portrait { transition: transform .1s; } .cb-item:hover .portrait { transform: scale(1.08); }
 .cb-item.on .portrait { box-shadow: 0 0 0 2px var(--gold); }
@@ -293,7 +293,7 @@ select.field, .cs-fields select  { appearance: none; -webkit-appearance: none; m
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232a2233' stroke-width='2.4' stroke-linecap='square'/%3E%3C/svg%3E"); }
 select.field.small { padding-right: 26px; }
 .workspace .pf-row { flex-wrap: wrap; row-gap: 4px; } .workspace .pf-path { flex: 1 1 100%; }
-.cs-fields > label, .cs-fields .row > label { min-width: 0; }
+.cs-fields > label, .cs-fields .row > label, .add-agent > label, .add-agent .row > label { min-width: 0; }
 
 .cs-fields > label, .cs-fields .workspace { grid-template-columns: minmax(0, 1fr); }
 .cs-preview * { min-width: 0; }
@@ -325,7 +325,7 @@ select.field.small { padding-right: 26px; }
 .deed.done { opacity: 1; filter: none; }
 .hud-badge { margin-left: 4px; font-size: 11px; padding: 0 5px; border: 1px solid var(--ink); background: #fffaf0; } .hud-badge.alert { background: var(--gold); animation: bob 1s ease-in-out infinite; }
 .cb-add { width: 32px; height: 32px; border: 2px dashed var(--ink); background: color-mix(in srgb, var(--parchment) 70%, transparent); font-size: 20px; line-height: 1; color: var(--ink); }
-.add-agent { width: min(460px, 94vw); display: grid; gap: 8px; } .add-agent label, .quest-editor label, .settings label, .ob-form label { display: grid; gap: 3px; font-size: 13px; font-weight: 700; }
+.add-agent { width: min(520px, 94vw); display: grid; gap: 8px; } .add-agent label, .quest-editor label, .settings label, .ob-form label { display: grid; gap: 3px; font-size: 13px; font-weight: 700; }
 .no-brain { margin: 0; padding: 6px 12px; font-size: 13px; background: color-mix(in srgb, var(--gold) 30%, var(--parchment)); border-bottom: 2px dashed color-mix(in srgb, var(--ink) 40%, transparent); }
 .warn { color: var(--clay); }
 

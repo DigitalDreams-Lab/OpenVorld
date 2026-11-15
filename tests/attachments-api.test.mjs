@@ -4,12 +4,12 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
-import {startServer,call,newWorld} from './helpers/server.mjs';
+import {startServer,call,newVorld} from './helpers/server.mjs';
 
 test('the authenticated upload/download/message routes keep files in their own chat and retain them in history',async t=>{
   const {home}=await startServer(t);
-  const {id,root}=await newWorld();
-  const {worldCtx}=await import('../engine/server/world.mjs');const ctx=worldCtx(id);
+  const {id,root}=await newVorld();
+  const {vorldCtx}=await import('../engine/server/vorld.mjs');const ctx=vorldCtx(id);
   const thread=(await call('POST',root+'/threads',{role:ctx.companionId})).data;
   const other=(await call('POST',root+'/threads',{role:ctx.companionId})).data;
   const upload=root+`/threads/${thread.id}/attachments`;

@@ -19,7 +19,7 @@ const ENVELOPE = /```ov[\s\S]*$/;
 
 /** One turn of a crew member: portrait + interleaved bubbles and activity. */
 export function AgentTurn({ role, steps, text, mood, did, speaker, job, live, root, thread }: { role: string; did?: string[]; steps?: Step[]; text?: string; mood?: string; speaker?: string; job?: string; live?: boolean; root?: string; thread?: string }) {
-  const world = useStore((s) => s.world);
+  const vorld = useStore((s) => s.vorld);
   const list: Step[] = steps?.length ? steps : text ? [{ t: 'text', text }] : [];
   // consecutive non-text steps form one activity block
   const blocks = useMemo(() => {
@@ -34,13 +34,13 @@ export function AgentTurn({ role, steps, text, mood, did, speaker, job, live, ro
   const lastIsText = blocks[blocks.length - 1]?.kind === 'text';
   return (
     <div className="msg them turn">
-      <Portrait world={world} role={role} size={32} mood={live ? 'thinking' : mood} />
+      <Portrait vorld={vorld} role={role} size={32} mood={live ? 'thinking' : mood} />
       <div className="turn-body">
         {speaker && <b className="speaker">{speaker}{job && <span className="job-tag">{job}</span>}</b>}
         {blocks.map((b, i) => b.kind === 'text'
           ? <div key={i} className="bubble"><Markdown text={b.text} thread={thread} />{live && i === blocks.length - 1 && <span className="caret">▌</span>}</div>
           : <Activity key={i} steps={b.steps} live={!!live && i === blocks.length - 1} root={root} />)}
-        {did && did.length > 0 && <div className="turn-did" title="What they did in the world">{did.map((d, i) => <span key={i}>{d}</span>)}</div>}
+        {did && did.length > 0 && <div className="turn-did" title="What they did in the vorld">{did.map((d, i) => <span key={i}>{d}</span>)}</div>}
         {live && !blocks.length && <div className="bubble"><span className="dots">…</span><span className="caret">▌</span></div>}
         {live && blocks.length > 0 && !lastIsText && <div className="turn-working"><span className="spin" /> {str('chat.working', {}, 'working')}…</div>}
       </div>
@@ -49,8 +49,8 @@ export function AgentTurn({ role, steps, text, mood, did, speaker, job, live, ro
 }
 
 function Activity({ steps, live, root }: { steps: Step[]; live: boolean; root?: string }) {
-  const world = useStore((s) => s.world);
-  const chat = world?.interactions?.chat ?? {};
+  const vorld = useStore((s) => s.vorld);
+  const chat = vorld?.interactions?.chat ?? {};
   const tools = steps.filter((s): s is Extract<Step, { t: 'tool' }> => s.t === 'tool');
   const failed = tools.filter((t) => t.status === 'error').length;
   const [open, setOpen] = useState<boolean | null>(null);
@@ -80,9 +80,9 @@ function Activity({ steps, live, root }: { steps: Step[]; live: boolean; root?: 
 }
 
 function ToolRow({ step, root }: { step: Extract<Step, { t: 'tool' }>; root?: string }) {
-  const world = useStore((s) => s.world);
+  const vorld = useStore((s) => s.vorld);
   const [open, setOpen] = useState(false);
-  const r = world?.interactions?.reactions ?? {};
+  const r = vorld?.interactions?.reactions ?? {};
   const icon = step.test ? r[`test.${step.test}`]?.icon : step.status === 'error' ? r['tool.error']?.icon ?? r[step.kind]?.icon : r[step.kind]?.icon;
   const verb = str(`tool.${step.kind.split('.')[1] ?? 'run'}`, {}, VERB[step.kind] ?? 'Run');
   const target = rel(step.target ?? '', root);

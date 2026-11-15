@@ -1,12 +1,22 @@
 # openVorld
 
-Run a project, a company or any ongoing activity as a small pixel-art game. Your AI crew lives in the world, and they work through **quests**: workflows you design once and run again. You stay the founder, and you give the approvals.
+**Every project is a vorld.** A vorld is a project plus everyone working on it: the shared project folder, a crew of AI agents (each with a private workspace), the quests they plan and run together, and everything they've done so far. A project is just files; a vorld is the files plus the people and the work in progress.
+
+openVorld is the open-source home for vorlds. You see each vorld as a small pixel-art world where the crew lives, and you run it as the founder: you design the workflows, and you give the approvals.
+
+```
+vorld "Lantern Tea"
+├── project folder     shared: every member reads it, changes need your writ
+├── crew               a companion + agents, each with a private workspace
+├── quests             workflows: step → step → your Seal → done
+└── history            every chat, step, writ and deed, in plain files
+```
 
 - **Quests, not endless chat.** A quest is a goal and a list of steps. Each step goes to one crew member, and each step's result is handed to the next. Mark a step with the **Seal** and the quest waits there until you approve the result or send it back with a note.
 - **Agents that feel like people.** Each member has a name, a job and a face. They walk to the Quest Board when a step starts, go home when it's done, and show a "!" when they're waiting for you.
-- **Nothing is allowed until you say so.** Every member starts with only their own folder. If they need more, they ask for a **writ** (read a folder, run one command, visit one site), and you answer once, for this session or always.
+- **One shared project, private workspaces.** The whole crew reads the vorld's project folder, and each member drafts in their own workspace. Anything more needs a **writ** (change the project, run one command, visit one site), and you answer once, for this session or always.
 - **Bring your own brain.** Claude Code or Codex if they're on your computer, or any OpenAI-compatible API (OpenRouter, OpenAI, Ollama, LM Studio). You can pick a different brain for each member.
-- **Local and plain files.** Everything lives in `~/.openvorld`. Worlds, chats and quests are YAML, JSON and JSONL that you can read. There's no account and no cloud.
+- **Local and plain files.** Everything lives in `~/.openvorld`. Vorlds, chats and quests are YAML, JSON and JSONL that you can read. There's no account and no cloud.
 
 ## Start
 
@@ -20,12 +30,12 @@ npm install
 npm run dev
 ```
 
-Open the address it prints. Found a world from a template (Software, Content, Business or Blank), then give each member a brain in their settings (⚙). A member without a brain answers with a short scripted line, so you can explore first.
+Open the address it prints and create a vorld: give it a name, point it at a project folder (an existing repo or folder, or a new one), and start from a template (Software, Content, Business or Blank). Then give each member a brain in their settings (⚙). A member without a brain answers with a short scripted line, so you can explore first.
 
 To use another data folder:
 
 ```bash
-OPENVORLD_HOME=~/my-worlds npm run dev
+OPENVORLD_HOME=~/my-vorlds npm run dev
 ```
 
 ## How it plays
@@ -37,7 +47,7 @@ OPENVORLD_HOME=~/my-worlds npm run dev
 
 ## Make it yours
 
-Everything the game shows is a **pack**: YAML files that tell the engine what to show. Put your own packs in `~/.openvorld/packs` (or `<world>/packs` for a single world) to add templates, roles, deeds, themes or brains without touching the code. See [docs/PACKS.md](docs/PACKS.md).
+Everything the game shows is a **pack**: YAML files that tell the engine what to show. Put your own packs in `~/.openvorld/packs` (or `<vorld>/packs` for a single vorld) to add templates, roles, deeds, themes or brains without touching the code. See [docs/PACKS.md](docs/PACKS.md).
 
 ```bash
 npm run validate          # check every pack

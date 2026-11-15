@@ -3,14 +3,14 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {home,makeWorld,saveWorld} from './helpers/world.mjs';
+import {home,makeVorld,saveVorld} from './helpers/vorld.mjs';
 const {createThread,readEvents}=await import('../engine/server/threads.mjs');
 const {saveAttachment,resolveAttachments}=await import('../engine/server/attachments.mjs');
 const {runTurn}=await import('../engine/server/agents/runner.mjs');
 const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==','base64');
 async function setup(name,provider) {
-  let ctx=makeWorld({name,brain:{provider,model:'reference-test'}});
-  ctx=saveWorld(ctx,d=>{d.providers=[{id:'openai-compatible',base_url:'https://example.invalid/v1'}];});
+  let ctx=makeVorld({name,brain:{provider,model:'reference-test'}});
+  ctx=saveVorld(ctx,d=>{d.providers=[{id:'openai-compatible',base_url:'https://example.invalid/v1'}];});
   const role=ctx.companionId;
   const thread=createThread(ctx,{role}), image=saveAttachment(ctx,thread.id,'screen.png',png), notes=saveAttachment(ctx,thread.id,'notes.md',Buffer.from('Only load this sentence when requested.'));
   return {ctx,role,thread,files:resolveAttachments(ctx,thread.id,[image.id,notes.id])};

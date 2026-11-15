@@ -1,9 +1,10 @@
 // Settings of one crew member: name, job title, job description, personality, the brain they think with and the
 // folder they work in.
 import { useEffect, useState } from 'react';
-import { api } from '../api';
+import { api, artImage } from '../api';
 import { emit, memberOf, setState, toast, useStore } from '../store';
 import { play } from '../audio/sfx';
+import { loadGenerated } from '../game/pixels';
 import { Portrait } from './Portrait';
 import { useConfirm } from './ConfirmDialog';
 import { ModelPicker } from './ModelPicker';
@@ -11,10 +12,10 @@ import { FolderPicker, useFolderDialog } from './FolderPicker';
 
 const tail = (p: string) => { const parts = p.split('/').filter(Boolean); return parts.length > 3 ? `…/${parts.slice(-2).join('/')}` : p; };
 
-/** The brains this world can use: detected CLIs plus the API endpoints set up in Settings. */
+/** The brains this vorld can use: detected CLIs plus the API endpoints set up in Settings. */
 export function useBrainChoices(wid: string) {
   const [opts, setOpts] = useState<any>(null);
-  useEffect(() => { api(`/worlds/${wid}/settings`).then(setOpts).catch(() => {}); }, [wid]);
+  useEffect(() => { api(`/vorlds/${wid}/settings`).then(setOpts).catch(() => {}); }, [wid]);
   const label = (id: string) => opts?.catalog.find((x: any) => x.id === id)?.label ?? id;
   const choices = opts ? [{ value: 'none', label: 'No brain yet' },
     ...opts.detected.map((d: any) => ({ value: d.id, label: d.label })),
@@ -23,8 +24,8 @@ export function useBrainChoices(wid: string) {
 }
 
 export function MemberSettings({ id }: { id: string }) {
-  const wid = useStore((s) => s.worldId)!;
-  useStore((s) => s.world);
+  const wid = useStore((s) => s.vorldId)!;
+  useStore((s) => s.vorld);
   const c = memberOf(id);
   const [f, setF] = useState<any>(() => ({ name: c.name, job: c.job ?? '', function: c.function ?? '', personality: c.personality ?? '', form: c.look?.form ?? 'creature', brain: { provider: c.brain?.provider ?? 'none', name: c.brain?.name, model: c.brain?.model ?? '' } }));
   const [folder, setFolder] = useState<string | null>(null);         // null = unchanged
@@ -37,13 +38,18 @@ export function MemberSettings({ id }: { id: string }) {
   if (opts && !choices.some((p) => p.value === brainValue)) choices.push({ value: brainValue, label: `${label(f.brain.provider)} (not found here)` });
   const save = async () => {
     try {
-      const w = await api(`/worlds/${wid}/crew/${id}`, { method: 'PUT', body: { ...f, ...(folder !== null ? { workspace: folder } : {}) } });
-      setState({ world: w, modal: null }); emit('world', w); play('seal.approved');
+      const w = await api(`/vorlds/${wid}/crew/${id}`, { method: 'PUT', body: { ...f, ...(folder !== null ? { workspace: folder } : {}) } });
+      await loadGenerated(w.art.atlas, (name) => artImage(name));
+      setState({ vorld: w, modal: null }); emit('vorld', w); play('seal.approved');
     } catch (e: any) { toast({ kind: 'error', title: e.message }); play('ui.error'); }
   };
   const remove = async () => {
     if (!(await confirm({ title: `Remove ${c.name}?`, body: `${c.name} leaves the crew and loses every writ you granted. Their folder stays on your disk.`, ok: 'Remove', danger: true }))) return;
-    try { const w = await api(`/worlds/${wid}/crew/${id}`, { method: 'DELETE' }); setState({ world: w, modal: null, talkingTo: null }); emit('world', w); }
+    try {
+      const w = await api(`/vorlds/${wid}/crew/${id}`, { method: 'DELETE' });
+      await loadGenerated(w.art.atlas, (name) => artImage(name));
+      setState({ vorld: w, modal: null, talkingTo: null }); emit('vorld', w);
+    }
     catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   const pickFolder = async () => {
@@ -69,14 +75,14 @@ export function MemberSettings({ id }: { id: string }) {
               <label className="grow">Model<ModelPicker wid={wid} provider={f.brain.provider} name={f.brain.name} tier="balanced" value={f.brain.model || undefined} onChange={(model) => setF({ ...f, brain: { ...f.brain, model: model ?? '' } })} /></label>
             </div>
             <section className="project-folder">
-              <b>Works in</b>
+              <b>Private workspace</b>
               <div className="pf-row">
                 <code className="pf-path" title={ws}>{tail(ws)}</code>
                 <button className="btn small" onClick={pickFolder}>Change</button>
                 {(c.workspace.source === 'own' || folder) && <button className="btn small" onClick={() => { setFolder(''); setTyping(false); }}>Use the default</button>}
               </div>
               {typing && <FolderPicker label="Folder" value={folder ?? ''} onChange={setFolder} capability="fs.write" />}
-              <p className="muted small">{c.name} can read and change files in this folder. Anything else needs a writ you approve.</p>
+              <p className="muted small">{c.name} can read and change files here, and read the project folder. Anything else needs a writ you approve.</p>
             </section>
           </div>
         </div>

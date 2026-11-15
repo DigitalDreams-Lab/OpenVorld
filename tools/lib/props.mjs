@@ -1,4 +1,4 @@
-// Sprite names of the objects in the world. EVERY sprite is a square of the same size (one ground tile); an object
+// Sprite names of the objects in the vorld. EVERY sprite is a square of the same size (one ground tile); an object
 // bigger than a tile is several sprites side by side (`grid: [columns, rows]` in scenery.yaml). The server's manifest,
 // the default sprite sheets and the game client all use these names, so they always agree.
 

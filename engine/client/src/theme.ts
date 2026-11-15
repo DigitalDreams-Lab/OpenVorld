@@ -1,4 +1,4 @@
-// The interface wears the world's palette (theme.yaml > palette). Before a world is open the CSS defaults apply.
+// The interface wears the vorld's palette (theme.yaml > palette). Before a vorld is open the CSS defaults apply.
 const KEYS = ['ink', 'parchment', 'gold', 'lapis', 'turquoise', 'clay', 'danger'];
 export const BODY_FONT = 'Lexend';
 

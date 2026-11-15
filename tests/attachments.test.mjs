@@ -18,7 +18,7 @@ test('uploads belong to one chat, keep original names, and survive a fresh conte
   assert.equal(fs.readFileSync(getAttachment({...ctx},a.id,notes.id).path,'utf8'),'{"goal":"Ship"}');
   assert.equal(fs.statSync(getAttachment(ctx,a.id,image.id).path).mode&0o777,0o600);
   assert.throws(()=>getAttachment(ctx,b.id,image.id),/not found/);
-  assert.throws(()=>getAttachment(ctx,a.id,'../../world.yaml'),/not found/);
+  assert.throws(()=>getAttachment(ctx,a.id,'../../vorld.yaml'),/not found/);
   assert.throws(()=>resolveAttachments(ctx,b.id,[image.id]),/not found/);
   const spoof=saveAttachment(ctx,a.id,'fake.png',Buffer.from('<script>alert(1)</script>'));
   assert.equal(spoof.type,'application/octet-stream','MIME labels do not turn arbitrary bytes into inline images');
@@ -45,7 +45,9 @@ test('local reply links respect conversation folder access and reject symlink es
   assert.throws(()=>replyFile(ctx,thread.id,'../../secret.txt'),/outside/);
   assert.throws(()=>replyFile(ctx,thread.id,'escape.txt'),/outside/);
   assert.throws(()=>replyFile(ctx,thread.id,'.env'),/outside/);
-  const project=path.join(dir,'project');fs.mkdirSync(project);fs.writeFileSync(path.join(project,'report.md'),'Ready');
+  fs.writeFileSync(path.join(dir,'project','brief.md'),'Shared');
+  assert.equal(replyFile(ctx,thread.id,path.join(dir,'project','brief.md')).data.toString(),'Shared','the vorld project folder is open to the whole crew');
+  const project=path.join(dir,'granted');fs.mkdirSync(project);fs.writeFileSync(path.join(project,'report.md'),'Ready');
   grant(ctx,{role:'guide',capability:'fs.read',scope:project+'/**'});
   assert.equal(replyFile(ctx,thread.id,path.join(project,'report.md')).data.toString(),'Ready');
 });

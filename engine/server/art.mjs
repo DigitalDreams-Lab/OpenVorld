@@ -1,4 +1,4 @@
-// The art of a world: the default sprite sheets (packs/core/art/default/*.png, laid out by packs/core/default-art.yaml).
+// The art of a vorld: the default sprite sheets (packs/core/art/default/*.png, laid out by packs/core/default-art.yaml).
 // Nothing is painted in code. This module tells the client which sheet image holds which sprite (an atlas index);
 // the client cuts the frames itself. Replace a PNG (or drop one with the same name in a user pack) to change the look.
 import fs from 'node:fs';
@@ -23,7 +23,7 @@ export function sheetFiles(packs) {
 }
 
 /**
- * The atlas index of a world: { revision, sheets: [{ group, image, frames: { name: {x, y, w, h, kind} } }] }.
+ * The atlas index of a vorld: { revision, sheets: [{ group, image, frames: { name: {x, y, w, h, kind} } }] }.
  * Characters: the founder and the companion have their own rows; agents take the agent rows in crew order.
  */
 export function atlasFor(ctx) {

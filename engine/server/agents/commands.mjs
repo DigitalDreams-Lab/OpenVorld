@@ -1,4 +1,4 @@
-// Game commands: what a crew member (agent or companion) can DO in its world. The pack packs/core/commands.yaml defines them;
+// Game commands: what a crew member (agent or companion) can DO in its vorld. The pack packs/core/commands.yaml defines them;
 // this module (1) tells a brain what it can do on THIS map, (2) checks what a brain asked for and (3) turns it into plain
 // instructions the map acts out. Commands only move and animate characters and open screens. They never touch files,
 // run programs, spend or publish, so they need no writ, and everything unknown is dropped quietly.
@@ -9,8 +9,8 @@ const roleOf = (ctx, id) => (ctx.member(id)?.role === 'companion' ? 'companion' 
 const clean = (s, n) => String(s ?? '').replace(/<[^>]*>/g, '').replace(/[\u0000-\u001f\u007f<>]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, n);
 
 /** What exists on this map: the kinds of props, and who lives here. */
-export function worldFacts(ctx) {
-  let plan = null; try { plan = ctx.scenery?.() ?? null; } catch { /* a world without a plan has no props to name */ }
+export function vorldFacts(ctx) {
+  let plan = null; try { plan = ctx.scenery?.() ?? null; } catch { /* a vorld without a plan has no props to name */ }
   const props = new Map();
   for (const p of [...(plan?.props ?? []), ...(plan?.ground_props ?? [])]) props.set(p.t, (props.get(p.t) ?? 0) + 1);
   const people = (ctx.crew ?? []).map((c) => ({ id: c.id, role: c.role, name: c.name ?? c.id, first: String(c.name ?? c.id).split(/\s+/)[0] }));
@@ -49,7 +49,7 @@ const say = (template, vars) => template.replace(/\{(\w+)\}/g, (_, k) => vars[k]
 export function prepareCommands(ctx, role, raw) {
   const cfg = cfgOf(ctx);
   if (!cfg || !Array.isArray(raw)) return { commands: [], dropped: [] };
-  const facts = worldFacts(ctx), me = roleOf(ctx, role), lim = cfg.limits ?? {};
+  const facts = vorldFacts(ctx), me = roleOf(ctx, role), lim = cfg.limits ?? {};
   const out = [], dropped = [];
   const names = (ids) => (ids.length === facts.people.length - 1 ? 'everyone' : ids.map((id) => facts.people.find((c) => c.id === id)?.first ?? id).join(', '));
   for (const item of raw.slice(0, 24)) {
@@ -93,23 +93,23 @@ const fill = (s, cfg, facts) => say(String(s ?? ''), {
 export function commandHelp(ctx, role) {
   const cfg = cfgOf(ctx);
   if (!cfg) return '';
-  const facts = worldFacts(ctx), me = roleOf(ctx, role);
+  const facts = vorldFacts(ctx), me = roleOf(ctx, role);
   const lines = Object.entries(cfg.commands ?? {}).filter(([, d]) => (d.roles ?? []).includes(me)).map(([n, d]) => `- ${n}: ${fill(d.help, cfg, facts)}`);
   const others = facts.people.filter((c) => c.id !== role && c.role !== 'companion').map((c) => c.name).join(', ');
-  return `Acting in the world: you live in this world and can act in it, not only talk. Add a "commands" list to the ov block (at most ${cfg.limits?.per_reply ?? 6} per reply); they happen on the map after your reply, in order.
+  return `Acting in the vorld: you live in this vorld and can act in it, not only talk. Add a "commands" list to the ov block (at most ${cfg.limits?.per_reply ?? 6} per reply); they happen on the map after your reply, in order.
 Use them when they fit what you are saying or doing, or when the founder asks; most replies need none. Commands never change files or spend anything.
 ${lines.join('\n')}
 Crew members you can name: ${others || 'none yet'}. Example: "commands": [{"do":"walk_to","to":"plaza"},{"do":"emote","kind":"wave"},{"do":"say","text":"Over here!"}]`;
 }
 
-/** A short description of the map for an API brain's world_info tool. */
-export function worldInfo(ctx, role) {
-  const cfg = cfgOf(ctx), facts = worldFacts(ctx);
-  if (!cfg) return 'no world information';
+/** A short description of the map for an API brain's vorld_info tool. */
+export function vorldInfo(ctx, role) {
+  const cfg = cfgOf(ctx), facts = vorldFacts(ctx);
+  if (!cfg) return 'no vorld information';
   const props = [...facts.props].sort((a, b) => b[1] - a[1]).map(([k, n]) => `${k.replace(/_/g, ' ')} (${n})`).join(', ');
   const people = facts.people.filter((c) => c.id !== role).map((c) => `${c.name}${c.role === 'companion' ? ' (the companion)' : ''}`).join(', ');
   const me = ctx.member(role);
-  return [`You are ${me?.name ?? role}${me?.job ? `, ${me.job}` : ''}, in the world "${ctx.doc.name}" (${ctx.scenery?.()?.biome ?? 'a map'} setting, ${ctx.scenery?.()?.mood ?? ''} mood).`,
+  return [`You are ${me?.name ?? role}${me?.job ? `, ${me.job}` : ''}, in the vorld "${ctx.doc.name}" (${ctx.scenery?.()?.biome ?? 'a map'} setting, ${ctx.scenery?.()?.mood ?? ''} mood).`,
     `Places: ${Object.entries(cfg.places ?? {}).map(([k, v]) => `${k} (${v})`).join('; ')}.`, `Things on the map: ${props || 'nothing'}.`, `Others: ${people || 'nobody else yet'}.`,
     `Emotes: ${(cfg.emotes ?? []).join(', ')}.`].join('\n');
 }

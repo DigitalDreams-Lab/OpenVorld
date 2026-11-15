@@ -7,22 +7,22 @@ import { toast, useStore } from '../store';
 const LASTS: Record<string, string> = { once: 'next turn only', session: 'until the game closes', always: 'until revoked' };
 
 export function WritsList() {
-  const wid = useStore((s) => s.worldId);
-  const world = useStore((s) => s.world);
+  const wid = useStore((s) => s.vorldId);
+  const vorld = useStore((s) => s.vorld);
   const [grants, setGrants] = useState<any[] | null>(null);
-  const load = () => api(`/worlds/${wid}/grants`).then(setGrants).catch((e) => toast({ kind: 'error', title: e.message }));
+  const load = () => api(`/vorlds/${wid}/grants`).then(setGrants).catch((e) => toast({ kind: 'error', title: e.message }));
   useEffect(() => { void load(); }, [wid]);   // eslint-disable-line react-hooks/exhaustive-deps
-  const who = (id: string) => world?.crew?.find((c: any) => c.id === id)?.name ?? id;
-  const cap = (id: string) => world?.permissions?.capabilities?.[id];
+  const who = (id: string) => vorld?.crew?.find((c: any) => c.id === id)?.name ?? id;
+  const cap = (id: string) => vorld?.permissions?.capabilities?.[id];
   const revoke = async (g: any) => {
-    try { await api(`/worlds/${wid}/grants/${g.id}`, { method: 'DELETE' }); play('ui.click'); await load(); }
+    try { await api(`/vorlds/${wid}/grants/${g.id}`, { method: 'DELETE' }); play('ui.click'); await load(); }
     catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   return (
     <>
       <h3>Writs</h3>
       <p className="muted">What your crew members may do. Everything else is closed to them until they ask and you agree.</p>
-      {grants && !grants.length && <p className="muted">No access granted. Every crew member works only in their own private workspace.</p>}
+      {grants && !grants.length && <p className="muted">No access granted. Every crew member reads the project folder and works in their own private workspace.</p>}
       <ul className="writs-list">
         {(grants ?? []).map((g) => (
           <li key={g.id} className="writ-row">

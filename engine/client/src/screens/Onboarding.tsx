@@ -1,5 +1,6 @@
-// Founding a world: one short form. Name it, say what it is for, pick a start (a crew and starter quests), name your
-// companion and pick the brain everyone thinks with. Everything can be changed later in the game.
+// Founding a vorld: one short form. Name it, say what it is for, pick its project folder (the one place the whole crew
+// works on), pick a start (a crew and starter quests), name your companion and pick the brain everyone thinks with.
+// Everything can be changed later in the game.
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { play } from '../audio/sfx';
@@ -15,6 +16,14 @@ export function Onboarding({ boot, onDone, onCancel }: { boot: any; onDone: (id:
   const [crew, setCrew] = useState<Agent[]>([]);
   const [companion, setCompanion] = useState({ name: boot.theme.companion?.name ?? 'Buzz', form: boot.theme.companion?.form ?? 'creature', species: boot.theme.companion?.species ?? 'bee' });
   const [brain, setBrain] = useState(boot.detected[0]?.id ?? 'none');
+  const [project, setProject] = useState('');           // '' = a new folder inside the vorld
+  const [ownFolder, setOwnFolder] = useState(false);
+  const [native, setNative] = useState<string | null>(null);
+  useEffect(() => { api('/fs/native').then((r) => setNative(r.native ?? null)).catch(() => setNative(null)); }, []);
+  const pick = async () => {
+    try { const r = await api('/fs/pick', { body: { start: project || undefined, prompt: 'Choose the project folder' } }); if (r.path) setProject(r.path); }
+    catch (e: any) { setError(e.message); play('ui.error'); }
+  };
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const t = templates.find((x) => x.id === template);
@@ -24,18 +33,31 @@ export function Onboarding({ boot, onDone, onCancel }: { boot: any; onDone: (id:
   const found = async () => {
     setBusy(true); setError('');
     try {
-      const r = await api('/worlds', { body: { name, about, template, crew, companion, brain: { provider: brain } } });
+      const r = await api('/vorlds', { body: { name, about, template, crew, companion, brain: { provider: brain }, project: ownFolder ? project : null } });
       play('trial.passed'); onDone(r.id);
     } catch (e: any) { setError(e.message); play('ui.error'); } finally { setBusy(false); }
   };
   return (
     <div className="title-screen onboarding">
       <form className="title-card panel ob-form" onSubmit={(e) => { e.preventDefault(); void found(); }}>
-        <h1 className="logo small">New world</h1>
+        <h1 className="logo small">New vorld</h1>
 
         <section>
           <label>Name<input className="field" autoFocus value={name} maxLength={60} placeholder="e.g. Lantern Tea Co." onChange={(e) => setName(e.target.value)} /></label>
           <label>What is it for?<textarea className="field" rows={2} value={about} maxLength={400} placeholder="The project, company or activity your crew works on. Every crew member reads this." onChange={(e) => setAbout(e.target.value)} /></label>
+        </section>
+
+        <section>
+          <h3>Project folder</h3>
+          <p className="muted small">The one folder the whole crew works on. Everyone can read it; changing files in it needs your writ. Each member also gets a private workspace for drafts.</p>
+          <label className="radio"><input type="radio" name="project" checked={!ownFolder} onChange={() => setOwnFolder(false)} /> A new folder inside the vorld</label>
+          <label className="radio"><input type="radio" name="project" checked={ownFolder} onChange={() => setOwnFolder(true)} /> A folder on this computer (a repo, a shared drive…)</label>
+          {ownFolder && (
+            <div className="pf-row">
+              <input className="field grow" value={project} placeholder="/Users/you/projects/lantern-tea" onChange={(e) => setProject(e.target.value)} />
+              {native && <button type="button" className="btn small" onClick={pick}>Choose…</button>}
+            </div>
+          )}
         </section>
 
         <section>
@@ -84,7 +106,7 @@ export function Onboarding({ boot, onDone, onCancel }: { boot: any; onDone: (id:
         {error && <p className="error" role="alert">{error}</p>}
         <div className="row between">
           <button type="button" className="btn" onClick={onCancel}>Back</button>
-          <button className="btn primary big" disabled={busy || !name.trim()}>{busy ? 'Founding…' : 'Found the world'}</button>
+          <button className="btn primary big" disabled={busy || !name.trim() || (ownFolder && !project.trim())}>{busy ? 'Creating…' : 'Create the vorld'}</button>
         </div>
       </form>
     </div>

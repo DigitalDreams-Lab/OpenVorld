@@ -6,7 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import { WebSocketServer } from 'ws';
-import { HOME, allPacks, listWorlds, worldCtx, saveWorld, createWorld, cleanMember, detected } from './world.mjs';
+import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMember, detected } from './vorld.mjs';
 import { atlasFor, sheetFiles } from './art.mjs';
 import { gameFor } from './game.mjs';
 import { listThreads, createThread, getThread, readEvents, appendEvent } from './threads.mjs';
@@ -15,7 +15,7 @@ import { listQuests, getQuest, saveQuest, deleteQuest, draftQuest, startQuest, s
 import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, addReferences } from './attachments.mjs';
 import { listGrants, grant, revoke, checkFolder, checkScope, deny } from './gate.mjs';
 import { browseFolder, pickNative, nativeDialog, browseConfig } from './browse.mjs';
-import { workspaceOf, defaultSpace, checkWorkspace } from './workspace.mjs';
+import { workspaceOf, defaultSpace, checkWorkspace, projectOf, checkProject } from './workspace.mjs';
 import { listModels } from './models.mjs';
 import { REPO, resolveTheme } from '../../tools/lib/packs.mjs';
 
@@ -26,7 +26,7 @@ const LOCAL_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, ...(proce
 const VERSION = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version;
 
 // ---------- helpers ----------
-const sockets = new Map(); // worldId -> Set<ws>
+const sockets = new Map(); // vorldId -> Set<ws>
 const emitTo = (id) => (msg) => { for (const ws of sockets.get(id) ?? []) if (ws.readyState === 1) ws.send(JSON.stringify(msg)); };
 const json = (res, code, body) => { res.writeHead(code, { 'content-type': 'application/json', 'cache-control': 'no-store' }); res.end(JSON.stringify(body)); };
 const fail = (msg, status = 400) => { throw Object.assign(new Error(msg), { status }); };
@@ -38,14 +38,14 @@ async function body(req) {
 const trim = (v, n) => (typeof v === 'string' ? v.trim().slice(0, n) : undefined);
 const withoutSecrets = (o) => JSON.parse(JSON.stringify(o ?? {}, (k, v) => (/^(api_key|key|token|secret)$/i.test(k) ? undefined : v)));
 
-/** Everything the client needs to draw a world. */
-function worldView(ctx) {
+/** Everything the client needs to draw a vorld. */
+function vorldView(ctx) {
   const game = gameFor(ctx);
   const working = new Set(listThreads(ctx).filter((t) => t.state === 'working' && isWorking(t.id)).map((t) => t.role));
   const k = ctx.packs.byKind;
   const scenery = k.scenery?.scenery ?? {};
   return {
-    world: { id: ctx.id, name: ctx.doc.name, about: ctx.doc.about ?? '' },
+    vorld: { id: ctx.id, name: ctx.doc.name, about: ctx.doc.about ?? '', project: (({ path: p, chosen, exists }) => ({ path: p, chosen, exists }))(projectOf(ctx)) },
     crew: ctx.crew.map((c) => {
       const b = brainOf(ctx, c.id), ws = workspaceOf(ctx, c.id);
       return { id: c.id, role: c.role, order: c.order, name: c.name, job: c.job, function: c.function, personality: ctx.doc.crew.find((m) => m.id === c.id)?.personality ?? '', look: c.look, home: c.home,
@@ -62,7 +62,7 @@ function worldView(ctx) {
     state: game.snapshot(),
   };
 }
-const worldChanged = (id) => emitTo(id)({ type: 'world' });
+const vorldChanged = (id) => emitTo(id)({ type: 'vorld' });
 
 /** One turn in a thread; quest threads then move their quest on, and a companion's drafted quest is saved. */
 async function turn(ctx, tid, text, files = []) {
@@ -77,12 +77,12 @@ async function turn(ctx, tid, text, files = []) {
 // ---------- routes ----------
 const routes = [];
 const route = (method, pattern, fn) => routes.push({ method, re: new RegExp('^' + pattern.replace(/:(\w+)/g, '(?<$1>[^/]+)') + '$'), fn });
-const W = (p) => worldCtx(p.id);
+const W = (p) => vorldCtx(p.id);
 
 route('GET', '/api/boot', () => {
   const k = allPacks().byKind, theme = resolveTheme(k, k.defaults?.defaults?.theme ?? 'default') ?? {};
   return {
-    version: VERSION, home: HOME, worlds: listWorlds(), detected: detected(),
+    version: VERSION, home: HOME, vorlds: listVorlds(), detected: detected(),
     templates: Object.values(k.template ?? {}).sort((a, b) => (a.order ?? 9) - (b.order ?? 9)).map((t) => ({ id: t.id, label: t.label, description: t.description, crew: t.crew ?? [], quests: (t.quests ?? []).map((q) => q.title) })),
     theme: { palette: theme.palette ?? {}, companion: theme.companion ?? {}, agent_names: theme.agent_names ?? [] },
     creatures: k.default_art?.default_art?.creatures ?? {},
@@ -96,45 +96,50 @@ route('GET', '/api/art/:sheet', ({ p, res }) => {
   res.end(fs.readFileSync(s.file));
 });
 
-// worlds
-route('POST', '/api/worlds', async ({ req }) => {
-  const { id, starters } = createWorld(await body(req));
-  const ctx = worldCtx(id, { fresh: true });
+// vorlds
+route('POST', '/api/vorlds', async ({ req }) => {
+  const { id, starters } = createVorld(await body(req));
+  const ctx = vorldCtx(id, { fresh: true });
   for (const q of starters) { try { saveQuest(ctx, q, null, { starter: true }); } catch { /* a starter that no longer fits the crew is skipped */ } }
   gameFor(ctx);
   return { id };
 });
-route('GET', '/api/worlds/:id/world', ({ p }) => worldView(W(p)));
-route('PUT', '/api/worlds/:id', async ({ p, req }) => {
+route('GET', '/api/vorlds/:id/vorld', ({ p }) => vorldView(W(p)));
+route('PUT', '/api/vorlds/:id', async ({ p, req }) => {
   const b = await body(req), ctx = W(p);
   const folder = b.workspace_base === undefined ? undefined : b.workspace_base ? checkWorkspace(ctx, String(b.workspace_base).trim()) : null;
-  const next = saveWorld(ctx, (d) => {
+  const project = b.project === undefined ? undefined : b.project ? checkProject(ctx, String(b.project).trim()) : null;
+  const next = saveVorld(ctx, (d) => {
     if (trim(b.name, 60)) d.name = trim(b.name, 60);
     if (b.about !== undefined) d.about = trim(b.about, 400) ?? '';
     if (folder !== undefined) { if (folder) d.workspace = { base: folder }; else delete d.workspace; }
+    if (project !== undefined) { if (project) d.project = project; else delete d.project; }
   });
-  worldChanged(p.id);
-  return worldView(next);
+  vorldChanged(p.id);
+  return vorldView(next);
 });
 
 // the crew
-route('POST', '/api/worlds/:id/crew', async ({ p, req }) => {
+route('POST', '/api/vorlds/:id/crew', async ({ p, req }) => {
   const ctx = W(p), b = await body(req);
+  const rawFolder = b.workspace ? String(b.workspace).trim() : '';
+  const folder = rawFolder ? checkWorkspace(ctx, rawFolder) : null;
   let added;
-  const next = saveWorld(ctx, (d) => {
+  const next = saveVorld(ctx, (d) => {
     const m = cleanMember({ brain: d.crew.find((c) => c.role === 'companion')?.brain, ...b }, new Set(['founder', ...d.crew.map((c) => c.id)]));
+    if (folder) m.workspace = folder;
     d.crew.push(m); added = m.id;
   });
   const game = gameFor(next), n = game.check([]);
   if (n.length) emitTo(p.id)({ type: 'game', notes: n, state: game.snapshot() });
-  worldChanged(p.id);
-  return { ...worldView(next), added };
+  vorldChanged(p.id);
+  return { ...vorldView(next), added };
 });
-route('PUT', '/api/worlds/:id/crew/:mid', async ({ p, req }) => {
+route('PUT', '/api/vorlds/:id/crew/:mid', async ({ p, req }) => {
   const ctx = W(p), b = await body(req);
   if (!ctx.member(p.mid)) fail('unknown crew member', 404);
   const folder = b.workspace === undefined ? undefined : b.workspace ? checkWorkspace(ctx, String(b.workspace).trim()) : null;
-  const next = saveWorld(ctx, (d) => {
+  const next = saveVorld(ctx, (d) => {
     const m = d.crew.find((x) => x.id === p.mid);
     if (trim(b.name, 40)) m.name = trim(b.name, 40);
     for (const [key, n] of [['job', 40], ['function', 400], ['personality', 200]]) if (b[key] !== undefined) { const v = trim(b[key], n); if (v) m[key] = v; else delete m[key]; }
@@ -142,36 +147,36 @@ route('PUT', '/api/worlds/:id/crew/:mid', async ({ p, req }) => {
     if (b.brain) m.brain = { provider: trim(b.brain.provider, 40) || 'none', ...(trim(b.brain.model, 120) ? { model: trim(b.brain.model, 120) } : {}), ...(trim(b.brain.name, 40) ? { name: trim(b.brain.name, 40) } : {}) };
     if (folder !== undefined) { if (folder) m.workspace = folder; else delete m.workspace; }
   });
-  worldChanged(p.id);
-  return worldView(next);
+  vorldChanged(p.id);
+  return vorldView(next);
 });
-route('DELETE', '/api/worlds/:id/crew/:mid', ({ p }) => {
+route('DELETE', '/api/vorlds/:id/crew/:mid', ({ p }) => {
   const ctx = W(p), m = ctx.member(p.mid);
   if (!m) fail('unknown crew member', 404);
   if (m.role === 'companion') fail('the companion stays');
   if (listQuests(ctx).some((q) => ['running', 'waiting'].includes(q.status) && q.steps.some((s) => s.agent === p.mid))) fail(`${m.name} is on a running quest; stop it first`, 409);
   for (const g of listGrants(ctx).filter((x) => x.role === p.mid)) revoke(ctx, g.id);
-  const next = saveWorld(ctx, (d) => { d.crew = d.crew.filter((x) => x.id !== p.mid); });
-  worldChanged(p.id);
-  return worldView(next);
+  const next = saveVorld(ctx, (d) => { d.crew = d.crew.filter((x) => x.id !== p.mid); });
+  vorldChanged(p.id);
+  return vorldView(next);
 });
 
 // brains
-route('GET', '/api/worlds/:id/settings', ({ p }) => {
+route('GET', '/api/vorlds/:id/settings', ({ p }) => {
   const ctx = W(p);
   return {
     providers: withoutSecrets(ctx.doc.providers ?? []), detected: detected(),
     catalog: Object.entries(ctx.providers).map(([id, v]) => ({ id, label: v.label, drivers: Object.keys(v.drivers ?? {}), models: v.models ?? {}, presets: v.presets ?? null })),
-    storage: { home: fs.realpathSync(HOME), world: fs.realpathSync(ctx.dir) },
+    storage: { home: fs.realpathSync(HOME), vorld: fs.realpathSync(ctx.dir) },
   };
 });
-route('PUT', '/api/worlds/:id/settings', async ({ p, req }) => {
+route('PUT', '/api/vorlds/:id/settings', async ({ p, req }) => {
   const b = await body(req);
-  if (Array.isArray(b.providers)) saveWorld(W(p), (d) => { d.providers = withoutSecrets(b.providers).slice(0, 20); });   // keys are never stored: use api_key_env
-  worldChanged(p.id);
+  if (Array.isArray(b.providers)) saveVorld(W(p), (d) => { d.providers = withoutSecrets(b.providers).slice(0, 20); });   // keys are never stored: use api_key_env
+  vorldChanged(p.id);
   return { ok: true };
 });
-route('GET', '/api/worlds/:id/models', async ({ p, q }) => {
+route('GET', '/api/vorlds/:id/models', async ({ p, q }) => {
   const ctx = W(p), id = q.get('provider') ?? '', def = ctx.providers[id];
   if (!def) return { source: 'none', live: false, models: [], tiers: {} };
   const name = q.get('name') || undefined;
@@ -180,14 +185,14 @@ route('GET', '/api/worlds/:id/models', async ({ p, q }) => {
 });
 
 // chats (threads)
-route('GET', '/api/worlds/:id/threads', ({ p, q }) => listThreads(W(p), q.get('role'), q.get('kind')));
-route('POST', '/api/worlds/:id/threads', async ({ p, req }) => {
+route('GET', '/api/vorlds/:id/threads', ({ p, q }) => listThreads(W(p), q.get('role'), q.get('kind')));
+route('POST', '/api/vorlds/:id/threads', async ({ p, req }) => {
   const ctx = W(p), { role, title } = await body(req);
   if (!ctx.member(role)) fail('unknown crew member');
   return createThread(ctx, { role, kind: 'chat', title: trim(title, 80) || null });
 });
-route('GET', '/api/worlds/:id/threads/:tid', ({ p }) => { const ctx = W(p); return { thread: getThread(ctx, p.tid), events: readEvents(ctx, p.tid) }; });
-route('POST', '/api/worlds/:id/threads/:tid/messages', async ({ p, req }) => {
+route('GET', '/api/vorlds/:id/threads/:tid', ({ p }) => { const ctx = W(p); return { thread: getThread(ctx, p.tid), events: readEvents(ctx, p.tid) }; });
+route('POST', '/api/vorlds/:id/threads/:tid/messages', async ({ p, req }) => {
   const ctx = W(p), thread = getThread(ctx, p.tid);
   if (isWorking(p.tid)) fail('this crew member is still working', 409);
   if (thread.kind === 'quest') { const qs = getQuest(ctx, thread.quest); if (['running'].includes(qs.status)) fail('this quest step is running; wait for it', 409); }
@@ -198,23 +203,23 @@ route('POST', '/api/worlds/:id/threads/:tid/messages', async ({ p, req }) => {
   void turn(ctx, p.tid, msg, files);
   return { ok: true };
 });
-route('POST', '/api/worlds/:id/threads/:tid/stop', ({ p }) => { stopTurn(p.tid); return { ok: true }; });
+route('POST', '/api/vorlds/:id/threads/:tid/stop', ({ p }) => { stopTurn(p.tid); return { ok: true }; });
 async function sendFile(res, file, download = false) {
   res.writeHead(200, { 'content-type': file.type, 'content-disposition': `${download || !file.type.startsWith('image/') ? 'attachment' : 'inline'}; filename="attachment"; filename*=UTF-8''${encodeURIComponent(file.name)}`, 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; sandbox" });
   if (file.kind === 'reference') return pipeline(fs.createReadStream(file.path), res);
   res.end(file.data ?? fs.readFileSync(file.path));
 }
-route('POST', '/api/worlds/:id/threads/:tid/references', async ({ p, req }) => { const ctx = W(p); getThread(ctx, p.tid); return addReferences(ctx, p.tid, (await body(req)).paths); });
-route('POST', '/api/worlds/:id/threads/:tid/attachments', async ({ p, req }) => {
+route('POST', '/api/vorlds/:id/threads/:tid/references', async ({ p, req }) => { const ctx = W(p); getThread(ctx, p.tid); return addReferences(ctx, p.tid, (await body(req)).paths); });
+route('POST', '/api/vorlds/:id/threads/:tid/attachments', async ({ p, req }) => {
   const ctx = W(p); getThread(ctx, p.tid);
   let name; try { name = decodeURIComponent(req.headers['x-file-name'] ?? 'attachment'); } catch { fail('Invalid file name'); }
   return saveAttachmentStream(ctx, p.tid, name, req);
 });
-route('GET', '/api/worlds/:id/threads/:tid/attachments/:aid', ({ p, q, res }) => sendFile(res, getAttachment(W(p), p.tid, p.aid), q.has('download')));
-route('GET', '/api/worlds/:id/threads/:tid/file', ({ p, q, res }) => sendFile(res, replyFile(W(p), p.tid, q.get('path')), q.has('download')));
+route('GET', '/api/vorlds/:id/threads/:tid/attachments/:aid', ({ p, q, res }) => sendFile(res, getAttachment(W(p), p.tid, p.aid), q.has('download')));
+route('GET', '/api/vorlds/:id/threads/:tid/file', ({ p, q, res }) => sendFile(res, replyFile(W(p), p.tid, q.get('path')), q.has('download')));
 
 // writs
-route('POST', '/api/worlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
+route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
   const ctx = W(p), emit = emitTo(p.id), game = gameFor(ctx), b = await body(req);
   const events = readEvents(ctx, p.tid), ask = events.find((e) => e.type === 'writ.request' && e.id === p.wid);
   if (!ask) fail('unknown request', 404);
@@ -239,28 +244,35 @@ route('POST', '/api/worlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
   }
   return { ok: true, scope };
 });
-route('GET', '/api/worlds/:id/grants', ({ p }) => listGrants(W(p)));
-route('DELETE', '/api/worlds/:id/grants/:gid', ({ p }) => { revoke(W(p), p.gid); return { ok: true }; });
+route('GET', '/api/vorlds/:id/grants', ({ p }) => listGrants(W(p)));
+route('DELETE', '/api/vorlds/:id/grants/:gid', ({ p }) => { revoke(W(p), p.gid); return { ok: true }; });
 
-// folder picker
-route('GET', '/api/worlds/:id/fs/browse', ({ p, q }) => browseFolder(W(p), { dir: q.get('path') ?? '', capability: q.get('capability') ?? 'fs.write' }));
-route('GET', '/api/worlds/:id/fs/native', ({ p }) => ({ native: browseConfig(W(p)).native_dialog !== false ? nativeDialog()?.label ?? null : null }));
-route('POST', '/api/worlds/:id/fs/pick', async ({ p, req }) => {
+// folder picker. The two /api/fs routes work before a vorld exists (choosing the project folder while founding one).
+const noVorld = () => ({ packs: allPacks(), dir: path.join(HOME, 'vorlds', '_new') });
+route('GET', '/api/fs/native', () => ({ native: browseConfig(noVorld()).native_dialog !== false ? nativeDialog()?.label ?? null : null }));
+route('POST', '/api/fs/pick', async ({ req }) => {
+  const b = await body(req), chosen = await pickNative(b.prompt, b.start);
+  if (!chosen) return { path: null };
+  try { return { path: checkFolder(noVorld(), 'fs.write', chosen) }; } catch (e) { fail(e.message); }
+});
+route('GET', '/api/vorlds/:id/fs/browse', ({ p, q }) => browseFolder(W(p), { dir: q.get('path') ?? '', capability: q.get('capability') ?? 'fs.write' }));
+route('GET', '/api/vorlds/:id/fs/native', ({ p }) => ({ native: browseConfig(W(p)).native_dialog !== false ? nativeDialog()?.label ?? null : null }));
+route('POST', '/api/vorlds/:id/fs/pick', async ({ p, req }) => {
   const ctx = W(p), b = await body(req), chosen = await pickNative(b.prompt, b.start);
   if (!chosen) return { path: null };
   try { return { path: checkFolder(ctx, b.capability === 'fs.read' ? 'fs.read' : 'fs.write', chosen) }; } catch (e) { fail(e.message); }
 });
 
 // quests
-route('GET', '/api/worlds/:id/quests', ({ p }) => listQuests(W(p)));
-route('GET', '/api/worlds/:id/quests/:qid', ({ p }) => getQuest(W(p), p.qid));
-route('POST', '/api/worlds/:id/quests', async ({ p, req }) => { const ctx = W(p), q = saveQuest(ctx, await body(req)); const g = gameFor(ctx), n = g.check([]); if (n.length) emitTo(p.id)({ type: 'game', notes: n, state: g.snapshot() }); emitTo(p.id)({ type: 'quest', quest: q }); return q; });
-route('PUT', '/api/worlds/:id/quests/:qid', async ({ p, req }) => { const q = saveQuest(W(p), await body(req), p.qid); emitTo(p.id)({ type: 'quest', quest: q }); return q; });
-route('DELETE', '/api/worlds/:id/quests/:qid', ({ p }) => { const r = deleteQuest(W(p), p.qid); emitTo(p.id)({ type: 'quest', removed: p.qid }); return r; });
-route('POST', '/api/worlds/:id/quests/:qid/start', ({ p }) => startQuest(W(p), p.qid, emitTo(p.id)));
-route('POST', '/api/worlds/:id/quests/:qid/stop', ({ p }) => stopQuest(W(p), p.qid, emitTo(p.id)));
-route('POST', '/api/worlds/:id/quests/:qid/retry', ({ p }) => retry(W(p), p.qid, emitTo(p.id)));
-route('POST', '/api/worlds/:id/quests/:qid/seal', async ({ p, req }) => seal(W(p), p.qid, await body(req), emitTo(p.id)));
+route('GET', '/api/vorlds/:id/quests', ({ p }) => listQuests(W(p)));
+route('GET', '/api/vorlds/:id/quests/:qid', ({ p }) => getQuest(W(p), p.qid));
+route('POST', '/api/vorlds/:id/quests', async ({ p, req }) => { const ctx = W(p), q = saveQuest(ctx, await body(req)); const g = gameFor(ctx), n = g.check([]); if (n.length) emitTo(p.id)({ type: 'game', notes: n, state: g.snapshot() }); emitTo(p.id)({ type: 'quest', quest: q }); return q; });
+route('PUT', '/api/vorlds/:id/quests/:qid', async ({ p, req }) => { const q = saveQuest(W(p), await body(req), p.qid); emitTo(p.id)({ type: 'quest', quest: q }); return q; });
+route('DELETE', '/api/vorlds/:id/quests/:qid', ({ p }) => { const r = deleteQuest(W(p), p.qid); emitTo(p.id)({ type: 'quest', removed: p.qid }); return r; });
+route('POST', '/api/vorlds/:id/quests/:qid/start', ({ p }) => startQuest(W(p), p.qid, emitTo(p.id)));
+route('POST', '/api/vorlds/:id/quests/:qid/stop', ({ p }) => stopQuest(W(p), p.qid, emitTo(p.id)));
+route('POST', '/api/vorlds/:id/quests/:qid/retry', ({ p }) => retry(W(p), p.qid, emitTo(p.id)));
+route('POST', '/api/vorlds/:id/quests/:qid/seal', async ({ p, req }) => seal(W(p), p.qid, await body(req), emitTo(p.id)));
 
 // ---------- server ----------
 function serveStatic(req, res) {
@@ -297,7 +309,7 @@ const server = http.createServer(async (req, res) => {
 const wss = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {
   const url = new URL(req.url, 'http://x');
-  const id = url.searchParams.get('world');
+  const id = url.searchParams.get('vorld');
   if (url.pathname !== '/ws' || url.searchParams.get('t') !== TOKEN || !LOCAL_HOSTS.has(req.headers.host ?? '') || !id) return socket.destroy();
   wss.handleUpgrade(req, socket, head, (ws) => {
     if (!sockets.has(id)) sockets.set(id, new Set());
@@ -306,7 +318,7 @@ server.on('upgrade', (req, socket, head) => {
   });
 });
 
-for (const w of listWorlds()) { try { recoverQuests(worldCtx(w.id)); } catch { /* a broken world never stops the server */ } }
+for (const w of listVorlds()) { try { recoverQuests(vorldCtx(w.id)); } catch { /* a broken vorld never stops the server */ } }
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`openVorld server on http://127.0.0.1:${PORT}  (home: ${HOME})`);
   if (!process.env.OV_TOKEN) console.log(`Open http://127.0.0.1:${PORT}/`);

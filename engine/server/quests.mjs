@@ -3,7 +3,7 @@
 // to approve its result (the Seal) or send it back with a note. A step that asks for access waits for the writ.
 //
 // Every step runs in its own thread (kind "quest"), so its transcript, tool calls and writ cards look exactly like a chat.
-// Files: <world>/quests/<id>.json.
+// Files: <vorld>/quests/<id>.json.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';

@@ -3,11 +3,11 @@ import { useSyncExternalStore } from 'react';
 
 export type Toast = { id: number; kind: 'deed' | 'level' | 'xp' | 'info' | 'error' | 'quest'; title: string; body?: string; xp?: number; icon?: string };
 export type Live = { role?: string; steps: any[]; working: boolean; error?: string | null };
-export type Modal = null | 'quests' | 'deeds' | 'settings' | 'member';
+export type Modal = null | 'quests' | 'deeds' | 'settings' | 'member' | 'add';
 
 type State = {
-  worldId: string | null;
-  world: any | null;
+  vorldId: string | null;
+  vorld: any | null;
   talkingTo: string | null;           // crew member whose panel is open
   modal: Modal;
   questId: string | null;             // the quest open on the board (null = the list)
@@ -17,7 +17,7 @@ type State = {
   threadsVersion: number;             // bump to refetch thread lists
 };
 
-let state: State = { worldId: null, world: null, talkingTo: null, modal: null, questId: null, quests: [], toasts: [], live: {}, threadsVersion: 0 };
+let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, questId: null, quests: [], toasts: [], live: {}, threadsVersion: 0 };
 const subs = new Set<() => void>();
 export const getState = () => state;
 export function setState(patch: Partial<State> | ((s: State) => Partial<State>)) {
@@ -38,14 +38,14 @@ export function toast(t: Omit<Toast, 'id'>, ms = 4500) {
 
 /** Theme string with {placeholders}; falls back to the given text or the key's last part. */
 export function str(path: string, vars: Record<string, string> = {}, fallback?: string): string {
-  const strings = state.world?.theme?.strings ?? {};
+  const strings = state.vorld?.theme?.strings ?? {};
   const v = path.split('.').reduce<any>((o, k) => (o == null ? o : o[k]), strings);
   const s = typeof v === 'string' ? v : fallback ?? path.split('.').pop()!.replace(/_/g, ' ');
   return s.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
 }
 
-/** A crew member of the open world, by id. */
-export const memberOf = (id: string | null | undefined) => state.world?.crew?.find((c: any) => c.id === id) ?? null;
+/** A crew member of the open vorld, by id. */
+export const memberOf = (id: string | null | undefined) => state.vorld?.crew?.find((c: any) => c.id === id) ?? null;
 
 // Event bus between React and the Phaser scene.
 type Handler = (payload: any) => void;

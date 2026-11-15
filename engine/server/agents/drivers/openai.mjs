@@ -1,7 +1,7 @@
 // OpenAI-compatible chat/completions driver (OpenRouter, OpenAI, Ollama, LM Studio, vLLM, Groq, ...).
 // Stateless: the engine sends the thread history. When the crew member has tools (engine/server/agents/tools.mjs)
 // the ENGINE runs the agent loop: model -> tool calls (checked against writs) -> results -> model.
-// The API key is read from an environment variable the founder names in Settings (never stored in world files).
+// The API key is read from an environment variable the founder names in Settings (never stored in vorld files).
 
 const noToolSupport = new Set(); // base_url|model pairs that rejected tools once this session
 

@@ -13,7 +13,7 @@ import { Transcript } from './steps.mjs';
 import { engineTools } from './tools.mjs';
 import { appendEvent, getThread, updateThread, history, readEvents } from '../threads.mjs';
 import { grantsOf, folderGrants, consumeOnce, holds, checkScope } from '../gate.mjs';
-import { workspaceOf } from '../workspace.mjs';
+import { workspaceOf, projectOf } from '../workspace.mjs';
 import { gameFor } from '../game.mjs';
 import { attachmentPrompt, publicFiles, threadAttachments, getAttachment, saveAttachment, imageType } from '../attachments.mjs';
 
@@ -36,7 +36,8 @@ export function brainOf(ctx, id) {
 function systemPrompt(ctx, id) {
   const m = ctx.member(id);
   const crew = ctx.crew.filter((c) => c.id !== id).map((c) => `${c.name} (${c.job}${c.function ? `: ${c.function}` : ''})`).join('; ') || 'nobody yet';
-  const vars = { name: m.name, job: m.job, function: m.function || 'whatever the founder asks', voice: m.voice, world: ctx.doc.name, about: ctx.doc.about || 'not described yet', crew };
+  const vars = { name: m.name, job: m.job, function: m.function || 'whatever the founder asks', voice: m.voice, vorld: ctx.doc.name, about: ctx.doc.about || 'not described yet', crew,
+    project: projectOf(ctx).path, workspace: workspaceOf(ctx, id).path };
   const base = String(m.prompt).replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
   const writs = grantsOf(ctx, id).map((g) => `${g.capability} ${g.scope}`).join('; ') || 'none';
   const env = ctx.interactions.envelope ?? {};
@@ -89,7 +90,9 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
   const allFiles = threadAttachments(ctx, threadId);
   const uploadDirs = [...new Set(allFiles.filter((f) => f.kind !== 'reference').map((f) => path.dirname(f.path)))];
   const referenceFiles = allFiles.filter((f) => f.kind === 'reference').map((f) => f.path);
-  const readDirs = [...folderGrants(ctx, role, 'fs.read'), ...uploadDirs];
+  // the project folder is shared: every member reads it; changing it is an fs.write writ like any other folder
+  const project = projectOf(ctx);
+  const readDirs = [...new Set([...(project.exists ? [project.path] : []), ...folderGrants(ctx, role, 'fs.read'), ...uploadDirs])];
   const cmdGrants = grantsOf(ctx, role).filter((g) => g.capability === 'cmd.run').map((g) => g.scope);
   const netGrants = grantsOf(ctx, role).filter((g) => g.capability === 'net.fetch').map((g) => g.scope);
   const tools = [];
@@ -143,7 +146,7 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
     let result;
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
     else if (brain.provider === 'claude-code') result = await claude.run({ ...common, tools, allowed, addDirs });
-    else if (brain.provider === 'codex') result = await codex.run({ ...common, addDirs, writable: ws.chosen, web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
+    else if (brain.provider === 'codex') result = await codex.run({ ...common, addDirs: writeDirs.filter((d) => d !== cwd), writable: ws.chosen, web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
     else if (brain.driver === 'openai') {
       const et = agentCfg.engine_tools ?? {};
       const engine = et.enabled === false ? null : engineTools({ ctx, role, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });

@@ -1,4 +1,4 @@
-// The world: a town laid out from the crew. Each agent lives in a house around the plaza, where the Quest Board
+// The vorld: a town laid out from the crew. Each agent lives in a house around the plaza, where the Quest Board
 // stands. The founder walks, the companion follows, agents walk to the board when a quest step starts.
 // Phaser 4 (WebGL). Talks to React only through the store's event bus.
 import { nearestProp, standSpots, facing, clampQueue, type Pt } from './commands';
@@ -7,7 +7,7 @@ import { emit, on } from '../store';
 import { play } from '../audio/sfx';
 import { TEX } from './pixels';
 import { makeBuilding, makeMember, makePillar, makeWorldArt } from './sprites';
-import { companionOf, movementDirection, type Direction } from './pixels';
+import { companionOf, generatedRevision, movementDirection, type Direction } from './pixels';
 import { homeGeometry, propGeometry } from './geometry';
 import { BODY_FONT } from '../theme';
 const bodyFont = () => BODY_FONT;
@@ -18,8 +18,8 @@ const ZOOM = 3;
 type Mode = 'home' | 'summoned' | 'gather' | 'task';
 type Npc = { mode: Mode; target: { x: number; y: number } | null; rest: number; slot: number; look: string; id: string; sprite: Phaser.GameObjects.Sprite; label: Phaser.GameObjects.Text; mark?: Phaser.GameObjects.Text; building: Phaser.GameObjects.Container; built: boolean; sign: Phaser.GameObjects.Text; home: { x: number; y: number }; data: any; frame: number; dir: Direction; lastX: number; lastY: number; working: boolean; queue?: any[]; wait?: number; base?: Mode; autoHome?: boolean };
 
-export class WorldScene extends Phaser.Scene {
-  world: any;
+export class VorldScene extends Phaser.Scene {
+  vorld: any;
   startPosition: {x:number;y:number} | null = null;
   player!: Phaser.Physics.Arcade.Sprite;
   bee!: Phaser.GameObjects.Sprite;
@@ -35,7 +35,7 @@ export class WorldScene extends Phaser.Scene {
   unsub: Array<() => void> = [];
   walkT = 0;
   /** How much bigger than one tile the characters are drawn (scenery.yaml > characters.scale); the sprite art leaves margin inside its cell. */
-  get charScale(): number { return Number(this.world?.art?.scenery?.characters?.scale) || 1; }
+  get charScale(): number { return Number(this.vorld?.art?.scenery?.characters?.scale) || 1; }
   walkTo: { x: number; y: number } | null = null;
   /** What the companion is doing on a command (it leaves the founder's side for it), and whether it is hurrying back. */
   beeTask: { queue: any[]; target: Pt | null; wait: number } | null = null; beeReturn = false;
@@ -44,24 +44,26 @@ export class WorldScene extends Phaser.Scene {
   homeRects: Array<{ x: number; y: number; w: number; h: number }> = [];
   companionDir: Direction = 'down';
   attention = new Set<string>();             // members waiting for the founder (a seal or a writ): a "!" over their head
+  atlasRev: string | null = null;
 
-  constructor() { super('world'); }
-  init(data: { world: any; position?: {x:number;y:number} }) { this.world = data.world; this.startPosition = data.position ?? null; }
+  constructor() { super('vorld'); }
+  init(data: { vorld: any; position?: {x:number;y:number} }) { this.vorld = data.vorld; this.startPosition = data.position ?? null; }
 
   create() {
     this.npcs.clear(); this.unsub = []; this.near = null; this.walkTo = null; this.homeRects = []; this.beeTask = null; this.beeReturn = false;
     this.playerDir = this.companionDir = 'down';
-    const pal = this.world.theme.palette ?? {};
-    const plan = this.world.scenery;
+    this.atlasRev = generatedRevision();
+    const pal = this.vorld.theme.palette ?? {};
+    const plan = this.vorld.scenery;
     this.plan = plan;
     const MAP_W = plan.w, MAP_H = plan.h;
-    makeWorldArt(this, plan, this.world.art);
-    const comp = companionOf(this.world);
+    makeWorldArt(this, plan, this.vorld.art);
+    const comp = companionOf(this.vorld);
     this.companionId = comp?.id ?? 'companion';
     this.companionForm = comp?.look?.form ?? 'creature';
     this.companionLook = JSON.stringify(comp?.look ?? null);
     makeMember(this, 'companion', this.companionId);
-    const pillarSize = makePillar(this, this.world.art);
+    const pillarSize = makePillar(this, this.vorld.art);
     const fs = makeMember(this, 'founder', 'founder');
 
     const cx = plan.plaza.x, cy = plan.plaza.y;
@@ -75,14 +77,15 @@ export class WorldScene extends Phaser.Scene {
     pillar.on('pointerdown', () => { play('ui.open'); emit('quests'); });
     this.terminal = { x: pillar.x, y: pillar.y + 6 };
     this.solids.add(this.add.zone(pillar.x, pillar.y - 4, Math.min(28, pillarSize.w - 4), 8));
-    this.add.text(pillar.x, pillar.y - pillarSize.h - 6, this.world.theme.buildings?.quest_board ?? 'Quest Board', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999);
+    this.add.text(pillar.x, pillar.y - pillarSize.h - 6, this.vorld.theme.buildings?.quest_board ?? 'Quest Board', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999);
 
     // homes take the plan's plots in crew order (a crew larger than the map's plots has no house for the rest)
-    const homes = this.world.crew.filter((c: any) => c.id !== this.companionId);
+    const homes = this.vorld.crew.filter((c: any) => c.id !== this.companionId);
     homes.slice(0, plan.slots.length).forEach((c: any, i: number) => this.addHome(c, plan.slots[i], pal, i));
 
     // founder + companion
-    this.player = this.physics.add.sprite(this.startPosition?.x ?? plan.spawn.x * T + 8, this.startPosition?.y ?? plan.spawn.y * T, 'founder-down-2').setOrigin(0.5, 1).setScale(this.charScale / TEX);
+    const start = this.startPosition && this.walkable(this.startPosition.x, this.startPosition.y) ? this.startPosition : { x: plan.spawn.x * T + 8, y: plan.spawn.y * T };
+    this.player = this.physics.add.sprite(start.x, start.y, 'founder-down-2').setOrigin(0.5, 1).setScale(this.charScale / TEX);
     this.player.setCollideWorldBounds(true);
     (this.player.body as Phaser.Physics.Arcade.Body).setSize(8 * TEX / this.charScale, 6 * TEX / this.charScale).setOffset((fs.w - 8 * TEX / this.charScale) / 2, fs.h - 8 * TEX / this.charScale);   // the collision box stays the size of a tile-sized walker
     this.physics.add.collider(this.player, this.solids);
@@ -110,12 +113,12 @@ export class WorldScene extends Phaser.Scene {
     });
 
     this.unsub.push(
-      on('world', (w) => {
+      on('vorld', (w) => {
         if (!this.sys?.isActive?.() || !this.scene?.manager) return;      // a scene left over from a hot reload
         // Generated art changes props and collision geometry as well as character textures.
         const homes = (x: any) => JSON.stringify(x.crew.map((c: any) => [c.id, c.role]));
-        if (JSON.stringify(w.art) !== JSON.stringify(this.world.art) || homes(w) !== homes(this.world)) { this.scene.restart({ world: w, position: {x:this.player.x,y:this.player.y} }); return; }
-        this.world = w; this.refresh();
+        if (JSON.stringify(w.art) !== JSON.stringify(this.vorld.art) || homes(w) !== homes(this.vorld) || generatedRevision() !== this.atlasRev) { this.scene.restart({ vorld: w, position: {x:this.player.x,y:this.player.y} }); return; }
+        this.vorld = w; this.refresh();
       }),
       on('attention', (ids: string[]) => { this.attention = new Set(ids); this.refresh(); }),
       on('balloon', ({ role, text, ms }) => this.balloon(role, text, ms)),
@@ -134,7 +137,7 @@ export class WorldScene extends Phaser.Scene {
 
   labelStyle(pal: any, size: number): Phaser.Types.GameObjects.Text.TextStyle {
     // names and signs in a bold readable face with a dark outline (the pixel font blurs at this size)
-    const L = this.world.art?.scenery?.labels ?? {};                         // scenery.yaml > labels: how big map text is
+    const L = this.vorld.art?.scenery?.labels ?? {};                         // scenery.yaml > labels: how big map text is
     const k = L.scale ?? 1;
     return { fontFamily: bodyFont(), fontStyle: '700', fontSize: `${Math.max(L.min ?? 4, (size + 1) * k).toFixed(2)}px`, color: pal.parchment ?? '#fff', stroke: pal.ink ?? '#000', strokeThickness: (L.stroke ?? 2.5) * Math.min(1, k + 0.15), resolution: ZOOM * window.devicePixelRatio * 1.5 };
   }
@@ -142,7 +145,7 @@ export class WorldScene extends Phaser.Scene {
   addHome(c: any, slot: { x: number; y: number }, pal: any, i: number) {
     const look = c.look;
     makeMember(this, `npc-${c.id}`, c.id);
-    const house = makeBuilding(this, c.id, this.world.art, { seed: this.plan.seed, biome: this.plan.biome, mood: this.plan.mood, order: c.order });
+    const house = makeBuilding(this, c.id, this.vorld.art, { seed: this.plan.seed, biome: this.plan.biome, mood: this.plan.mood, order: c.order });
     const size = house?.size;
     const geo = homeGeometry(this.plan.doors[i] ?? { x: slot.x, y: slot.y + 2 }, T, size, house?.block);
     this.homeRects.push({ x: geo.solid.x - geo.solid.w / 2 - 4, y: geo.top + 6, w: geo.solid.w + 8, h: geo.solid.y + geo.solid.h / 2 - geo.top - 2 });
@@ -163,7 +166,7 @@ export class WorldScene extends Phaser.Scene {
 
   /** Props, ground decor, water and ambient life from the seeded plan. */
   addScenery(plan: any, pal: any) {
-    const defs = this.world.art.scenery;
+    const defs = this.vorld.art.scenery;
     // water blocks walking: one collider per horizontal run of water cells
     for (let y = 0; y < plan.h; y++) {
       let x = 0;
@@ -218,10 +221,10 @@ export class WorldScene extends Phaser.Scene {
     }
   }
 
-  /** Apply the latest world state (names, homes, who is waiting for the founder) to the scene. */
+  /** Apply the latest vorld state (names, homes, who is waiting for the founder) to the scene. */
   refresh() {
-    const byId = new Map(this.world.crew.map((c: any) => [c.id, c]));
-    const pal = this.world.theme.palette ?? {};
+    const byId = new Map(this.vorld.crew.map((c: any) => [c.id, c]));
+    const pal = this.vorld.theme.palette ?? {};
     for (const n of this.npcs.values()) {
       const c: any = byId.get(n.id);
       if (!c) continue;
@@ -249,7 +252,7 @@ export class WorldScene extends Phaser.Scene {
   }
 
   balloonAt(x: number, y: number, text: string, ms = 2600) {
-    const pal = this.world.theme.palette ?? {};
+    const pal = this.vorld.theme.palette ?? {};
     const t = this.add.text(0, 0, text, { fontFamily: bodyFont(), fontStyle: '600', fontSize: '7px', color: pal.ink ?? '#000', resolution: ZOOM * window.devicePixelRatio * 1.5, wordWrap: { width: 110 }, align: 'center', lineSpacing: 1 }).setOrigin(0.5);
     const w = t.width + 8, h = t.height + 6;
     const g = this.add.graphics();
@@ -280,7 +283,7 @@ export class WorldScene extends Phaser.Scene {
     if (!r) return;
     const target = role === this.companionId ? this.bee : this.npcs.get(role)?.sprite;
     if (!target) return;
-    const pal = this.world.theme.palette ?? {};
+    const pal = this.vorld.theme.palette ?? {};
     const col = (h: string, d: string) => Phaser.Display.Color.HexStringToColor(h ?? d).color;
     switch (r.anim) {
       case 'hammer':
@@ -304,7 +307,7 @@ export class WorldScene extends Phaser.Scene {
     if (r.balloon) this.balloon(role, r.balloonText ?? '', 1800);
   }
 
-  /** Is a world point standing room for a member (ground, path, plaza or bridge, outside every home)? */
+  /** Is a map point standing room for a member (ground, path, plaza or bridge, outside every home)? */
   walkable(x: number, y: number) {
     const c = this.plan.ground[Math.floor(y / T)]?.[Math.floor(x / T)];
     if (!c || !'0123pPb'.includes(c)) return false;
@@ -378,7 +381,7 @@ export class WorldScene extends Phaser.Scene {
     const n = this.npcs.get(role); if (n) n.dir = facing({ x: n.sprite.x, y: n.sprite.y }, at, n.dir);
   }
   markAt(x: number, y: number) {
-    const m = this.add.text(x, y - 18, '▼', { fontFamily: bodyFont(), fontSize: '9px', color: (this.world.theme.palette ?? {}).gold ?? '#fc0', resolution: 3 }).setOrigin(0.5).setDepth(20000);
+    const m = this.add.text(x, y - 18, '▼', { fontFamily: bodyFont(), fontSize: '9px', color: (this.vorld.theme.palette ?? {}).gold ?? '#fc0', resolution: 3 }).setOrigin(0.5).setDepth(20000);
     this.tweens.add({ targets: m, y: y - 12, duration: 380, yoyo: true, repeat: 6 });
     this.time.delayedCall(5000, () => m.destroy());
   }

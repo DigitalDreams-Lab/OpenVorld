@@ -16,7 +16,7 @@ export function ModelPicker({ wid, provider, name, tier, value, onChange, classN
     if (!provider || provider === 'none') return;
     let live = true;
     const qs = new URLSearchParams({ provider, ...(name ? { name } : {}), ...(value ? { current: value } : {}) });
-    api(`/worlds/${wid}/models?${qs}`).then((m) => { if (live) setList(m); }).catch(() => { if (live) setList({ models: [], tiers: {}, live: false }); });
+    api(`/vorlds/${wid}/models?${qs}`).then((m) => { if (live) setList(m); }).catch(() => { if (live) setList({ models: [], tiers: {}, live: false }); });
     return () => { live = false; };
   }, [wid, provider, name]);
 

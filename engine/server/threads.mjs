@@ -15,7 +15,7 @@ function readIndex(ctx) {
   } catch (e) {
     if (e.code === 'ENOENT') return [];
     // A failed read must never look like an empty history or be overwritten by a new chat.
-    throw Object.assign(new Error('Saved chats could not be read. Your history has been kept; check the world data folder.'), { status: 500, cause: e });
+    throw Object.assign(new Error('Saved chats could not be read. Your history has been kept; check the vorld data folder.'), { status: 500, cause: e });
   }
 }
 function writeIndex(ctx, list) {

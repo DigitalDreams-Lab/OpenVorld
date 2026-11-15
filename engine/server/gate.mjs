@@ -19,7 +19,7 @@ function audit(ctx, entry) {
   fs.appendFileSync(path.join(ctx.dir, 'audit.log'), JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n', { mode: 0o600 });
 }
 
-const expand = (p, ctx) => p.replace(/^~(?=\/|$)/, os.homedir()).replace('<world>', ctx.dir);
+const expand = (p, ctx) => p.replace(/^~(?=\/|$)/, os.homedir()).replace('<vorld>', ctx.dir);
 function globToRe(g) {
   return new RegExp('^' + g.split('**').map((part) => part.split('*').map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('[^/]*')).join('.*') + '$');
 }

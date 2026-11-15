@@ -9,7 +9,7 @@ import { FolderPicker, useFolderDialog } from './FolderPicker';
 export type WritEvent = { id: string; role: string; capability: string; scope: string; why?: string; risk?: string };
 
 export function WritCard({ ask, answered, wid, thread, who }: { ask: WritEvent; answered?: { answer: string; scope?: string }; wid: string; thread: string; who: string }) {
-  const perms = useStore((s) => s.world)?.permissions;
+  const perms = useStore((s) => s.vorld)?.permissions;
   const cap = perms?.capabilities?.[ask.capability];
   const isFolder = ask.capability.startsWith('fs.');
   const [scope, setScope] = useState(ask.scope);
@@ -32,7 +32,7 @@ export function WritCard({ ask, answered, wid, thread, who }: { ask: WritEvent; 
       play(id === 'deny' ? 'ui.click' : 'seal.approved');
       const body: any = { answer: id };
       if (id !== 'deny' && scope !== ask.scope) body.scope = scope;
-      const r = await api(`/worlds/${wid}/threads/${thread}/writs/${ask.id}`, { body });
+      const r = await api(`/vorlds/${wid}/threads/${thread}/writs/${ask.id}`, { body });
       setDone({ answer: id, scope: r.scope });
       setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));
     } catch (e: any) { toast({ kind: 'error', title: e.message }); play('ui.error'); } finally { setBusy(false); }

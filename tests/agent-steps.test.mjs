@@ -6,7 +6,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { loadPacks, packRoots } from '../tools/lib/packs.mjs';
-import { home, makeWorld, saveWorld } from './helpers/world.mjs';
+import { home, makeVorld, saveVorld } from './helpers/vorld.mjs';
 
 const { engineTools, argvOf } = await import('../engine/server/agents/tools.mjs');
 const { Transcript } = await import('../engine/server/agents/steps.mjs');
@@ -24,14 +24,14 @@ function sse(deltas) {
 }
 
 test('engine tools stay inside writs: roots, never-lists, exact command patterns, no shell features', async () => {
-  const world = fs.mkdtempSync(path.join(home, 'world-'));
-  const ws = path.join(world, 'workspaces', 'scribe'); fs.mkdirSync(ws, { recursive: true });
+  const vorld = fs.mkdtempSync(path.join(home, 'vorld-'));
+  const ws = path.join(vorld, 'workspaces', 'scribe'); fs.mkdirSync(ws, { recursive: true });
   const project = fs.mkdtempSync(path.join(home, 'project-'));
-  fs.writeFileSync(path.join(project, 'notes.md'), 'hello\nworld\n');
+  fs.writeFileSync(path.join(project, 'notes.md'), 'hello\nvorld\n');
   fs.writeFileSync(path.join(project, '.env'), 'SECRET=1');
   const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-outside-'));
   fs.writeFileSync(path.join(outside, 'x.txt'), 'nope');
-  const read = engineTools({ ctx: fakeCtx(world), role: 'scribe', cwd: ws, readRoots: [project] });
+  const read = engineTools({ ctx: fakeCtx(vorld), role: 'scribe', cwd: ws, readRoots: [project] });
   assert.ok(!read.specs.some((s) => s.function.name === 'run_command' || s.function.name === 'fetch_url'), 'no command or web tools without those writs');
   assert.match((await read.run('read_file', { path: path.join(project, 'notes.md') })).output, /1 {2}hello/);
   assert.equal((await read.run('read_file', { path: path.join(outside, 'x.txt') })).ok, false, 'outside the writs');
@@ -42,12 +42,12 @@ test('engine tools stay inside writs: roots, never-lists, exact command patterns
   assert.equal((await read.run('run_command', { command: 'echo hi' })).ok, false, 'tools not offered are refused');
   fs.symlinkSync(outside, path.join(project, 'link'));
   assert.equal((await read.run('read_file', { path: path.join(project, 'link', 'x.txt') })).ok, false, 'symlinks cannot lead outside');
-  assert.match((await read.run('search', { pattern: 'wor', path: project })).output, /notes\.md:2: world/);
+  assert.match((await read.run('search', { pattern: 'vor', path: project })).output, /notes\.md:2: vorld/);
 
-  const work = engineTools({ ctx: fakeCtx(world), role: 'scribe', cwd: ws, writeRoots: [project], commands: ['echo *'] });
+  const work = engineTools({ ctx: fakeCtx(vorld), role: 'scribe', cwd: ws, writeRoots: [project], commands: ['echo *'] });
   assert.ok(work.specs.some((s) => s.function.name === 'edit_file') && work.specs.some((s) => s.function.name === 'run_command'));
   assert.equal((await work.run('write_file', { path: 'draft.md', content: 'one two' })).ok, true, 'own workspace is writable');
-  assert.equal((await work.run('edit_file', { path: path.join(project, 'notes.md'), old_string: 'world', new_string: 'there' })).ok, true);
+  assert.equal((await work.run('edit_file', { path: path.join(project, 'notes.md'), old_string: 'vorld', new_string: 'there' })).ok, true);
   assert.equal(fs.readFileSync(path.join(project, 'notes.md'), 'utf8'), 'hello\nthere\n');
   assert.equal((await work.run('edit_file', { path: path.join(project, 'notes.md'), old_string: 'absent', new_string: 'x' })).ok, false);
   const echo = await work.run('run_command', { command: 'echo "a b"' });
@@ -55,7 +55,7 @@ test('engine tools stay inside writs: roots, never-lists, exact command patterns
   assert.equal((await work.run('run_command', { command: 'echo hi; cat /etc/passwd' })).ok, false, 'no shell chaining');
   assert.equal((await work.run('run_command', { command: 'ls /' })).ok, false, 'only granted command patterns');
   assert.deepEqual(argvOf(`git commit -m 'two words'`), ['git', 'commit', '-m', 'two words']);
-  const audit = fs.readFileSync(path.join(world, 'audit.log'), 'utf8');
+  const audit = fs.readFileSync(path.join(vorld, 'audit.log'), 'utf8');
   assert.match(audit, /"tool":"run_command".*"ok":false/);
   fs.rmSync(outside, { recursive: true, force: true });
 });
@@ -110,8 +110,8 @@ test('a model that cannot call tools still answers (tools dropped once)', async 
 });
 
 test('the runner stores each turn as ordered steps and streams them as events', async (t) => {
-  let ctx = makeWorld({ brain: { provider: 'openai-compatible', model: 'm', name: 'local' } });
-  ctx = saveWorld(ctx, (d) => { d.providers = [{ id: 'openai-compatible', name: 'local', base_url: 'http://local.test/v1' }]; });
+  let ctx = makeVorld({ brain: { provider: 'openai-compatible', model: 'm', name: 'local' } });
+  ctx = saveVorld(ctx, (d) => { d.providers = [{ id: 'openai-compatible', name: 'local', base_url: 'http://local.test/v1' }]; });
   const role = ctx.companionId;
   let call = 0;
   t.mock.method(globalThis, 'fetch', async () => (++call === 1

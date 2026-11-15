@@ -7,7 +7,7 @@ import { Transform } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { getThread, readEvents } from './threads.mjs';
 import { folderGrants, isNever } from './gate.mjs';
-import { workspaceOf } from './workspace.mjs';
+import { workspaceOf, projectOf } from './workspace.mjs';
 
 export const MAX_FILE = 20 * 1024 * 1024;
 const bad = (message, status = 400) => { throw Object.assign(new Error(message), { status }); };
@@ -62,7 +62,7 @@ export async function saveAttachmentStream(ctx, tid, name, source) {
 }
 function publicAttachment(ctx, tid, meta) {
   const {file,...item}=meta;
-  return {...item,url:`/api/worlds/${ctx.id}/threads/${tid}/attachments/${meta.id}`};
+  return {...item,url:`/api/vorlds/${ctx.id}/threads/${tid}/attachments/${meta.id}`};
 }
 function referenceInfo(ctx, requested) {
   let source=String(requested??'').trim();
@@ -124,7 +124,7 @@ function resolveAttachmentsFromEvents(ctx, tid, events) {
 /** Resolve local links from agent replies only inside this thread's granted folders. */
 export function replyFile(ctx, tid, requested) {
   const thread=getThread(ctx,tid), roles=[thread.role];
-  const roots=roles.flatMap(role=>[workspaceOf(ctx,role).path,...folderGrants(ctx,role,'fs.read'),...folderGrants(ctx,role,'fs.write')]);
+  const roots=[projectOf(ctx).path,...roles.flatMap(role=>[workspaceOf(ctx,role).path,...folderGrants(ctx,role,'fs.read'),...folderGrants(ctx,role,'fs.write')])];
   roots.push(dirOf(ctx,tid));
   roots.push(...threadAttachments(ctx,tid).filter(f=>f.kind==='reference').map(f=>f.path));
   const base=thread.binding?.project ?? workspaceOf(ctx,roles[0]).path;

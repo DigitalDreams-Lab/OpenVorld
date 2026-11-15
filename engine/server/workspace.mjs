@@ -1,7 +1,7 @@
 // Every crew member has a folder it works in. By default it is <default space>/<member id>, where the default space is
-// the world's private `workspaces/` folder unless the founder points it somewhere else in Settings. A member can also
+// the vorld's private `workspaces/` folder unless the founder points it somewhere else in Settings. A member can also
 // have a folder of its own (a project). Folders the founder chose are writable by that member (the founder's choice is
-// the consent); the world's own private folders stay talk-only until a writ says more.
+// the consent); the vorld's own private folders stay talk-only until a writ says more.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -15,12 +15,31 @@ export function defaultSpace(ctx) {
   return base ? { path: path.resolve(expand(base)), custom: true } : { path: path.join(ctx.dir, 'workspaces'), custom: false };
 }
 
-/** { path, source: 'own' | 'space' | 'world', chosen } for one crew member. `chosen` = founder picked it. */
+/** { path, source: 'own' | 'space' | 'vorld', chosen } for one crew member. `chosen` = founder picked it. */
 export function workspaceOf(ctx, role) {
   const own = ctx.member?.(role)?.workspace;
   if (own) return { path: path.resolve(expand(own)), source: 'own', chosen: true };
   const space = defaultSpace(ctx);
-  return { path: path.join(space.path, role), source: space.custom ? 'space' : 'world', chosen: space.custom };
+  return { path: path.join(space.path, role), source: space.custom ? 'space' : 'vorld', chosen: space.custom };
+}
+
+/**
+ * The vorld's project folder: the one place the whole crew works on together. Every member can read it; changing it
+ * needs an fs.write writ. Unless the founder picked a folder, it is <vorld>/project.
+ */
+export function projectOf(ctx) {
+  const picked = ctx.doc?.project;
+  const abs = picked ? path.resolve(expand(picked)) : path.join(ctx.dir, 'project');
+  if (!picked) fs.mkdirSync(abs, { recursive: true });
+  return { path: abs, chosen: !!picked, exists: fs.existsSync(abs) };
+}
+
+/** Validate a folder the founder picked as the project folder: it must exist and be grantable for reading and writing. */
+export function checkProject(ctx, folder) {
+  const abs = path.resolve(expand(folder));
+  if (!fs.existsSync(abs) || !fs.statSync(abs).isDirectory()) throw Object.assign(new Error(`not a folder: ${abs}`), { status: 400 });
+  checkFolder(ctx, 'fs.read', abs);
+  return checkFolder(ctx, 'fs.write', abs);
 }
 
 /** Validate a folder the founder picked as a workspace or as the default space (created when missing, inside a real parent). */

@@ -1,4 +1,4 @@
-// No brain: a fixed line from the theme (strings.scripted), so a world works before any agent is set up.
+// No brain: a fixed line from the theme (strings.scripted), so a vorld works before any agent is set up.
 export async function run({ ctx, role, onEvent }) {
   const s = ctx.theme.strings?.scripted ?? {};
   const m = ctx.member(role);

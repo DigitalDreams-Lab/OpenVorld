@@ -1,6 +1,6 @@
-# Game commands: what crew members can DO in their world. Every crew member (agents and the companion) may add a `commands` list to the
+# Game commands: what crew members can DO in their vorld. Every crew member (agents and the companion) may add a `commands` list to the
 # `ov` block at the end of a reply; API brains also have the `game_command` tool. The engine checks each command against this pack
-# and the world (a place or prop that does not exist is dropped), then the map acts it out. They only move and animate
+# and the vorld (a place or prop that does not exist is dropped), then the map acts it out. They only move and animate
 # characters and open screens: they never touch files, run programs, spend or post anything, so they need no writ.
 #
 # A command is JSON: {"do": "walk_to", "to": "plaza"}. Roles: `agent` is every agent, `companion` is the guide.

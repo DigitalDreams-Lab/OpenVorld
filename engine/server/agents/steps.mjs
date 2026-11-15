@@ -7,7 +7,7 @@ export const KIND = {
   Edit: 'tool.edit', MultiEdit: 'tool.edit', NotebookEdit: 'tool.edit', edit_file: 'tool.edit', patch: 'tool.edit',
   Write: 'tool.write', write_file: 'tool.write',
   Bash: 'tool.run', shell: 'tool.run', run_command: 'tool.run',
-  game_command: 'tool.world', world_info: 'tool.world',
+  game_command: 'tool.vorld', vorld_info: 'tool.vorld',
   WebFetch: 'tool.web', WebSearch: 'tool.web', fetch_url: 'tool.web', web: 'tool.web',
 };
 export const kindOf = (name) => KIND[name] ?? 'tool.run';

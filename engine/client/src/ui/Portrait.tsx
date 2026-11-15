@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { generatedCharacter, onAtlas } from '../game/pixels';
 
-export function Portrait({ role, size = 64, mood, kind }: { world?: any; role: string; size?: number; mood?: string; look?: any; kind?: string }) {
+export function Portrait({ role, size = 64, mood, kind }: { vorld?: any; role: string; size?: number; mood?: string; look?: any; kind?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [rev, setRev] = useState(0);
   const density = typeof window === 'undefined' ? 1 : Math.max(1, window.devicePixelRatio || 1);

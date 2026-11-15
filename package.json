@@ -1,7 +1,7 @@
 {
   "name": "openvorld",
   "version": "1.0.0",
-  "description": "An RPG-style harness for agentic work: your AI crew lives in a pixel-art world and runs your workflows as quests.",
+  "description": "Every project is a vorld: a shared project folder, a crew of AI agents with their own workspaces, and the quests they run together. Shown as a pixel-art world.",
   "license": "MIT",
   "type": "module",
   "engines": {

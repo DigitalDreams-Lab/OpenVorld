@@ -16,7 +16,7 @@ export function useThreadEvents(wid: string, tid: string | null) {
   useEffect(() => {
     if (!tid) { setData(null); return; }
     let live = true;
-    api(`/worlds/${wid}/threads/${tid}`).then((d) => { if (live) { setData(d); setError(''); } }).catch((e) => { if (live) setError(e.message); });
+    api(`/vorlds/${wid}/threads/${tid}`).then((d) => { if (live) { setData(d); setError(''); } }).catch((e) => { if (live) setError(e.message); });
     return () => { live = false; };
   }, [wid, tid, version]);
   return { data, error, setEvents: (update: (e: any[]) => any[]) => setData((d) => (d ? { ...d, events: update(d.events) } : d)) };
@@ -62,7 +62,7 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
       {canSend && !working && lastAgent?.meta?.options?.length > 0 && (
         <div className="options">{lastAgent.meta.options.map((o: string) => <button key={o} className="option" disabled={draft.busy} onClick={() => draft.send(o, true)}>▸ {o}</button>)}</div>
       )}
-      {canSend && <ChatComposer draft={draft} placeholder={placeholder ?? `Message ${m?.name ?? ''}…`} working={working} onStop={() => { void api(`/worlds/${wid}/threads/${tid}/stop`, { body: {} }).catch((e) => toast({ kind: 'error', title: e.message })); }} />}
+      {canSend && <ChatComposer draft={draft} placeholder={placeholder ?? `Message ${m?.name ?? ''}…`} working={working} onStop={() => { void api(`/vorlds/${wid}/threads/${tid}/stop`, { body: {} }).catch((e) => toast({ kind: 'error', title: e.message })); }} />}
     </div>
   );
 }

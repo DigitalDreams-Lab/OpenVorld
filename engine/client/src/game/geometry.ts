@@ -1,4 +1,4 @@
-/** World-pixel geometry shared by drawing and collision. Plan doors are tile-centre foot anchors. */
+/** Vorld-pixel geometry shared by drawing and collision. Plan doors are tile-centre foot anchors. */
 export type HomeSize = { w: number; h: number; bodyW: number; wallH: number };
 export const DEFAULT_HOME: HomeSize = { w: 64, h: 64, bodyW: 48, wallH: 28 };
 

@@ -9,15 +9,15 @@ const cache = new Map<string, string | null>();
 
 /** The system folder dialog: `native` is its name ("Finder", "Explorer", …) or null when there is none. */
 export function useFolderDialog(capability = 'fs.write') {
-  const wid = useStore((s) => s.worldId);
+  const wid = useStore((s) => s.vorldId);
   const [native, setNative] = useState<string | null | undefined>(wid ? cache.get(wid) : null);
   useEffect(() => {
     if (!wid || cache.has(wid)) return;
-    api(`/worlds/${wid}/fs/native`).then((r) => { cache.set(wid, r.native ?? null); setNative(r.native ?? null); }).catch(() => setNative(null));
+    api(`/vorlds/${wid}/fs/native`).then((r) => { cache.set(wid, r.native ?? null); setNative(r.native ?? null); }).catch(() => setNative(null));
   }, [wid]);
   /** Opens the dialog; resolves the chosen folder, or null when cancelled. Rejects with a readable error. */
   const choose = async (start?: string): Promise<string | null> => {
-    const r = await api(`/worlds/${wid}/fs/pick`, { body: { capability, start: start || undefined, prompt: str('folder.prompt', {}, 'Choose a folder') } });
+    const r = await api(`/vorlds/${wid}/fs/pick`, { body: { capability, start: start || undefined, prompt: str('folder.prompt', {}, 'Choose a folder') } });
     return r.path ?? null;
   };
   return { native, choose };
@@ -26,7 +26,7 @@ export function useFolderDialog(capability = 'fs.write') {
 const shorten = (p: string) => { const parts = p.split('/').filter(Boolean); return parts.length > 3 ? `…/${parts.slice(-3).join('/')}` : p; };
 
 export function FolderPicker({ value, onChange, capability = 'fs.write', placeholder, disabled, label }: { value: string; onChange: (path: string) => void; capability?: string; placeholder?: string; disabled?: boolean; label?: string }) {
-  const wid = useStore((s) => s.worldId);
+  const wid = useStore((s) => s.vorldId);
   const { native, choose } = useFolderDialog(capability);
   const [open, setOpen] = useState(false);
   const [list, setList] = useState<Listing | null>(null);
@@ -34,7 +34,7 @@ export function FolderPicker({ value, onChange, capability = 'fs.write', placeho
 
   const go = async (dir: string) => {
     setError('');
-    try { setList(await api(`/worlds/${wid}/fs/browse?capability=${capability}&path=${encodeURIComponent(dir)}`)); }
+    try { setList(await api(`/vorlds/${wid}/fs/browse?capability=${capability}&path=${encodeURIComponent(dir)}`)); }
     catch (e: any) { setError(e.message); }
   };
   useEffect(() => { if (open && !list) void go(value); }, [open]);   // eslint-disable-line react-hooks/exhaustive-deps

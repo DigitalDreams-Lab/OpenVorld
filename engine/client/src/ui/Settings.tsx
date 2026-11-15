@@ -1,5 +1,5 @@
-// World settings: name and purpose, model endpoints (OpenAI-compatible; the key is read from an environment variable
-// you name, never stored), the default work folder, the writs you granted, and sound.
+// Vorld settings: name and purpose, model endpoints (OpenAI-compatible; the key is read from an environment variable
+// you name, never stored), the project folder, the private workspaces folder, the writs you granted, and sound.
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { emit, setState, toast, useStore } from '../store';
@@ -11,11 +11,11 @@ const tail = (p: string) => { const parts = p.split('/').filter(Boolean); return
 const close = () => setState({ modal: null });
 
 export function Settings() {
-  const wid = useStore((s) => s.worldId)!;
-  const world = useStore((s) => s.world);
+  const wid = useStore((s) => s.vorldId)!;
+  const vorld = useStore((s) => s.vorld);
   const [s, setS] = useState<any>(null);
-  const [w, setW] = useState({ name: world.world.name, about: world.world.about });
-  useEffect(() => { api(`/worlds/${wid}/settings`).then(setS).catch((e) => toast({ kind: 'error', title: e.message })); }, [wid]);
+  const [w, setW] = useState({ name: vorld.vorld.name, about: vorld.vorld.about });
+  useEffect(() => { api(`/vorlds/${wid}/settings`).then(setS).catch((e) => toast({ kind: 'error', title: e.message })); }, [wid]);
   if (!s) return null;
   const endpoints: any[] = s.providers.filter((p: any) => p.id === 'openai-compatible');
   const presets = s.catalog.find((c: any) => c.id === 'openai-compatible')?.presets ?? {};
@@ -27,18 +27,18 @@ export function Settings() {
   };
   const save = async () => {
     try {
-      await api(`/worlds/${wid}/settings`, { method: 'PUT', body: { providers: s.providers } });
-      const next = await api(`/worlds/${wid}`, { method: 'PUT', body: w });
-      setState({ world: next, modal: null }); emit('world', next); play('seal.approved');
+      await api(`/vorlds/${wid}/settings`, { method: 'PUT', body: { providers: s.providers } });
+      const next = await api(`/vorlds/${wid}`, { method: 'PUT', body: w });
+      setState({ vorld: next, modal: null }); emit('vorld', next); play('seal.approved');
     } catch (e: any) { toast({ kind: 'error', title: e.message }); play('ui.error'); }
   };
   return (
     <div className="modal-bg" onClick={close}>
       <div className="modal panel settings" onClick={(e) => e.stopPropagation()}>
         <header className="row between"><h2>Settings</h2><button className="x" onClick={close}>✕</button></header>
-        <h3>World</h3>
+        <h3>Vorld</h3>
         <label>Name<input className="field" value={w.name} maxLength={60} onChange={(e) => setW({ ...w, name: e.target.value })} /></label>
-        <label>What it is for<textarea className="field" rows={2} value={w.about} maxLength={400} placeholder="The project, company or activity this world runs. Every crew member reads this." onChange={(e) => setW({ ...w, about: e.target.value })} /></label>
+        <label>What it is for<textarea className="field" rows={2} value={w.about} maxLength={400} placeholder="The project, company or activity this vorld runs. Every crew member reads this." onChange={(e) => setW({ ...w, about: e.target.value })} /></label>
 
         <h3>Brains</h3>
         <p className="muted">Found on this computer: {s.detected.map((d: any) => d.label).join(', ') || 'no agent CLI'} <button className="link" onClick={async () => { const d = await api('/detect', { body: {} }).catch(() => null); if (d) setS({ ...s, detected: d }); }}>look again</button>. Pick each member's brain in their settings (⚙).</p>
@@ -54,26 +54,64 @@ export function Settings() {
         <div className="row wrap">{Object.keys(presets).map((p) => <button key={p} className="btn small" onClick={() => addEndpoint(p)}>+ {p}</button>)}</div>
         <p className="muted small">Keys are never saved: set the environment variable before starting openVorld.</p>
 
+        <ProjectFolder />
         <DefaultFolder />
         <WritsList />
         <h3>Sound</h3>
         <label className="form-row"><span>Effects</span><input type="range" min={0} max={1} step={0.05} defaultValue={0.8} onChange={(e) => { setSfxVolume(Number(e.target.value)); play('ui.click'); }} /></label>
-        <p className="muted small">Saved on this computer in <code>{s.storage.world}</code></p>
+        <p className="muted small">Saved on this computer in <code>{s.storage.vorld}</code></p>
         <div className="row end"><button className="btn" onClick={close}>Cancel</button><button className="btn primary" onClick={save}>Save</button></div>
       </div>
     </div>
   );
 }
 
+/** The vorld's project folder: shared by the whole crew (read for everyone, writes by writ). */
+function ProjectFolder() {
+  const wid = useStore((s) => s.vorldId)!;
+  const project = useStore((s) => s.vorld)?.vorld?.project;
+  const { native, choose } = useFolderDialog('fs.write');
+  const [folder, setFolder] = useState(project?.path ?? '');
+  const [typing, setTyping] = useState(false);
+  const save = async (p: string | null) => {
+    try { const w = await api(`/vorlds/${wid}`, { method: 'PUT', body: { project: p } }); setState({ vorld: w }); emit('vorld', w); setTyping(false); }
+    catch (e: any) { toast({ kind: 'error', title: e.message }); }
+  };
+  const change = async () => {
+    if (!native) { setTyping(true); return; }
+    try { const p = await choose(project?.path); if (p) await save(p); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
+  };
+  if (!project) return null;
+  return (
+    <>
+      <h3>Project folder</h3>
+      <p className="muted">The one folder the whole crew works on. Everyone can read it; changing files in it needs your writ.</p>
+      {!typing ? (
+        <div className="pf-row">
+          <code className="pf-path" title={project.path}>{tail(project.path)}</code>
+          {!project.exists && <span className="error small">missing</span>}
+          <button className="btn small" onClick={change}>Change</button>
+          {project.chosen && <button className="btn small" onClick={() => save(null)}>Back to the vorld's own folder</button>}
+        </div>
+      ) : (
+        <>
+          <FolderPicker label="Project folder" value={folder} onChange={setFolder} capability="fs.write" />
+          <div className="row"><button className="btn small primary" disabled={!folder.trim()} onClick={() => save(folder)}>Use this folder</button><button className="btn small" onClick={() => setTyping(false)}>Cancel</button></div>
+        </>
+      )}
+    </>
+  );
+}
+
 /** The folder every crew member's own work folder is made in. */
 function DefaultFolder() {
-  const wid = useStore((s) => s.worldId)!;
-  const space = useStore((s) => s.world)?.workspace;
+  const wid = useStore((s) => s.vorldId)!;
+  const space = useStore((s) => s.vorld)?.workspace;
   const { native, choose } = useFolderDialog('fs.write');
   const [folder, setFolder] = useState(space?.default_space ?? '');
   const [typing, setTyping] = useState(false);
   const save = async (base: string | null) => {
-    try { const w = await api(`/worlds/${wid}`, { method: 'PUT', body: { workspace_base: base } }); setState({ world: w }); emit('world', w); setTyping(false); }
+    try { const w = await api(`/vorlds/${wid}`, { method: 'PUT', body: { workspace_base: base } }); setState({ vorld: w }); emit('vorld', w); setTyping(false); }
     catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   const change = async () => {
@@ -83,13 +121,13 @@ function DefaultFolder() {
   if (!space) return null;
   return (
     <>
-      <h3>Work folders</h3>
-      <p className="muted">Each crew member works in its own folder inside this one, unless you give them another in their settings.</p>
+      <h3>Private workspaces</h3>
+      <p className="muted">Each crew member has a private workspace for drafts and notes inside this folder, unless you give them another in their settings.</p>
       {!typing ? (
         <div className="pf-row">
           <code className="pf-path" title={space.default_space}>{tail(space.default_space)}</code>
           <button className="btn small" onClick={change}>Change</button>
-          {space.default_is_custom && <button className="btn small" onClick={() => save(null)}>Back to the world folder</button>}
+          {space.default_is_custom && <button className="btn small" onClick={() => save(null)}>Back to the vorld folder</button>}
         </div>
       ) : (
         <>

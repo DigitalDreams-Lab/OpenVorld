@@ -4,19 +4,19 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { startServer, call, newWorld } from './helpers/server.mjs';
+import { startServer, call, newVorld } from './helpers/server.mjs';
 
 test('work folder per crew member, default space, validation and persistence', async (t) => {
   const { home } = await startServer(t);
-  const { id, root } = await newWorld({ crew: [{ name: 'Ada', job: 'Writer' }, { name: 'Bo', job: 'Editor' }] });
-  const world = (await call('GET', `${root}/world`)).data;
-  const [, a, b] = world.crew;
+  const { id, root } = await newVorld({ crew: [{ name: 'Ada', job: 'Writer' }, { name: 'Bo', job: 'Editor' }] });
+  const vorld = (await call('GET', `${root}/vorld`)).data;
+  const [, a, b] = vorld.crew;
 
-  // every member has one, by default inside the world's private space
-  assert.ok(world.crew.every((c) => c.workspace?.path));
-  assert.equal(a.workspace.source, 'world');
-  assert.equal(a.workspace.path, path.join(home, 'worlds', id, 'workspaces', a.id));
-  assert.equal(world.workspace.default_is_custom, false);
+  // every member has one, by default inside the vorld's private space
+  assert.ok(vorld.crew.every((c) => c.workspace?.path));
+  assert.equal(a.workspace.source, 'vorld');
+  assert.equal(a.workspace.path, path.join(home, 'vorlds', id, 'workspaces', a.id));
+  assert.equal(vorld.workspace.default_is_custom, false);
 
   // a folder of their own
   const mine = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-mine-')); t.after(() => fs.rmSync(mine, { recursive: true, force: true }));
@@ -24,7 +24,7 @@ test('work folder per crew member, default space, validation and persistence', a
   assert.equal(set.status, 200);
   const sa = set.data.crew.find((c) => c.id === a.id).workspace;
   assert.deepEqual([sa.source, sa.path, sa.chosen], ['own', mine, true]);
-  assert.equal(set.data.crew.find((c) => c.id === b.id).workspace.source, 'world');
+  assert.equal(set.data.crew.find((c) => c.id === b.id).workspace.source, 'vorld');
 
   // the default space moves everyone without a folder of their own
   const space = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-space-')); t.after(() => fs.rmSync(space, { recursive: true, force: true }));

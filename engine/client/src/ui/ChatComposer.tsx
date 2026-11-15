@@ -29,7 +29,7 @@ export function useChatDraft({wid,thread,working,onEvents}:{wid:string;thread:st
       if(!alive.current)return;
       optimistic=crypto.randomUUID();
       onEvents((events:any[])=>[...events,{type:'founder.message',text:value,attachments:sent,at:new Date().toISOString(),clientId:optimistic}]);
-      await api(`/worlds/${wid}/threads/${thread}/messages`,{body:{text:value,option,attachments:sent.map(f=>f.id)}});
+      await api(`/vorlds/${wid}/threads/${thread}/messages`,{body:{text:value,option,attachments:sent.map(f=>f.id)}});
       if(!alive.current)return;
       setText('');for(const f of current.current)if(f.preview)URL.revokeObjectURL(f.preview);updateFiles([]);
     }catch(e:any){

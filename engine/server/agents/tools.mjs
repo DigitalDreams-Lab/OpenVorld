@@ -1,6 +1,6 @@
 // Tools the ENGINE runs for API brains (OpenAI-compatible models). This is the tightest sandbox: the model
 // only sees the tools its writs allow, and every call is checked here (allowed folders, never-lists,
-// exact command patterns, allowed domains) and written to the world's audit log.
+// exact command patterns, allowed domains) and written to the vorld's audit log.
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
@@ -8,7 +8,7 @@ import { isNever, commandMatches, capabilityLimit } from '../gate.mjs';
 import { clip, kindOf, targetOf, detailOf } from './steps.mjs';
 import { cleanEnv } from './drivers/proc.mjs';
 import { imageType, MAX_FILE } from '../attachments.mjs';
-import { prepareCommands, worldInfo } from './commands.mjs';
+import { prepareCommands, vorldInfo } from './commands.mjs';
 
 const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', '.next', '.venv', '__pycache__', 'Pods', 'DerivedData']);
 const SHELL_META = /[;&|`$<>(){}\n\r\\]/;
@@ -31,7 +31,7 @@ export function argvOf(command) {
 
 /**
  * @param {object} o
- * @param {object} o.ctx world context
+ * @param {object} o.ctx vorld context
  * @param {string} o.cwd working folder (the crew member's workspace)
  * @param {string[]} o.readRoots folders the crew member may read
  * @param {string[]} o.writeRoots folders the crew member may change
@@ -40,7 +40,7 @@ export function argvOf(command) {
  */
 export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], commands = [], domains = [], limits = {}, onRequest = () => {}, onCommand = null }) {
   const lim = { output_chars: 12000, command_seconds: 120, fetch_chars: 20000, search_matches: 80, ...limits };
-  const audit = (entry) => { try { fs.appendFileSync(path.join(ctx.dir, 'audit.log'), JSON.stringify({ at: new Date().toISOString(), role, ...entry }) + '\n', { mode: 0o600 }); } catch { /* world gone */ } };
+  const audit = (entry) => { try { fs.appendFileSync(path.join(ctx.dir, 'audit.log'), JSON.stringify({ at: new Date().toISOString(), role, ...entry }) + '\n', { mode: 0o600 }); } catch { /* vorld gone */ } };
   const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
   const R = [...new Set([cwd, ...readRoots, ...writeRoots].map(real))];
   const W = [...new Set([cwd, ...writeRoots].map(real))];
@@ -74,10 +74,10 @@ export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], c
   if (commands.length) specs.push(fn('run_command', `Run one allowed command (no shell features). Allowed patterns: ${commands.join(' | ')}`, { command: { type: 'string' } }, ['command']));
   if (domains.length) specs.push(fn('fetch_url', `Fetch a web page as text. Allowed: ${domains.includes('*') ? 'any site' : domains.join(', ')}`, { url: { type: 'string' } }, ['url']));
 
-  // acting in the game world (movement, emotes, props): harmless, so no writ; only when the caller can show it on the map
+  // acting on the vorld's map (movement, emotes, props): harmless, so no writ; only when the caller can show it on the map
   if (onCommand) specs.push(
-    fn('world_info', 'Describe your world: places, things you can walk to, and the other crew members.', {}),
-    fn('game_command', 'Do something in the game world: walk somewhere, wave, say a line, use a bench... Each item is like {"do":"walk_to","to":"plaza"}, {"do":"emote","kind":"wave"}, {"do":"say","text":"Hello!"}, {"do":"interact","with":"bench"}. Call world_info first to see what exists.', { commands: { type: 'array', items: { type: 'object' }, description: 'Up to 6 commands, done in order' } }, ['commands']),
+    fn('vorld_info', 'Describe your vorld: places, things you can walk to, and the other crew members.', {}),
+    fn('game_command', 'Do something on the vorld map: walk somewhere, wave, say a line, use a bench... Each item is like {"do":"walk_to","to":"plaza"}, {"do":"emote","kind":"wave"}, {"do":"say","text":"Hello!"}, {"do":"interact","with":"bench"}. Call vorld_info first to see what exists.', { commands: { type: 'array', items: { type: 'object' }, description: 'Up to 6 commands, done in order' } }, ['commands']),
   );
 
   function walk(dir, depth, out, max = 400) {
@@ -105,7 +105,7 @@ export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], c
   }
 
   const impl = {
-    world_info() { return worldInfo(ctx, role); },
+    vorld_info() { return vorldInfo(ctx, role); },
     game_command({ commands }) {
       const r = prepareCommands(ctx, role, commands);
       if (!r.commands.length) throw new Error(`nothing to do: ${r.dropped.join('; ') || 'no valid command'}`);

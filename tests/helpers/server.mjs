@@ -1,7 +1,7 @@
 // The real server in-process: http.createServer is mocked so no port is opened, and `call` drives its request handler.
 import http from 'node:http';
 import { Readable, Writable } from 'node:stream';
-import { home } from './world.mjs';
+import { home } from './vorld.mjs';
 
 const TOKEN = (process.env.OV_TOKEN = 'test-token');
 const PORT = (process.env.OV_PORT ??= '24390');
@@ -28,9 +28,9 @@ export async function call(method, url, body, headers = {}, auth = true) {
   return { status: res.status, headers: res.headers, data: res.headers?.['content-type'] === 'application/json' ? JSON.parse(data) : data };
 }
 
-/** Found a world through the API; returns its id and API root. */
-export async function newWorld(input = {}) {
-  const r = await call('POST', '/api/worlds', { name: 'Lantern Tea', about: 'A small tea shop', template: 'blank', brain: { provider: 'none' }, ...input });
+/** Found a vorld through the API; returns its id and API root. */
+export async function newVorld(input = {}) {
+  const r = await call('POST', '/api/vorlds', { name: 'Lantern Tea', about: 'A small tea shop', template: 'blank', brain: { provider: 'none' }, ...input });
   if (r.status !== 200) throw new Error(r.data?.error ?? `HTTP ${r.status}`);
-  return { id: r.data.id, root: `/api/worlds/${r.data.id}` };
+  return { id: r.data.id, root: `/api/vorlds/${r.data.id}` };
 }

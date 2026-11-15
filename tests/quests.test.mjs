@@ -2,8 +2,8 @@
 // pauses the quest, and the companion can draft one from a chat.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { makeWorld, saveWorld } from './helpers/world.mjs';
-import { startServer, call, newWorld } from './helpers/server.mjs';
+import { makeVorld, saveVorld } from './helpers/vorld.mjs';
+import { startServer, call, newVorld } from './helpers/server.mjs';
 
 const Q = await import('../engine/server/quests.mjs');
 const { readEvents, listThreads } = await import('../engine/server/threads.mjs');
@@ -12,14 +12,14 @@ const { gameFor } = await import('../engine/server/game.mjs');
 const CREW = [{ name: 'Ada', job: 'Writer' }, { name: 'Bo', job: 'Editor' }];
 const sse = (text) => new Response(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\ndata: [DONE]\n\n`, { status: 200 });
 const until = async (fn, ms = 3000) => { const end = Date.now() + ms; while (Date.now() < end) { const v = fn(); if (v) return v; await new Promise((r) => setTimeout(r, 10)); } throw new Error('timed out'); };
-/** A world whose crew thinks with a mocked OpenAI-compatible model. */
-function apiWorld() {
-  const ctx = makeWorld({ crew: CREW, brain: { provider: 'openai-compatible', model: 'm', name: 'local' } });
-  return saveWorld(ctx, (d) => { d.providers = [{ id: 'openai-compatible', name: 'local', base_url: 'http://local.test/v1' }]; });
+/** A vorld whose crew thinks with a mocked OpenAI-compatible model. */
+function apiVorld() {
+  const ctx = makeVorld({ crew: CREW, brain: { provider: 'openai-compatible', model: 'm', name: 'local' } });
+  return saveVorld(ctx, (d) => { d.providers = [{ id: 'openai-compatible', name: 'local', base_url: 'http://local.test/v1' }]; });
 }
 
 test('a quest is validated: a title, at least one step, every step for someone on the crew', () => {
-  const ctx = makeWorld({ crew: CREW });
+  const ctx = makeVorld({ crew: CREW });
   assert.throws(() => Q.saveQuest(ctx, { title: '', steps: [{ agent: 'ada', task: 'x' }] }), /title/);
   assert.throws(() => Q.saveQuest(ctx, { title: 'T', steps: [] }), /at least one step/);
   assert.throws(() => Q.saveQuest(ctx, { title: 'T', steps: [{ agent: 'nobody', task: 'x' }] }), /nobody called/);
@@ -30,7 +30,7 @@ test('a quest is validated: a title, at least one step, every step for someone o
 });
 
 test('steps run in order, each result is handed to the next, and the seal waits for the founder', async (t) => {
-  const ctx = apiWorld();
+  const ctx = apiVorld();
   const prompts = [];
   t.mock.method(globalThis, 'fetch', async (_u, init) => {
     const body = JSON.parse(init.body), last = body.messages.at(-1).content;
@@ -65,7 +65,7 @@ test('steps run in order, each result is handed to the next, and the seal waits 
 });
 
 test('a step that asks for access pauses the quest until the writ is answered', async (t) => {
-  const ctx = apiWorld();
+  const ctx = apiVorld();
   t.mock.method(globalThis, 'fetch', async () => sse('I need the notes.\n```ov\n{"access":[{"capability":"net.fetch","scope":"example.com","why":"read the brief"}]}\n```'));
   const q = Q.saveQuest(ctx, { title: 'Research', steps: [{ agent: 'ada', task: 'Read the brief' }] });
   Q.startQuest(ctx, q.id, () => {});
@@ -77,7 +77,7 @@ test('a step that asks for access pauses the quest until the writ is answered', 
 });
 
 test('a failed step stops the quest with its reason, and can be retried', async (t) => {
-  const ctx = apiWorld();
+  const ctx = apiVorld();
   let n = 0;
   t.mock.method(globalThis, 'fetch', async () => (++n === 1 ? new Response('down', { status: 500 }) : sse('Fine now.')));
   const q = Q.saveQuest(ctx, { title: 'Flaky', steps: [{ agent: 'ada', task: 'Try' }] });
@@ -91,17 +91,17 @@ test('a failed step stops the quest with its reason, and can be retried', async 
 
 test('the companion drafts a quest from a chat, and only the companion can', async (t) => {
   await startServer(t);
-  const { id, root } = await newWorld({ crew: CREW, brain: { provider: 'openai-compatible', model: 'm', name: 'local' } });
-  const { worldCtx } = await import('../engine/server/world.mjs');
-  saveWorld(worldCtx(id), (d) => { d.providers = [{ id: 'openai-compatible', name: 'local', base_url: 'http://local.test/v1' }]; });
+  const { id, root } = await newVorld({ crew: CREW, brain: { provider: 'openai-compatible', model: 'm', name: 'local' } });
+  const { vorldCtx } = await import('../engine/server/vorld.mjs');
+  saveVorld(vorldCtx(id), (d) => { d.providers = [{ id: 'openai-compatible', name: 'local', base_url: 'http://local.test/v1' }]; });
   const draft = { title: 'Weekly post', goal: 'A post a week', steps: [{ agent: 'Ada', task: 'Write' }, { agent: 'Bo', task: 'Edit', seal: true }, { agent: 'Ghost', task: 'Haunt' }] };
   t.mock.method(globalThis, 'fetch', async () => sse(`Here is a plan.\n\`\`\`ov\n${JSON.stringify({ quest: draft })}\n\`\`\``));
-  const world = (await call('GET', `${root}/world`)).data;
-  const companion = world.crew.find((c) => c.role === 'companion').id;
+  const vorld = (await call('GET', `${root}/vorld`)).data;
+  const companion = vorld.crew.find((c) => c.role === 'companion').id;
   for (const role of [companion, 'ada']) {
     const thread = (await call('POST', `${root}/threads`, { role })).data;
     assert.equal((await call('POST', `${root}/threads/${thread.id}/messages`, { text: 'make me a weekly post workflow' })).status, 200);
-    await until(() => readEvents(worldCtx(id), thread.id).some((e) => e.type === 'agent.text'));
+    await until(() => readEvents(vorldCtx(id), thread.id).some((e) => e.type === 'agent.text'));
     await new Promise((r) => setTimeout(r, 30));
   }
   const quests = (await call('GET', `${root}/quests`)).data;
@@ -110,24 +110,24 @@ test('the companion drafts a quest from a chat, and only the companion can', asy
   assert.equal(quests[0].status, 'draft');
 });
 
-test('templates start a world with its crew and starter quests', async (t) => {
+test('templates start a vorld with its crew and starter quests', async (t) => {
   await startServer(t);
-  const { root } = await newWorld({ template: 'content' });
-  const world = (await call('GET', `${root}/world`)).data;
-  assert.deepEqual(world.crew.map((c) => c.job), ['Guide', 'Researcher', 'Writer', 'Editor']);
+  const { root } = await newVorld({ template: 'content' });
+  const vorld = (await call('GET', `${root}/vorld`)).data;
+  assert.deepEqual(vorld.crew.map((c) => c.job), ['Guide', 'Researcher', 'Writer', 'Editor']);
   const quests = (await call('GET', `${root}/quests`)).data;
   assert.equal(quests.length, 1);
-  assert.deepEqual(quests[0].steps.map((s) => world.crew.find((c) => c.id === s.agent).job), ['Researcher', 'Writer', 'Editor']);
+  assert.deepEqual(quests[0].steps.map((s) => vorld.crew.find((c) => c.id === s.agent).job), ['Researcher', 'Writer', 'Editor']);
 });
 
 test('a member on a running quest cannot be removed until it stops', async (t) => {
   await startServer(t);
-  const { root } = await newWorld({ template: 'content' });
-  const world = (await call('GET', `${root}/world`)).data;
+  const { root } = await newVorld({ template: 'content' });
+  const vorld = (await call('GET', `${root}/vorld`)).data;
   const [quest] = (await call('GET', `${root}/quests`)).data;
   const started = await call('POST', `${root}/quests/${quest.id}/start`);
   assert.equal(started.status, 200);
-  const writer = world.crew.find((c) => c.job === 'Writer');
+  const writer = vorld.crew.find((c) => c.job === 'Writer');
   assert.equal((await call('DELETE', `${root}/crew/${writer.id}`)).status, 409);
   assert.equal((await call('POST', `${root}/quests/${quest.id}/stop`)).status, 200);
   assert.equal((await call('DELETE', `${root}/crew/${writer.id}`)).status, 200);

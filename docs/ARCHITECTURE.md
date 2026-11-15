@@ -1,11 +1,11 @@
 # Architecture
 
-openVorld has three parts: a small Node server, a React + Phaser client, and YAML packs. They talk over a local HTTP API and one WebSocket. Nothing leaves your computer except the calls a member's brain makes.
+A **vorld** is the unit everything belongs to: one project folder, one crew, their quests and their history. openVorld has three parts: a small Node server, a React + Phaser client, and YAML packs. They talk over a local HTTP API and one WebSocket. Nothing leaves your computer except the calls a member's brain makes.
 
 ```
 packs/ (YAML)  ─┐
-~/.openvorld/  ─┼─►  engine/server  ◄──HTTP + WS──►  engine/client (React UI + Phaser world)
-  worlds/<id>/ ─┘        │
+~/.openvorld/  ─┼─►  engine/server  ◄──HTTP + WS──►  engine/client (React UI + Phaser map)
+  vorlds/<id>/ ─┘        │
                          └─► brains: claude / codex CLI, or an OpenAI-compatible API
 ```
 
@@ -15,17 +15,18 @@ All of it sits under `OPENVORLD_HOME`, which defaults to `~/.openvorld`.
 
 ```
 packs/                      your own packs (optional)
-worlds/<id>/
-  world.yaml                name, about, theme, crew, brains, work folder
+vorlds/<id>/
+  vorld.yaml                name, about, project folder, theme, crew, brains
+  project/                  the shared project folder, unless vorld.yaml points at your own
   quests/<qid>.json         a quest: steps, status and its current run
   threads/index.json        every conversation, chat or quest step
   threads/<tid>.jsonl       a thread's events, append-only
   threads/<tid>.files/      files attached to that thread
-  workspaces/<member>/      each member's own folder (the default)
+  workspaces/<member>/      each member's private workspace (the default)
   grants.yaml               the writs you have granted
   audit.log                 every tool call the engine ran, allowed or not
   saves/game.json           XP, level, deeds and event counts
-  packs/                    packs for this world only (optional)
+  packs/                    packs for this vorld only (optional)
 ```
 
 ## Server (`engine/server`)
@@ -33,7 +34,7 @@ worlds/<id>/
 | File | What it does |
 | --- | --- |
 | `index.mjs` | HTTP routes and the WebSocket. Binds to 127.0.0.1, requires the per-launch token on every call, and checks Host. |
-| `world.mjs` | Loads packs, lists and creates worlds, and builds the world context (`ctx`) every other module receives. |
+| `vorld.mjs` | Loads packs, lists and creates vorlds, and builds the vorld context (`ctx`) every other module receives. |
 | `quests.mjs` | The quest engine: save, start, advance step by step, the Seal, retry and stop. It also resumes quests after a restart. |
 | `threads.mjs` | Conversations as JSONL event logs. |
 | `agents/runner.mjs` | One turn for one member: builds the system prompt, picks the driver and stores the reply as ordered steps. |
@@ -56,18 +57,19 @@ worlds/<id>/
    - Otherwise it moves to the next step.
 4. If the brain fails, the quest is marked `failed` with the reason. **Retry** runs the same step again.
 
-While a quest runs, the server sends `quest` events, and steps also send game commands so the member walks to the Quest Board and back. That's how the work shows up in the world.
+While a quest runs, the server sends `quest` events, and steps also send game commands so the member walks to the Quest Board and back. That's how the work shows up in the vorld.
 
 ## Client (`engine/client/src`)
 
-- `screens/`: Title (choose a world), Onboarding (found one) and Game.
-- `game/WorldScene.ts`: the Phaser map, with houses, the plaza with the Quest Board, members walking, speech balloons and the "!" markers.
+- `screens/`: Title (choose a vorld), Onboarding (found one) and Game.
+- `game/VorldScene.ts`: the Phaser map, with houses, the plaza with the Quest Board, members walking, speech balloons and the "!" markers.
 - `ui/`: React panels. `QuestBoard.tsx`, `MemberPanel.tsx` + `Thread.tsx` (one conversation), `WritCard.tsx`, `Settings.tsx`, `MemberSettings.tsx`, `CrewBar.tsx`, `Hud.tsx`, `Deeds.tsx`.
 - `store.ts`: one small store. Server events arrive over the WebSocket, and `Game.tsx` sends them on to the store and the scene.
 
 ## Safety model
 
-- Each member gets their own work folder and nothing else.
+- Every member can read the vorld's project folder and can read and write their own private workspace. Nothing else is open to them.
+- Changing the project folder needs an `fs.write` writ, the same as any other folder. Codex only receives `--add-dir` for folders it may write.
 - Every other kind of access is a writ, scoped to one path, one command pattern or one domain. The engine enforces writs on every tool call, and CLI brains also get their sandbox flags from them.
 - Never-lists such as `~/.ssh` and `.env*` can't be granted at all.
 - The server only listens on 127.0.0.1, with a random token for each launch.

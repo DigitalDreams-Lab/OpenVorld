@@ -4,7 +4,7 @@ import Phaser from 'phaser';
 import { api, artImage, connect } from '../api';
 import { emit, getState, on, setState, str, toast, useStore } from '../store';
 import { play } from '../audio/sfx';
-import { WorldScene } from '../game/WorldScene';
+import { VorldScene } from '../game/VorldScene';
 import { PANELS } from '../game/commands';
 import { loadGenerated } from '../game/pixels';
 import { applyUiTheme, resetUiTheme, BODY_FONT } from '../theme';
@@ -19,20 +19,20 @@ import { Toasts } from '../ui/Toasts';
 
 export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
   const host = useRef<HTMLDivElement>(null);
-  const world = useStore((s) => s.world);
+  const vorld = useStore((s) => s.vorld);
   const talkingTo = useStore((s) => s.talkingTo);
   const modal = useStore((s) => s.modal);
   const [err, setErr] = useState<string | null>(null);
 
-  // load the world, then start Phaser once the art and fonts are ready
+  // load the vorld, then start Phaser once the art and fonts are ready
   useEffect(() => {
     let game: Phaser.Game | null = null, dead = false;
     (async () => {
       try {
-        const w = await api(`/worlds/${wid}/world`);
+        const w = await api(`/vorlds/${wid}/vorld`);
         if (dead) return;
         await loadGenerated(w.art.atlas, (name) => artImage(name));
-        setState({ worldId: wid, world: w, talkingTo: null, modal: null, questId: null, live: {} });
+        setState({ vorldId: wid, vorld: w, talkingTo: null, modal: null, questId: null, live: {} });
         void loadQuests(wid);
         applyUiTheme(w.theme.palette);
         await Promise.all(['400', '600', '700'].map((weight) => document.fonts.load(`${weight} 8px "${BODY_FONT}"`)));
@@ -43,7 +43,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
           render: { antialias: true, pixelArt: false, roundPixels: false },
           physics: { default: 'arcade', arcade: { debug: false } }, scene: [],
         });
-        game.scene.add('world', WorldScene, true, { world: w });
+        game.scene.add('vorld', VorldScene, true, { vorld: w });
         if (import.meta.env.DEV) (window as any).__ovGame = game;
       } catch (e: any) { setErr(e.message); }
     })();
@@ -52,10 +52,10 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
 
   // live events
   useEffect(() => {
-    const refreshWorld = () => api(`/worlds/${wid}/world`).then(async (w) => { await loadGenerated(w.art.atlas, (name) => artImage(name)); setState({ world: w }); emit('world', w); });
+    const refreshVorld = () => api(`/vorlds/${wid}/vorld`).then(async (w) => { await loadGenerated(w.art.atlas, (name) => artImage(name)); setState({ vorld: w }); emit('vorld', w); });
     const close = connect(wid, (m) => {
-      if (m.type === 'connection.restored') { setState((s) => ({ threadsVersion: s.threadsVersion + 1, live: {} })); void refreshWorld(); void loadQuests(wid); }
-      if (m.type === 'world') void refreshWorld().catch((e) => toast({ kind: 'error', title: e.message }));
+      if (m.type === 'connection.restored') { setState((s) => ({ threadsVersion: s.threadsVersion + 1, live: {} })); void refreshVorld(); void loadQuests(wid); }
+      if (m.type === 'vorld') void refreshVorld().catch((e) => toast({ kind: 'error', title: e.message }));
       if (m.type === 'thread.event') handleThreadEvent(m);
       if (m.type === 'game') handleGame(m);
       if (m.type === 'quest') handleQuest(m);
@@ -85,15 +85,15 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
   return (
     <div className="game">
       <div ref={host} className="phaser-host" />
-      {world && <Hud onExit={onExit} />}
-      {world && <CrewBar />}
-      {world && talkingTo && <MemberPanel key={`${wid}:${talkingTo}`} id={talkingTo} />}
-      {world && modal === 'quests' && <QuestBoard />}
-      {world && modal === 'deeds' && <Deeds />}
-      {world && modal === 'settings' && <Settings />}
-      {world && modal === 'member' && talkingTo && <MemberSettings key={`settings:${talkingTo}`} id={talkingTo} />}
+      {vorld && <Hud onExit={onExit} />}
+      {vorld && <CrewBar />}
+      {vorld && talkingTo && <MemberPanel key={`${wid}:${talkingTo}`} id={talkingTo} />}
+      {vorld && modal === 'quests' && <QuestBoard />}
+      {vorld && modal === 'deeds' && <Deeds />}
+      {vorld && modal === 'settings' && <Settings />}
+      {vorld && modal === 'member' && talkingTo && <MemberSettings key={`settings:${talkingTo}`} id={talkingTo} />}
       <Toasts />
-      {world && !talkingTo && !modal && <div className="hint">WASD or click to walk · E to talk · the Quest Board stands in the plaza</div>}
+      {vorld && !talkingTo && !modal && <div className="hint">WASD or click to walk · E to talk · the Quest Board stands in the plaza</div>}
     </div>
   );
 }
@@ -136,7 +136,7 @@ function handleThreadEvent(m: any) {
 }
 
 function handleGame(m: any) {
-  setState((s) => ({ world: s.world ? { ...s.world, state: m.state } : s.world }));
+  setState((s) => ({ vorld: s.vorld ? { ...s.vorld, state: m.state } : s.vorld }));
   for (const n of m.notes ?? []) {
     if (n.type === 'deed') { play('achievement.rare'); toast({ kind: 'deed', title: n.name, body: n.desc, xp: n.xp, icon: n.icon }, 5500); }
     else if (n.type === 'level') { play('level.up'); toast({ kind: 'level', title: `Level ${n.level}`, body: n.title }); }

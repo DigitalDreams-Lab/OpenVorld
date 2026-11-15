@@ -8,15 +8,15 @@ import { Portrait } from './Portrait';
 import { ThreadView } from './Thread';
 
 export function MemberPanel({ id }: { id: string }) {
-  const wid = useStore((s) => s.worldId)!;
+  const wid = useStore((s) => s.vorldId)!;
   const version = useStore((s) => s.threadsVersion);
-  useStore((s) => s.world);
+  useStore((s) => s.vorld);
   const m = memberOf(id);
   const [threads, setThreads] = useState<any[] | null>(null);
   const [active, setActive] = useState<string | null>(null);
   useEffect(() => {
     let live = true;
-    api(`/worlds/${wid}/threads?role=${encodeURIComponent(id)}`).then((list) => {
+    api(`/vorlds/${wid}/threads?role=${encodeURIComponent(id)}`).then((list) => {
       if (!live) return;
       setThreads(list);
       setActive((a) => (a && list.some((t: any) => t.id === a) ? a : list.find((t: any) => t.kind === 'chat')?.id ?? list[0]?.id ?? null));
@@ -26,7 +26,7 @@ export function MemberPanel({ id }: { id: string }) {
   if (!m) return null;
   const newChat = async () => {
     play('ui.open');
-    try { const t = await api(`/worlds/${wid}/threads`, { body: { role: id } }); setThreads((x) => [t, ...(x ?? [])]); setActive(t.id); }
+    try { const t = await api(`/vorlds/${wid}/threads`, { body: { role: id } }); setThreads((x) => [t, ...(x ?? [])]); setActive(t.id); }
     catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   return (

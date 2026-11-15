@@ -14,11 +14,11 @@ const close = () => setState({ modal: null, questId: null });
 
 /** Load the quest list into the store (the live `quest` events keep it fresh). */
 export async function loadQuests(wid: string) {
-  try { setState({ quests: await api(`/worlds/${wid}/quests`) }); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
+  try { setState({ quests: await api(`/vorlds/${wid}/quests`) }); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
 }
 
 export function QuestBoard() {
-  const wid = useStore((s) => s.worldId)!;
+  const wid = useStore((s) => s.vorldId)!;
   const quests = useStore((s) => s.quests);
   const questId = useStore((s) => s.questId);
   const [editing, setEditing] = useState<any | null>(null);    // a quest being written ({} = new)
@@ -60,7 +60,7 @@ function QuestList({ quests, onNew }: { quests: any[]; onNew: () => void }) {
 }
 
 function QuestEditor({ wid, quest, onDone }: { wid: string; quest: any; onDone: (q: any | null) => void }) {
-  const crew = useStore((s) => s.world.crew);
+  const crew = useStore((s) => s.vorld.crew);
   const agents = crew.filter((c: any) => c.role === 'agent');
   const [f, setF] = useState(() => ({ title: quest.title ?? '', goal: quest.goal ?? '', steps: quest.steps?.map((s: any) => ({ ...s })) ?? [{ agent: agents[0]?.id ?? crew[0]?.id, task: '', seal: false }] }));
   const [busy, setBusy] = useState(false);
@@ -70,13 +70,13 @@ function QuestEditor({ wid, quest, onDone }: { wid: string; quest: any; onDone: 
   const save = async () => {
     setBusy(true);
     try {
-      const q = await api(`/worlds/${wid}/quests${quest.id ? `/${quest.id}` : ''}`, { method: quest.id ? 'PUT' : 'POST', body: f });
+      const q = await api(`/vorlds/${wid}/quests${quest.id ? `/${quest.id}` : ''}`, { method: quest.id ? 'PUT' : 'POST', body: f });
       play('seal.approved'); onDone(q);
     } catch (e: any) { toast({ kind: 'error', title: e.message }); play('ui.error'); } finally { setBusy(false); }
   };
   const remove = async () => {
     if (!(await ask({ title: `Delete "${quest.title}"?`, body: 'The quest leaves the board. Its chats stay with each crew member.', ok: 'Delete', danger: true }))) return;
-    try { await api(`/worlds/${wid}/quests/${quest.id}`, { method: 'DELETE' }); onDone(null); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
+    try { await api(`/vorlds/${wid}/quests/${quest.id}`, { method: 'DELETE' }); onDone(null); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   return (
     <div className="quest-editor">
@@ -120,7 +120,7 @@ function QuestRun({ wid, q, onEdit }: { wid: string; q: any; onEdit: () => void 
   const active = q.status === 'running' || q.status === 'waiting';
   const shown = step ?? (run ? run.step : null);
   const call = async (action: string, body: any = {}) => {
-    try { await api(`/worlds/${wid}/quests/${q.id}/${action}`, { body }); play(action === 'seal' ? 'seal.approved' : 'ui.open'); if (action === 'start') setStep(null); }
+    try { await api(`/vorlds/${wid}/quests/${q.id}/${action}`, { body }); play(action === 'seal' ? 'seal.approved' : 'ui.open'); if (action === 'start') setStep(null); }
     catch (e: any) { toast({ kind: 'error', title: e.message }); play('ui.error'); }
   };
   const noBrain = q.steps.filter((s: any) => !memberOf(s.agent)?.brain || memberOf(s.agent)?.brain?.provider === 'none').map((s: any) => memberOf(s.agent)?.name ?? s.agent);

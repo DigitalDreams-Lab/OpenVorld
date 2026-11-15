@@ -1,4 +1,4 @@
-// Sprites come from SHEETS. The server publishes a world's art (the default sprite sheets, engine/server/art.mjs) as an
+// Sprites come from SHEETS. The server publishes a vorld's art (the default sprite sheets, engine/server/art.mjs) as an
 // atlas index: a few sheet images and the frames on them. This module loads that atlas and cuts frames out of it. Nothing in the game paints pixels itself. Every sprite is a SQUARE of one size (a ground
 // tile); an object bigger than a tile is composed from several sprites (composeObject).
 import { propGrid, propSprites, landmarkSprites } from '../../../../tools/lib/props.mjs';
@@ -109,7 +109,7 @@ export function iconUrl(name: string): string {
   return trimmedUrl(`i_${artKey(name)}`) ?? trimmedUrl('i_trophy') ?? '';
 }
 
-export const companionOf = (world: any) => world?.crew?.find((c: any) => c.role === 'companion') ?? world?.crew?.[0];
+export const companionOf = (vorld: any) => vorld?.crew?.find((c: any) => c.role === 'companion') ?? vorld?.crew?.[0];
 
 /** A crew member's 4x3 walk cycle: twelve whole square cells (`size` pixels each, the sheet's own size by default). */
 export function generatedCharacter(memberId: string, size?: number) {

@@ -4,7 +4,7 @@
 kind: achievements
 version: 1
 achievements:
-  - { id: world_founded,   xp: 10,  icon: flag,    when: "event:world.created" }
+  - { id: vorld_founded,   xp: 10,  icon: flag,    when: "event:vorld.created" }
   - { id: first_words,     xp: 10,  icon: chat,    when: "event:chat.sent" }
   - { id: first_writ,      xp: 20,  icon: key,     when: "event:writ.granted" }
   - { id: first_refusal,   xp: 20,  icon: key,     when: "event:writ.refused", hidden: true }

@@ -1,6 +1,6 @@
 // Pack loading: every *.yaml under each pack root, indexed by (kind, id). Later roots override earlier
-// ones by deep merge, so a user or world pack can change one value without copying a whole file.
-// Roots, in order: <repo>/packs, <home>/packs, <world>/packs.
+// ones by deep merge, so a user or vorld pack can change one value without copying a whole file.
+// Roots, in order: <repo>/packs, <home>/packs, <vorld>/packs.
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -81,8 +81,8 @@ export function loadPacks(roots) {
   return { byKind, sources, problems };
 }
 
-export function packRoots(home, worldDir) {
-  return [path.join(REPO, 'packs'), path.join(home, 'packs'), worldDir && path.join(worldDir, 'packs')].filter(Boolean);
+export function packRoots(home, vorldDir) {
+  return [path.join(REPO, 'packs'), path.join(home, 'packs'), vorldDir && path.join(vorldDir, 'packs')].filter(Boolean);
 }
 
 /** A theme with its `extends` chain applied (the parent first, the theme on top). */

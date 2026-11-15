@@ -13,9 +13,9 @@ export function markdownUrl(url:string) {
   return url;
 }
 function localUrl(url:string, thread?:string) {
-  const wid=getState().worldId;
+  const wid=getState().vorldId;
   if(!wid||!thread)return '';
-  const root=`/api/worlds/${wid}/threads/${thread}/`;
+  const root=`/api/vorlds/${wid}/threads/${thread}/`;
   if(url.startsWith(root+'attachments/')||url.startsWith(root+'file?path='))return url;
   // Line suffixes are useful in CLI citations, but aren't part of a file name.
   let name=url.split('#')[0].replace(/:\d+(?::\d+)?$/,'');

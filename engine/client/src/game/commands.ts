@@ -1,11 +1,11 @@
-// Pure helpers for game commands (what crew members do on the map). The scene (WorldScene) does the moving and drawing; this
+// Pure helpers for game commands (what crew members do on the map). The scene (VorldScene) does the moving and drawing; this
 // module only answers "where": the nearest prop of a kind, and where someone can stand to use it.
 import { movementDirection, type Direction } from './pixels';
 
 export type Pt = { x: number; y: number };
 export type MapProp = { t: string; x: number; y: number };
 
-/** The nearest prop of a kind to a point, as a world-pixel centre (props are planned in tiles). */
+/** The nearest prop of a kind to a point, as a vorld-pixel centre (props are planned in tiles). */
 export function nearestProp(props: MapProp[], kind: string, from: Pt, tile: number): Pt | null {
   let best: Pt | null = null, bestD = Infinity;
   for (const p of props) {

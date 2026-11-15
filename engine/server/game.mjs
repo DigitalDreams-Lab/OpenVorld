@@ -1,4 +1,4 @@
-// Game state of one world: XP, level, events (what happened, how often) and deeds (achievements).
+// Game state of one vorld: XP, level, events (what happened, how often) and deeds (achievements).
 // Every change returns notes for the client (xp, level, deed) so it can celebrate them.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -15,7 +15,7 @@ export class Game {
     this.file = path.join(ctx.dir, 'saves', 'game.json');
     const fresh = { xp: 0, level: 1, events: {}, deeds: {}, chat: { day: null, xp: 0 } };
     this.s = fs.existsSync(this.file) ? { ...fresh, ...JSON.parse(fs.readFileSync(this.file, 'utf8')) } : fresh;
-    if (!fs.existsSync(this.file)) { this.s.events['world.created'] = 1; this.check([]); }
+    if (!fs.existsSync(this.file)) { this.s.events['vorld.created'] = 1; this.check([]); }
   }
   get rules() { return this.ctx.interactions; }
   save() {
@@ -71,7 +71,7 @@ export class Game {
 }
 
 const games = new Map();
-/** One Game per world (the state stays in memory; a reloaded context just replaces what it reads rules from). */
+/** One Game per vorld (the state stays in memory; a reloaded context just replaces what it reads rules from). */
 export function gameFor(ctx) {
   let g = games.get(ctx.dir);
   if (!g) { g = new Game(ctx); games.set(ctx.dir, g); }
