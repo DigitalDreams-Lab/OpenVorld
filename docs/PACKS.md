@@ -18,7 +18,7 @@ npm run validate
 
 ## Templates (`kind: template`)
 
-A template is a starting crew plus starter quests. In a quest step, `agent` is a crew member's index in the template's `crew` list (starting at 0).
+A template is a starting crew plus starter parties. In a party, `members` are crew members' indexes in the template's `crew` list (starting at 0); the first leads.
 
 ```yaml
 kind: template
@@ -29,17 +29,15 @@ description: Plan, script and promote a weekly episode.
 crew:
   - { job: Producer, function: "Picks guests and topics and keeps the schedule." }
   - { job: Writer,   function: "Writes show notes and social posts." }
-quests:
-  - title: Episode notes
-    goal: Show notes and three social posts for this week's episode.
-    steps:
-      - { agent: 0, task: "List the episode's key moments with timestamps." }
-      - { agent: 1, task: "Write show notes and three posts from those moments.", seal: true }
+parties:
+  - name: Episode crew
+    goal: "Show notes and three social posts for this week's episode."
+    members: [0, 1]
 ```
 
 ## Roles (`kind: role`)
 
-There are two roles: `companion`, the guide who can draft quests, and `agent`, which every other member uses. The prompt can use `{name}`, `{job}`, `{function}`, `{voice}`, `{vorld}`, `{about}`, `{crew}`, `{project}` (the shared project folder) and `{workbench}` (the workbench this chat works on).
+There are two roles: `companion`, the guide who helps form parties, and `agent`, which every other member uses. The prompt can use `{name}`, `{job}`, `{function}`, `{voice}`, `{vorld}`, `{about}`, `{crew}`, `{project}` (the shared project folder) and `{workbench}` (the workbench this chat works on).
 
 ```yaml
 kind: role
@@ -57,12 +55,12 @@ A deed unlocks when its `when` condition becomes true. A condition is one of:
 - `<counter> >= n`: a counter has reached n.
 - `all(...)` or `any(...)`: combines other conditions.
 
-The events are `vorld.created`, `chat.sent`, `chat.night`, `writ.granted`, `writ.refused`, `quest.created`, `quest.done`, `quest.done_5_steps`, `step.done`, `seal.given` and `seal.returned`. The counters are `crew.agents`, `game.level` and `game.xp`. A deed's name and description come from the theme, under `strings.deeds.<id>`.
+The events are `vorld.created`, `chat.sent`, `chat.night`, `writ.granted`, `writ.refused`, `party.created`, `party.job_done`, `party.big_job` (three or more members took part) and `party.handoff`. The counters are `crew.agents`, `game.level` and `game.xp`. A deed's name and description come from the theme, under `strings.deeds.<id>`.
 
 ```yaml
 kind: achievements
 achievements:
-  - { id: busy_week, xp: 120, icon: flame, when: "count(event:quest.done) >= 7" }
+  - { id: busy_week, xp: 120, icon: flame, when: "count(event:party.job_done) >= 7" }
 ```
 
 ## Theme (`kind: theme`)
@@ -73,7 +71,7 @@ A theme holds the vorld's words and colours: the palette, the companion's name a
 kind: theme
 id: default
 companion: { name: Orbit, form: creature, species: owl }
-buildings: { quest_board: Mission Board }
+buildings: { party_hall: Mission Hall }
 level_titles: [Cadet, Pilot, Navigator, Commander]
 ```
 

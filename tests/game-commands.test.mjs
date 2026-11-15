@@ -59,11 +59,11 @@ test('commands are checked: roles, the map, the crew, limits and plain text', as
   assert.deepEqual(prepareCommands(ctx, a.id, 'nonsense'), { commands: [], dropped: [] });
 
   // only the companion calls others over
-  const comp = prepareCommands(ctx, companion, [{ do: 'summon', who: [a.name, c.name, 'Nobody'] }, { do: 'gather', who: 'all' }, { do: 'send_home', who: companion }, { do: 'show', panel: 'quests' }, { do: 'show', panel: 'admin' }, { do: 'point_to', to: 'plaza' }]);
+  const comp = prepareCommands(ctx, companion, [{ do: 'summon', who: [a.name, c.name, 'Nobody'] }, { do: 'gather', who: 'all' }, { do: 'send_home', who: companion }, { do: 'show', panel: 'parties' }, { do: 'show', panel: 'admin' }, { do: 'point_to', to: 'plaza' }]);
   assert.deepEqual(comp.commands.find((x) => x.do === 'summon').who, [a.id, c.id], 'nobody unknown');
   assert.deepEqual(comp.commands.find((x) => x.do === 'gather').who.sort(), [a.id, b.id, c.id].sort());
   assert.ok(!comp.commands.some((x) => x.do === 'send_home'), 'the companion cannot send itself home');
-  assert.equal(comp.commands.find((x) => x.do === 'show').panel, 'quests');
+  assert.equal(comp.commands.find((x) => x.do === 'show').panel, 'parties');
   assert.equal(comp.commands.filter((x) => x.do === 'show').length, 1, 'only real screens');
 });
 
@@ -127,7 +127,7 @@ test('on the map: the nearest prop, where to stand, which way to face, and the s
   assert.equal(m.facing({ x: 0, y: 0 }, { x: 9, y: 1 }), 'right');
   assert.equal(m.clampQueue(Array.from({ length: 30 }, (_, i) => i), 12).length, 12);
   assert.deepEqual(m.clampQueue(undefined), []);
-  assert.deepEqual(Object.keys(m.PANELS).sort(), ['deeds', 'quests', 'settings']);
+  assert.deepEqual(Object.keys(m.PANELS).sort(), ['deeds', 'parties', 'settings']);
   const { loadPacks: lp, packRoots: pr } = await import('../tools/lib/packs.mjs');
   const cfg = lp(pr(home)).byKind.game_commands.game_commands;
   assert.deepEqual([...cfg.panels].sort(), Object.keys(m.PANELS).sort(), 'the pack and the client agree on the screens');

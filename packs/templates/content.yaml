@@ -7,10 +7,7 @@ crew:
   - { job: Researcher, function: "Finds topics, facts and angles worth writing about." }
   - { job: Writer,     function: "Drafts posts, scripts and newsletters in the founder's voice." }
   - { job: Editor,     function: "Tightens drafts, fixes tone and checks facts." }
-quests:
-  - title: Weekly post
-    goal: One finished post, ready to publish.
-    steps:
-      - { agent: 0, task: "Suggest three topics for this week with one line each on why they matter." }
-      - { agent: 1, task: "Pick the strongest topic and write the post." }
-      - { agent: 2, task: "Edit the draft into its final form.", seal: true }
+parties:                         # starter parties; members are the crew above, by position
+  - name: Content crew
+    goal: "One finished post, ready to publish: find the topic, write it, edit it."
+    members: [0, 1, 2]

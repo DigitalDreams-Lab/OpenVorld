@@ -16,7 +16,6 @@ export function splitEnvelope(text, lang = 'ov') {
       commands: Array.isArray(meta.commands) ? meta.commands.filter((c) => c && typeof c === 'object' && !Array.isArray(c)).slice(0, 24) : undefined,
       access: Array.isArray(meta.access) ? meta.access.filter((a) => a && typeof a.capability === 'string' && typeof a.scope === 'string').slice(0, 3)
         .map((a) => ({ capability: a.capability.slice(0, 40), scope: a.scope.slice(0, 300), why: typeof a.why === 'string' ? a.why.slice(0, 200) : '' })) : undefined,
-      quest: meta.quest && typeof meta.quest === 'object' && !Array.isArray(meta.quest) ? meta.quest : undefined,
     },
   };
 }

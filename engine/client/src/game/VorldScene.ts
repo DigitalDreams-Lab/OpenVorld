@@ -1,5 +1,5 @@
-// The vorld: a town laid out from the crew. Each agent lives in a house around the plaza, where the Quest Board
-// stands. The founder walks, the companion follows, agents walk to the board when a quest step starts.
+// The vorld: a town laid out from the crew. Each agent lives in a house around the plaza, where the Party Hall
+// stands. The founder walks, the companion follows, a party walks to the hall when its chat starts.
 // Phaser 4 (WebGL). Talks to React only through the store's event bus.
 import { nearestProp, standSpots, facing, clampQueue, type Pt } from './commands';
 import Phaser from 'phaser';
@@ -73,12 +73,12 @@ export class VorldScene extends Phaser.Scene {
     this.physics.world.setBounds(T, T, (MAP_W - 2) * T, (MAP_H - 2) * T);
     this.addScenery(plan, pal);
 
-    // the plaza landmark is the Quest Board: the crew's workflows start here
+    // the plaza landmark is the Party Hall: parties are formed and opened here
     const pillar = this.add.image(cx * T + 8, cy * T + 12, 'pillar').setOrigin(0.5, 1).setScale(1 / TEX).setDepth(cy * T + 12).setInteractive({ cursor: 'pointer' });
-    pillar.on('pointerdown', () => { play('ui.open'); emit('quests'); });
+    pillar.on('pointerdown', () => { play('ui.open'); emit('parties'); });
     this.terminal = { x: pillar.x, y: pillar.y + 6 };
     this.solids.add(this.add.zone(pillar.x, pillar.y - 4, Math.min(28, pillarSize.w - 4), 8));
-    this.add.text(pillar.x, pillar.y - pillarSize.h - 6, this.vorld.theme.buildings?.quest_board ?? 'Quest Board', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999);
+    this.add.text(pillar.x, pillar.y - pillarSize.h - 6, this.vorld.theme.buildings?.party_hall ?? 'Party Hall', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999);
 
     // homes take the plan's plots in crew order (a crew larger than the map's plots has no house for the rest)
     const homes = this.vorld.crew.filter((c: any) => c.id !== this.companionId);
@@ -250,7 +250,7 @@ export class VorldScene extends Phaser.Scene {
   talkNear() {
     if (document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName)) return;
     if (this.near) this.tryTalk(this.near);
-    else if (Phaser.Math.Distance.Between(this.player.x, this.player.y, this.terminal.x, this.terminal.y) < 30) { play('ui.open'); emit('quests'); }
+    else if (Phaser.Math.Distance.Between(this.player.x, this.player.y, this.terminal.x, this.terminal.y) < 30) { play('ui.open'); emit('parties'); }
     else if (Phaser.Math.Distance.Between(this.player.x, this.player.y, this.bee.x, this.bee.y) < 30) emit('talk', this.companionId);
   }
 

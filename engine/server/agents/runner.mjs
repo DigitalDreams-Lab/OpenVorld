@@ -45,32 +45,36 @@ function systemPrompt(ctx, id, benchId) {
   const writs = grantsOf(ctx, id).map((g) => `${g.capability} ${g.scope}`).join('; ') || 'none';
   const env = ctx.interactions.envelope ?? {};
   return [base, `Your writs (access): ${writs}. You have no other access; if you need more, ask for it in the "access" list so the founder can grant it.`,
-    env.instructions ?? '', m.quests ? env.quest_instructions ?? '' : '', vaultHelp(ctx, id), commandHelp(ctx, id)].filter(Boolean).join('\n\n');
+    env.instructions ?? '', vaultHelp(ctx, id), commandHelp(ctx, id)].filter(Boolean).join('\n\n');
 }
 
 /**
- * One turn: the founder's text (or a quest step's brief) goes to the member of the thread, the reply streams back.
- * Resolves with { ok, shown, meta } once the reply is stored. `meta.quest` is a quest the companion drafted.
+ * One turn: the founder's text goes to the member of the thread, the reply streams back. Resolves with { ok, shown, meta }
+ * once the reply is stored.
+ * A party's room has several speakers: the party passes `role` (who speaks now) and `prompt` (what that member is told:
+ * the room so far), and records the messages itself (`record: false`). Such a turn keeps no CLI session of its own.
  */
-export async function runTurn(ctx, threadId, text, emit, attachments = [], { fromFounder = true } = {}) {
+export async function runTurn(ctx, threadId, text, emit, attachments = [], { fromFounder = true, role: speakerRole = null, prompt = null, record = true } = {}) {
   if (active.has(threadId)) throw Object.assign(new Error('this crew member is still working on the last message'), { status: 409 });
   const thread = getThread(ctx, threadId);
   const ac = new AbortController();
   active.set(threadId, ac);
   const game = gameFor(ctx), notes = [];
   try {
-    appendEvent(ctx, threadId, { type: fromFounder ? 'founder.message' : 'brief', text, ...(attachments.length ? { attachments: publicFiles(attachments) } : {}) });
-    if (fromFounder) {
+    if (record) appendEvent(ctx, threadId, { type: fromFounder ? 'founder.message' : 'brief', text, ...(attachments.length ? { attachments: publicFiles(attachments) } : {}) });
+    if (record && fromFounder) {
       game.event('chat.sent').xp('chat_message', notes);
       const hour = new Date().getHours();
       if (hour >= 2 && hour < 4) game.event('chat.night');
     }
     updateThread(ctx, threadId, { state: 'working' });
-    const r = await speak(ctx, thread, text, emit, ac.signal, attachments);
-    const patch = { state: 'waiting', session_id: r.sessionId ?? thread.session_id };
-    if (!thread.title) patch.title = r.meta?.title || text.slice(0, 48) || attachments[0]?.name || 'Chat';
+    const role = speakerRole ?? thread.role;
+    const r = await speak(ctx, thread, prompt ?? text, emit, ac.signal, attachments, role, !!speakerRole);
+    const patch = { state: 'waiting' };
+    if (!speakerRole) patch.session_id = r.sessionId ?? thread.session_id;
+    if (!thread.title && !speakerRole) patch.title = r.meta?.title || text.slice(0, 48) || attachments[0]?.name || 'Chat';
     const t = updateThread(ctx, threadId, patch);
-    if (r.ok) emit({ type: 'thread.event', thread: threadId, role: thread.role, ev: { type: 'turn.done', text: r.shown, meta: r.meta, thread: t } });
+    if (r.ok) emit({ type: 'thread.event', thread: threadId, role, ev: { type: 'turn.done', text: r.shown, meta: r.meta, thread: t } });
     return r;
   } finally {
     active.delete(threadId);
@@ -79,8 +83,8 @@ export async function runTurn(ctx, threadId, text, emit, attachments = [], { fro
   }
 }
 
-async function speak(ctx, thread, text, emit, signal, attachments) {
-  const role = thread.role, threadId = thread.id;
+async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom) {
+  const threadId = thread.id;
   const brain = brainOf(ctx, role);
   const reactions = ctx.interactions.reactions ?? {};
   const send = (ev) => emit({ type: 'thread.event', thread: threadId, role, ev });
@@ -147,7 +151,7 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
   try {
     const web = browserFor(ctx, role, threadId, { emit, onRequest: (a) => asks.push(a) });
     const system = [systemPrompt(ctx, role, thread.bench), web ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
-    const common = { system, prompt: attachmentPrompt(text, attachments), sessionId: thread.session_id, cwd, model: brain.model, signal, onEvent };
+    const common = { system, prompt: attachmentPrompt(text, attachments), sessionId: inRoom ? null : thread.session_id, cwd, model: brain.model, signal, onEvent };
     let result;
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
     else if (brain.provider === 'claude-code') result = await claude.run({ ...common, env: heldSecrets(ctx, role), tools, allowed: [...allowed, ...(web?.allowed ?? [])], addDirs, mcp: web?.mcp });
@@ -156,7 +160,7 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
     else if (brain.driver === 'openai') {
       const et = agentCfg.engine_tools ?? {};
       const engine = et.enabled === false ? null : engineTools({ ctx, role, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, browser: web?.call, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });
-      const prior = history(ctx, threadId).slice(0, -1).map((turn) => {
+      const prior = (inRoom ? [] : history(ctx, threadId).slice(0, -1)).map((turn) => {
         if (!turn.attachments?.length) return turn;
         const files = turn.attachments.flatMap((f) => { try { return [getAttachment(ctx, threadId, f.id)]; } catch { return []; } });
         return { role: turn.role, content: attachmentPrompt(turn.content, files) };
@@ -165,13 +169,13 @@ async function speak(ctx, thread, text, emit, signal, attachments) {
     } else throw new Error(`${brain.label} is not supported in this version; pick another brain in settings`);
 
     const { text: shown, meta } = splitEnvelope(redactSecrets(ctx, role, result.text ?? ''), lang);
-    const { access, commands: askedCommands, quest, ...metaShown } = meta;
+    const { access, commands: askedCommands, ...metaShown } = meta;
     const done = prepareCommands(ctx, role, askedCommands);
     if (done.commands.length) metaShown.did = done.commands.map((c) => c.label);
     appendEvent(ctx, threadId, { type: 'agent.text', role, text: shown, meta: metaShown, steps: steps() });
     requestAccess(ctx, thread, role, [...asks, ...(access ?? [])], send);
     if (done.commands.length) emit({ type: 'command', role, thread: threadId, commands: done.commands });
-    return { ok: true, shown, meta: { ...metaShown, ...(quest && ctx.member(role)?.quests ? { quest } : {}) }, sessionId: result.sessionId ?? thread.session_id };
+    return { ok: true, shown, meta: metaShown, sessionId: result.sessionId ?? thread.session_id };
   } catch (err) {
     // keep what the member did before it stopped, so the chat still shows it
     const partial = tr.final(strip);

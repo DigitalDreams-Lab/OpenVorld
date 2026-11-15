@@ -9,7 +9,7 @@ export function Deeds() {
     <div className="modal-bg" onClick={() => setState({ modal: null })}>
       <div className="modal panel deeds" onClick={(e) => e.stopPropagation()}>
         <header className="row between"><h2>Deeds <small>{Object.keys(got).length}/{vorld.deeds.length}</small></h2><button className="x" onClick={() => setState({ modal: null })}>✕</button></header>
-        <p className="muted">Level {vorld.state.level} · {vorld.state.xp} XP. XP comes from finished quests, seals and a little from chatting.</p>
+        <p className="muted">Level {vorld.state.level} · {vorld.state.xp} XP. XP comes from jobs your parties finish and a little from chatting.</p>
         <div className="deed-grid">
           {vorld.deeds.map((d: any) => {
             const done = !!got[d.id], secret = d.hidden && !done;

@@ -1,5 +1,5 @@
 // A vorld: one folder in <home>/vorlds/<id>/ with vorld.yaml (name, what it is for, the crew, settings), plus the
-// files the engine keeps beside it (grants.yaml, threads/, quests/, saves/, workbenches/, houses/). The context below is what
+// files the engine keeps beside it (grants.yaml, threads/, parties/, saves/, workbenches/, houses/). The context below is what
 // every other module reads: packs, the vorld document, the crew as plain member views, and the map plan.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -62,7 +62,6 @@ function memberView(m, order, packs, theme, doc) {
     benches: m.benches ?? [], default_bench: m.default_bench ?? 'main',
     prompt: def.prompt ?? 'You are {name}.',
     model_tier: def.model_tier ?? 'balanced',
-    quests: !!def.quests,
     home: m.home ?? `${m.name ?? m.id}'s house`,
     vorld: doc.name,
   };
@@ -129,14 +128,14 @@ export function cleanMember(input, taken, role = 'agent') {
 /**
  * Found a vorld from the onboarding form: { name, about, template, project, companion: {name, form, species, brain}, crew: [{name, job, function}], brain }.
  * `project` is an existing folder the crew works on together; without one the vorld gets its own <vorld>/project.
- * The template adds its starter quests (steps point at crew members by their index in the template's crew).
+ * The template adds its starter parties (members point at crew members by their index in the template's crew).
  */
 export function createVorld(input) {
   const packs = allPacks();
   const theme = resolveTheme(packs.byKind, packs.byKind.defaults?.defaults?.theme ?? 'default') ?? {};
   const name = str(input.name, 60);
   if (!name) bad('give your vorld a name');
-  const template = packs.byKind.template?.[input.template] ?? packs.byKind.template?.blank ?? { crew: [], quests: [] };
+  const template = packs.byKind.template?.[input.template] ?? packs.byKind.template?.blank ?? { crew: [], parties: [] };
   let id = slug(name) || 'vorld', n = 1;
   fs.mkdirSync(vorldsDir(), { recursive: true });
   while (fs.existsSync(path.join(vorldsDir(), id))) id = `${slug(name) || 'vorld'}-${++n}`;
@@ -144,7 +143,7 @@ export function createVorld(input) {
   const taken = new Set(['founder']);
   const brain = BRAIN(input.brain);
   const companion = cleanMember({ ...theme.companion, ...(input.companion ?? {}), brain: input.companion?.brain ?? brain }, taken, 'companion');
-  // `slot` = the member's index in the template's crew, so starter quests still find them after edits in the form
+  // `slot` = the member's index in the template's crew, so starter parties still find them after edits in the form
   const given = Array.isArray(input.crew) ? input.crew : (template.crew ?? []).map((c, i) => ({ ...c, name: theme.agent_names?.[i], slot: i }));
   const bySlot = new Map();
   const crew = given.slice(0, 30).filter((c) => str(c?.name, 40)).map((c) => { const m = cleanMember({ brain, ...c }, taken); if (Number.isInteger(c.slot)) bySlot.set(c.slot, m.id); return m; });
@@ -153,7 +152,7 @@ export function createVorld(input) {
   if (!project) fs.mkdirSync(path.join(dir, 'project'), { recursive: true });
   const doc = { id, name, about: str(input.about, 400), ...(project ? { project } : {}), template: template.id ?? 'blank', theme: theme.id ?? 'default', seed: newSeed(), created_at: new Date().toISOString(), crew: [companion, ...crew] };
   writeDoc(dir, doc);
-  return { id, starters: (template.quests ?? []).map((q) => ({ ...q, steps: (q.steps ?? []).map((s) => ({ ...s, agent: typeof s.agent === 'number' ? bySlot.get(s.agent) : s.agent})).filter((s) => s.agent) })) };
+  return { id, starters: (template.parties ?? []).map((p) => ({ name: p.name, goal: p.goal, members: (p.members ?? []).map((i) => bySlot.get(i)).filter(Boolean) })) };
 }
 
 export const newId = () => crypto.randomUUID();

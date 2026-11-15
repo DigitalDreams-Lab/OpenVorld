@@ -7,9 +7,7 @@ crew:
   - { job: Assistant, function: "Drafts emails and replies to customers and partners." }
   - { job: Analyst,   function: "Reads the numbers the founder shares and explains what changed and why." }
   - { job: Planner,   function: "Keeps the week's priorities short and in order." }
-quests:
-  - title: Monday plan
-    goal: A clear plan for the week.
-    steps:
-      - { agent: 1, task: "Summarize what the founder shared about last week in five bullet points." }
-      - { agent: 2, task: "Turn that into the three priorities for this week, with a first step for each.", seal: true }
+parties:                         # starter parties; members are the crew above, by position
+  - name: Monday huddle
+    goal: "A clear plan for the week: what changed last week and the three priorities for this one."
+    members: [1, 2, 0]

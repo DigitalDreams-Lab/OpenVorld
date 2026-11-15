@@ -28,4 +28,4 @@ export const facing = (at: Pt, target: Pt, last: Direction = 'down'): Direction 
 export const clampQueue = <T>(steps: T[] | undefined, max = 12): T[] => (Array.isArray(steps) ? steps.slice(0, max) : []);
 
 /** Screens a `show` command may open (packs/core/commands.yaml > panels). */
-export const PANELS: Record<string, 'quests' | 'deeds' | 'settings'> = { quests: 'quests', deeds: 'deeds', settings: 'settings' };
+export const PANELS: Record<string, 'parties' | 'deeds' | 'settings'> = { parties: 'parties', deeds: 'deeds', settings: 'settings' };

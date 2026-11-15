@@ -11,7 +11,7 @@ agent_names: [Quinn, Nico, Stella, Mercer, Sibyl, Brand, Maya, Puck, Rowan, Iris
 agent_voice: "friendly, clear and practical"
 
 buildings:
-  quest_board: Quest Board
+  party_hall: Party Hall
 
 # A title for every five levels (the last one stays).
 level_titles: [Newcomer, Apprentice, Organizer, Builder, Steward, Captain, Architect, Visionary, Legend]
@@ -23,31 +23,26 @@ strings:
     allow_always: Always allow
     deny: Refuse
   scripted:
-    companion: "Hi, I am {name}. I have no mind yet, so I can only say this: pick a brain for me in my settings (Claude Code, Codex or any OpenAI-compatible model) and I can really help. Meanwhile, open the Quest Board and try a quest."
+    companion: "Hi, I am {name}. I have no mind yet, so I can only say this: pick a brain for me in my settings (Claude Code, Codex or any OpenAI-compatible model) and I can really help. Meanwhile, open the Party Hall and form a party."
     agent: "{name} waves but stays quiet. Pick a brain for {name} in their settings."
-    options: ["Open the Quest Board", "Open Settings"]
+    options: ["Open the Party Hall", "Open Settings"]
   balloon:
     thinking: "Hmm..."
     tests_pass: "Tests pass!"
     tests_fail: "Tests failed."
     error: "Something broke..."
-    on_quest: "On it!"
-    needs_seal: "Needs your seal"
     needs_writ: "Needs access"
-    quest_done: "Quest done!"
   deeds:
     vorld_founded:  { name: First Stone, desc: Found your vorld. }
     first_words:    { name: Hello There, desc: Talk to a crew member for the first time. }
     first_writ:     { name: Keys Handed Over, desc: Grant your first writ. }
     first_refusal:  { name: Not This Time, desc: Refuse a writ., hint: Not every request deserves a yes. }
-    first_quest:    { name: A Plan Takes Shape, desc: Create your first quest. }
-    first_run:      { name: Quest Complete, desc: Finish a quest. }
-    first_seal:     { name: Sealed, desc: Approve a step with your seal. }
-    sent_back:      { name: Try Again, desc: Send a step back with a note., hint: Good work is reworked work. }
+    first_party:    { name: Fellowship, desc: Form your first party. }
+    first_job:      { name: Job Well Done, desc: A party finishes a job together. }
     crew_of_three:  { name: Small Crew, desc: Have three agents. }
     crew_of_six:    { name: Busy Crew, desc: Have six agents. }
-    ten_quests:     { name: Routine, desc: Finish ten quests. }
-    fifty_quests:   { name: Well-Oiled Machine, desc: Finish fifty quests. }
-    long_chain:     { name: Long Chain, desc: Finish a quest with five steps or more. }
-    hundred_steps:  { name: Hundred Hands, desc: A hundred quest steps done. }
+    ten_jobs:       { name: Routine, desc: A party finishes ten jobs. }
+    fifty_jobs:     { name: Well-Oiled Machine, desc: A party finishes fifty jobs. }
+    full_party:     { name: Full Party, desc: Three or more members take part in one job. }
+    hundred_hands:  { name: Hundred Hands, desc: A hundred hand-overs between party members. }
     night_owl:      { name: Night Owl, desc: Talk to your crew between 2 and 4 at night., hint: The stars keep late hours. }

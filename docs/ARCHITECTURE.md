@@ -1,6 +1,6 @@
 # Architecture
 
-A **vorld** is the unit everything belongs to: one project folder, one crew, their quests and their history. OpenVorld has three parts: a small Node server, a React + Phaser client, and YAML packs. They talk over a local HTTP API and one WebSocket. Nothing leaves your computer except the calls a member's brain makes.
+A **vorld** is the unit everything belongs to: one project folder, one crew, their parties and their history. OpenVorld has three parts: a small Node server, a React + Phaser client, and YAML packs. They talk over a local HTTP API and one WebSocket. Nothing leaves your computer except the calls a member's brain makes.
 
 ```
 packs/ (YAML)  ─┐
@@ -18,8 +18,8 @@ packs/                      your own packs (optional)
 vorlds/<id>/
   vorld.yaml                name, about, project folder, theme, crew, brains
   project/                  the shared project folder, unless vorld.yaml points at your own
-  quests/<qid>.json         a quest: steps, status and its current run
-  threads/index.json        every conversation, chat or quest step
+  parties/<id>.json         a party: name, goal and members (the first leads)
+  threads/index.json        every conversation: a chat with one member, or a party's shared room
   threads/<tid>.jsonl       a thread's events, append-only
   threads/<tid>.files/      files attached to that thread
   workbenches/<member>/     each member's Main bench (the default; more benches live wherever you pick)
@@ -36,12 +36,12 @@ vorlds/<id>/
 | --- | --- |
 | `index.mjs` | HTTP routes and the WebSocket. Binds to 127.0.0.1, requires the per-launch token on every call, and checks Host. |
 | `vorld.mjs` | Loads packs, lists and creates vorlds, and builds the vorld context (`ctx`) every other module receives. |
-| `quests.mjs` | The quest engine: save, start, advance step by step, the Seal, retry and stop. It also resumes quests after a restart. |
+| `parties.mjs` | Parties and their shared room: save a party, run a room (the leader answers, `@Name` hands over, no mention ends the job), pause on a writ, gather at the Party Hall and go home. |
 | `threads.mjs` | Conversations as JSONL event logs. |
 | `agents/runner.mjs` | One turn for one member: builds the system prompt, picks the driver and stores the reply as ordered steps. |
 | `agents/drivers/` | `claude.mjs`, `codex.mjs` (headless CLIs), `openai.mjs` (HTTP plus an engine-run tool loop) and `scripted.mjs` (no brain yet). |
 | `agents/tools.mjs` | The tools the engine runs for API brains, always limited to the member's writs. |
-| `agents/envelope.mjs` | Reads the fenced `ov` JSON block at the end of a reply: options, mood, balloon, access requests and a quest draft. |
+| `agents/envelope.mjs` | Reads the fenced `ov` JSON block at the end of a reply: options, mood, balloon, commands and access requests. |
 | `agents/commands.mjs` | Game commands a member can send (walk somewhere, say something, emote). |
 | `browser.mjs` | The crew browser: one private Chrome profile per member (plain, or signed in with the founder's saved sign-ins), driven through `playwright-core` and the Chrome or Edge on this computer. Enforces writs on every page, follows redirects itself, runs the sign-in window, and streams small JPEG frames to the game. |
 | `agents/browse.mjs`, `agents/browser-mcp.mjs` | How brains reach the browser: API brains call it in-process; Claude Code and Codex start `browser-mcp.mjs`, a tiny MCP bridge that calls back into the engine's API with the launch token. |
@@ -50,23 +50,19 @@ vorlds/<id>/
 | `art.mjs` | Works out which sprite frames belong to which member. |
 | `attachments.mjs`, `benches.mjs`, `house.mjs`, `browse.mjs`, `models.mjs` | File uploads and references, workbenches and the project folder, the house and its vault (named secrets, `%NAME%` substitution, redaction), the folder picker and model lists. |
 
-### A quest run
+### A party room
 
-1. `startQuest` sets `status: running` and calls `advance`.
-2. `advance` takes the current step and opens a thread for it (kind `quest`). The thread gets a brief with the quest goal, the step's task and the results of earlier steps. Then `runTurn` runs that member's turn.
-3. When the reply arrives, it is stored in `run.outputs[step]`.
-   - If the member asked for access, the quest waits (`waiting: writ`). It goes on once you answer the writ.
-   - If the step has `seal: true`, the quest waits (`waiting: seal`). Approve it and the quest moves to the next step. Send it back and your note goes to the same member in the same thread.
-   - Otherwise it moves to the next step.
-4. If the brain fails, the quest is marked `failed` with the reason. **Retry** runs the same step again.
-
-While a quest runs, the server sends `quest` events, and steps also send game commands so the member walks to the Quest Board and back. That's how the work shows up in the vorld.
+1. The founder writes in a party chat (a thread of kind `party`, one shared transcript with every message tagged by speaker). `runParty` stores the message and picks the first speaker: the member the founder `@mentions`, else the leader (the first member).
+2. Each speaker gets one turn through `runTurn` with `role` set to them and a prompt made of the party's goal, its members and the latest room messages. Room turns keep no CLI session of their own; the transcript is the memory.
+3. When the reply arrives, the next speaker is the first teammate `@mentioned` in it (never yourself, never inside code). No mention ends the job. `party.max_turns` (default 12) stops a ping-pong; the room says it paused and a "continue" resumes it.
+4. A member who asks for access pauses the room at a writ card. Answering it calls `resumeParty` for that member.
+5. While the room runs, every member gets a `walk_to` plaza command (the Party Hall) and, when it ends, `go_home`. A finished job earns `party.job_done` and XP.
 
 ## Client (`engine/client/src`)
 
 - `screens/`: Title (choose a vorld), Onboarding (found one) and Game.
-- `game/VorldScene.ts`: the Phaser map, with houses, the plaza with the Quest Board, members walking, speech balloons and the "!" markers.
-- `ui/`: React panels. `QuestBoard.tsx`, `MemberPanel.tsx` + `Thread.tsx` (one conversation), `WritCard.tsx`, `Settings.tsx`, `MemberSettings.tsx`, `CrewBar.tsx`, `Hud.tsx`, `Deeds.tsx`.
+- `game/VorldScene.ts`: the Phaser map, with houses, the plaza with the Party Hall, members walking, speech balloons and the "!" markers.
+- `ui/`: React panels. `PartyHall.tsx` + `PartyPanel.tsx`, `MemberPanel.tsx` + `Thread.tsx` (one conversation), `WritCard.tsx`, `Settings.tsx`, `MemberSettings.tsx`, `CrewBar.tsx`, `Hud.tsx`, `Deeds.tsx`.
 - `store.ts`: one small store. Server events arrive over the WebSocket, and `Game.tsx` sends them on to the store and the scene.
 
 ## Safety model

@@ -15,12 +15,12 @@ limits:
 
 # Places any "to" can name, besides a prop kind that exists on this map (bench, lamp, well...) or another crew member's name (their home).
 places:
-  plaza: the town square with the quest board
+  plaza: the town square with the Party Hall
   founder: next to the founder
   home: your own home
 
 emotes: [wave, cheer, bow, think, dance, shrug, wince]
-panels: [quests, deeds, settings]
+panels: [parties, deeds, settings]
 
 # What a crew member does at each kind of prop when told to `interact`. A prop kind not listed here is simply looked at.
 interactions:
@@ -53,7 +53,7 @@ commands:
   wait:      { roles: [agent, companion], phrase: 'waits',                help: 'pause for a few seconds (1-{wait_max}). {"do":"wait","seconds":3}' }
   go_home:   { roles: [agent, companion], phrase: 'goes home',            help: 'walk back to your home. {"do":"go_home"}' }
   summon:    { roles: [companion],        phrase: 'calls {who} over',     help: 'call crew members over to the founder: a name, a list of names or "all". {"do":"summon","who":"Quinn"}' }
-  gather:    { roles: [companion],        phrase: 'gathers {who} at the plaza', help: 'call crew members to the quest board for a meeting. {"do":"gather","who":["Quinn","Nico"]}' }
+  gather:    { roles: [companion],        phrase: 'gathers {who} at the plaza', help: 'call crew members to the Party Hall for a meeting. {"do":"gather","who":["Quinn","Nico"]}' }
   send_home: { roles: [companion],        phrase: 'sends {who} home',     help: 'send crew members back to their homes: a name, a list of names or "all". {"do":"send_home","who":"all"}' }
   point_to:  { roles: [companion],        phrase: 'points to {to}',       help: 'walk ahead and show the founder a place (same places as walk_to). {"do":"point_to","to":"well"}' }
   show:      { roles: [companion],        phrase: 'opens {panel}',        help: 'open a screen for the founder, only when they ask to see it: {panels}. {"do":"show","panel":"deeds"}' }

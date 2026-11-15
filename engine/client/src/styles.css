@@ -324,7 +324,7 @@ select.field.small { padding-right: 26px; }
 
 .turn-did { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0 2px; } .turn-did span { font-size: 12px; padding: 1px 8px; border: 2px solid color-mix(in srgb, var(--ink) 45%, transparent); background: rgba(255,255,255,.35); border-radius: 10px; opacity: .85; } .turn-did span::before { content: '▸ '; opacity: .6; }
 
-/* ---------- v1: quests, onboarding, crew ---------- */
+/* ---------- v1: parties, onboarding, crew ---------- */
 .deed.done { opacity: 1; filter: none; }
 .hud-badge { margin-left: 4px; font-size: 11px; padding: 0 5px; border: 1px solid var(--ink); background: #fffaf0; } .hud-badge.alert { background: var(--gold); animation: bob 1s ease-in-out infinite; }
 .cb-add { width: 32px; height: 32px; border: 2px dashed var(--ink); background: color-mix(in srgb, var(--parchment) 70%, transparent); font-size: 20px; line-height: 1; color: var(--ink); }
@@ -332,39 +332,15 @@ select.field.small { padding-right: 26px; }
 .no-brain { margin: 0; padding: 6px 12px; font-size: 13px; background: color-mix(in srgb, var(--gold) 30%, var(--parchment)); border-bottom: 2px dashed color-mix(in srgb, var(--ink) 40%, transparent); }
 .warn { color: var(--clay); }
 
-.quest-board { width: min(980px, 95vw); }
-.quest-list { display: grid; gap: 8px; margin-top: 8px; }
-.quest-item { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; text-align: left; border: 2px solid var(--ink); background: #fffaf0; padding: 8px 12px; cursor: pointer; color: var(--ink); }
-.quest-item:hover { background: color-mix(in srgb, var(--gold) 18%, #fffaf0); }
-.quest-title { font-family: var(--display); font-size: calc(17px * var(--display-scale)); }
-.quest-crew { display: flex; gap: 2px; }
-.quest-status { font-size: 12px; font-weight: 700; text-transform: uppercase; padding: 1px 6px; border: 1px solid var(--ink); white-space: nowrap; }
-.quest-status.st-running { background: var(--turquoise); color: #fff; } .quest-status.st-waiting { background: var(--gold); animation: bob 1s ease-in-out infinite; }
-.quest-status.st-done { background: color-mix(in srgb, var(--turquoise) 30%, #fffaf0); } .quest-status.st-failed { background: var(--danger); color: #fff; }
-.quest-editor { display: grid; gap: 10px; margin-top: 8px; }
 .step-edit-list { margin: 0; padding-left: 22px; display: grid; gap: 10px; }
 .step-edit { display: grid; gap: 6px; } .step-edit select { max-width: 280px; }
 .seal-toggle { display: inline-flex !important; grid-auto-flow: column; align-items: center; gap: 4px; white-space: nowrap; }
-.quest-run { display: grid; gap: 10px; margin-top: 8px; }
-.quest-goal { border-left: 4px solid var(--gold); padding: 2px 10px; background: #fffaf0; }
-.quest-steps { display: grid; gap: 6px; }
-.quest-step { display: grid; grid-template-columns: 24px 28px 1fr auto; gap: 8px; align-items: center; text-align: left; border: 2px solid var(--ink); background: #fffaf0; padding: 6px 10px; color: var(--ink); cursor: pointer; }
-.quest-step:disabled { cursor: default; opacity: .75; }
-.quest-step.on { box-shadow: inset 0 0 0 2px var(--gold); }
-.quest-step.done { background: color-mix(in srgb, var(--turquoise) 18%, #fffaf0); }
-.quest-step.running { background: color-mix(in srgb, var(--turquoise) 35%, #fffaf0); }
-.quest-step.waiting { background: color-mix(in srgb, var(--gold) 40%, #fffaf0); }
-.quest-step.failed { background: color-mix(in srgb, var(--danger) 25%, #fffaf0); }
 .qs-n { font-family: var(--display); font-size: 18px; text-align: center; }
 .qs-body { min-width: 0; } .qs-task { display: block; font-size: 13px; opacity: .8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .qs-state { font-size: 11px; font-weight: 700; text-transform: uppercase; opacity: .8; }
 .seal-tag { font-size: 11px; font-weight: 700; color: var(--clay); margin-left: 4px; }
 .seal-box { border: 2px solid var(--ink); background: color-mix(in srgb, var(--gold) 25%, #fffaf0); padding: 10px 12px; display: grid; gap: 6px; }
 .seal-box p { margin: 0; } .seal-box.err { background: color-mix(in srgb, var(--danger) 18%, #fffaf0); } .seal-box.ok { background: color-mix(in srgb, var(--turquoise) 22%, #fffaf0); }
-.quest-actions { margin-top: 2px; }
-.quest-thread { border-top: 2px dashed color-mix(in srgb, var(--ink) 40%, transparent); padding-top: 6px; display: grid; }
-.quest-thread h3 { margin: 6px 0; } .quest-thread .convo { max-height: 52vh; min-height: 220px; border: 2px solid var(--ink); background: color-mix(in srgb, var(--parchment) 60%, #fff); }
-.quest-draft-card { margin: 6px 0 6px 40px; border: 2px solid var(--ink); background: color-mix(in srgb, var(--gold) 25%, #fffaf0); padding: 8px 10px; display: flex; gap: 10px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 .brief { margin: 4px 0; } .brief .bubble { margin-top: 4px; font-size: 13px; }
 
 .onboarding { overflow-y: auto; align-items: start; padding: 24px 0; }
@@ -377,7 +353,7 @@ select.field.small { padding-right: 26px; }
 .ob-agent { display: grid; grid-template-columns: 130px 150px 1fr auto; gap: 6px; align-items: center; }
 .ob-row { grid-template-columns: 1fr 1fr; gap: 16px; } .ob-row > div { display: grid; gap: 6px; align-content: start; }
 .radio { display: flex !important; grid-auto-flow: column; gap: 6px; align-items: center; font-weight: 600 !important; font-size: 14px !important; }
-@media (max-width: 640px) { .ob-agent { grid-template-columns: 1fr 1fr auto; } .ob-agent .grow { grid-column: 1 / -1; } .ob-row { grid-template-columns: 1fr; } .quest-item { grid-template-columns: 1fr auto; } .quest-crew { display: none; } }
+@media (max-width: 640px) { .ob-agent { grid-template-columns: 1fr 1fr auto; } .ob-agent .grow { grid-column: 1 / -1; } .ob-row { grid-template-columns: 1fr; } .party-crew { display: none; } }
 
 /* the crew browser window: view only, bottom left over the map */
 .browser-dock { position: absolute; left: 16px; bottom: 56px; width: min(360px, calc(100% - 32px)); z-index: 4; display: grid; gap: 4px; padding: 6px; }
@@ -400,3 +376,17 @@ select.field.small { padding-right: 26px; }
 .bd-url.signed { background: color-mix(in srgb, var(--gold) 45%, #fffaf0); font-weight: 700; }
 
 .writ-need { display: grid; gap: 4px; margin: 6px 0; } .writ-need.ok { color: #1d6b3a; font-weight: 700; } .writ-need .field { width: 100%; }
+
+/* parties: the Party Hall and a party's room */
+.party-hall { width: min(760px, 95vw); }
+.party-list { display: grid; gap: 8px; margin-top: 8px; }
+.party-item { display: grid; grid-template-columns: 1fr auto; gap: 8px 12px; align-items: center; text-align: left; border: 2px solid var(--ink); background: #fffaf0; padding: 8px 10px; }
+.party-item:hover { background: color-mix(in srgb, var(--gold) 18%, #fffaf0); }
+.party-title { font-family: var(--display); font-size: calc(17px * var(--display-scale)); }
+.party-goal { grid-column: 1 / -1; margin: 0; font-size: 13px; }
+.party-crew { display: flex; gap: 2px; align-items: center; } .party-crew .lead { position: relative; } .party-crew .lead::after { content: '♛'; position: absolute; top: -8px; right: -2px; font-size: 12px; }
+.party-form { display: grid; gap: 10px; margin-top: 8px; } .party-form label { display: grid; gap: 3px; font-size: 13px; }
+.party-pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.party-pick .chip.on { background: var(--gold); font-weight: 700; }
+.party-panel .cp-head { grid-template-columns: minmax(0, 1fr) auto; } .party-panel .cp-goal { font-size: 13px; line-height: 1.4; margin: 4px 0 0; overflow-wrap: anywhere; } .party-panel .party-crew { margin-top: 4px; }
+.party-speaking { font-size: 12px; padding: 2px 10px; color: color-mix(in srgb, var(--ink) 70%, transparent); }

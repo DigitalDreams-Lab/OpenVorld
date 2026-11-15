@@ -17,9 +17,7 @@ export function CrewBar() {
   const talkingTo = useStore((s) => s.talkingTo);
   const modal = useStore((s) => s.modal);
   const live = useStore((s) => s.live);
-  const quests = useStore((s) => s.quests);
   const working = new Set(Object.values(live).filter((l: any) => l.working).map((l: any) => l.role));
-  const waiting = new Set(quests.filter((q) => q.status === 'waiting').map((q) => q.steps[q.run?.step]?.agent));
   return (
     <>
       <nav className="crew-bar panel" aria-label="Crew">
@@ -27,7 +25,6 @@ export function CrewBar() {
           <button key={c.id} className={`cb-item ${talkingTo === c.id ? 'on' : ''} ${working.has(c.id) ? 'working' : ''}`}
             title={`${c.name}${c.job ? ` · ${c.job}` : ''}`} onClick={() => { play('ui.open'); setState({ talkingTo: c.id }); }}>
             <Portrait role={c.id} size={32} />
-            {waiting.has(c.id) && <span className="cb-mark">!</span>}
             {working.has(c.id) && <span className="cb-work">⚒</span>}
           </button>
         ))}

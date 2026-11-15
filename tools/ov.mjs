@@ -19,7 +19,7 @@ if (cmd === 'providers') {
   const packs = loadPacks(packRoots(HOME));
   const problems = [...packs.problems];
   for (const a of packs.byKind.achievements?.achievements?.achievements ?? []) { try { parse(a.when); } catch (e) { problems.push({ level: 'error', msg: `deed ${a.id}: ${e.message}` }); } }
-  for (const t of Object.values(packs.byKind.template ?? {})) for (const q of t.quests ?? []) for (const s of q.steps ?? []) if (typeof s.agent === 'number' && !t.crew?.[s.agent]) problems.push({ level: 'error', msg: `template ${t.id}: quest "${q.title}" names crew #${s.agent}, which is not in the template's crew` });
+  for (const t of Object.values(packs.byKind.template ?? {})) for (const q of t.parties ?? []) for (const i of q.members ?? []) if (!t.crew?.[i]) problems.push({ level: 'error', msg: `template ${t.id}: party "${q.name}" names crew #${i}, which is not in the template's crew` });
   for (const p of problems) console.log(`${p.level === 'error' ? 'ERROR' : 'warn '} ${p.msg}`);
   console.log(problems.some((p) => p.level === 'error') ? 'packs have errors' : 'packs ok');
   process.exit(problems.some((p) => p.level === 'error') ? 1 : 0);

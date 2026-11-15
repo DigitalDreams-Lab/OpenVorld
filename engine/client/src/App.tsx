@@ -16,7 +16,7 @@ export function App() {
 
   const open = (id: string) => {
     try { localStorage.setItem('ov.lastVorld', id); } catch { /* storage unavailable */ }
-    setState({ vorldId: id, quests: [] }); setScreen({ name: 'game', vorld: id });
+    setState({ vorldId: id }); setScreen({ name: 'game', vorld: id });
   };
   // reopen the last vorld after a reload (per-browser convenience only)
   useEffect(() => {

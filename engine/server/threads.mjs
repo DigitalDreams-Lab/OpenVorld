@@ -1,4 +1,4 @@
-// Threads: one conversation with one crew member (kind "chat"), or one step of a quest (kind "quest"). Index in
+// Threads: one conversation with one crew member (kind "chat"), or one shared party room (kind "party"). Index in
 // threads/index.json, events in threads/<id>.jsonl (append-only, so a crash never corrupts history).
 import fs from 'node:fs';
 import path from 'node:path';

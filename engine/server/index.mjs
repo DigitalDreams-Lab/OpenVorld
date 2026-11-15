@@ -11,7 +11,7 @@ import { atlasFor, sheetFiles } from './art.mjs';
 import { gameFor } from './game.mjs';
 import { listThreads, createThread, getThread, readEvents, appendEvent } from './threads.mjs';
 import { runTurn, stopTurn, brainOf, isWorking, requestAccess } from './agents/runner.mjs';
-import { listQuests, getQuest, saveQuest, deleteQuest, draftQuest, startQuest, stopQuest, retry, seal, advance, recoverQuests } from './quests.mjs';
+import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, partyBusy } from './parties.mjs';
 import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, addReferences } from './attachments.mjs';
 import { listGrants, grant, revoke, checkFolder, checkScope, deny, holds } from './gate.mjs';
 import { browseFolder, pickNative, nativeDialog, browseConfig } from './browse.mjs';
@@ -44,7 +44,7 @@ const withoutSecrets = (o) => JSON.parse(JSON.stringify(o ?? {}, (k, v) => (/^(a
 /** Everything the client needs to draw a vorld. */
 function vorldView(ctx) {
   const game = gameFor(ctx);
-  const working = new Set(listThreads(ctx).filter((t) => t.state === 'working' && isWorking(t.id)).map((t) => t.role));
+  const working = new Set(listThreads(ctx).filter((t) => t.state === 'working' && isWorking(t.id)).map((t) => (t.kind === 'party' ? t.speaker : t.role)).filter(Boolean));
   const k = ctx.packs.byKind;
   const scenery = k.scenery?.scenery ?? {};
   return {
@@ -60,6 +60,7 @@ function vorldView(ctx) {
     permissions: { answers: k.permissions?.permissions?.answers ?? [], capabilities: Object.fromEntries(Object.entries(k.permissions?.permissions?.capabilities ?? {}).map(([id, c]) => [id, { label: c.label ?? id, risk: c.risk ?? 'medium', seal: c.seal ?? null }])) },
     benches: { base: benchBase(ctx).path, custom: benchBase(ctx).custom },
     scenery: ctx.scenery(),
+    parties: listParties(ctx),
     art: { scenery, creatures: k.default_art?.default_art?.creatures ?? {}, house_sprites: k.default_art?.default_art?.illustrated_houses ?? [], atlas: atlasFor(ctx) },
     deeds: game.deedList().map(({ id, name, desc, hint, xp, icon, hidden }) => ({ id, name, desc, hint, xp, icon, hidden: !!hidden })),
     state: game.snapshot(),
@@ -67,14 +68,11 @@ function vorldView(ctx) {
 }
 const vorldChanged = (id) => emitTo(id)({ type: 'vorld' });
 
-/** One turn in a thread; quest threads then move their quest on, and a companion's drafted quest is saved. */
+/** One turn in a chat with one member. */
 async function turn(ctx, tid, text, files = []) {
   const emit = emitTo(ctx.id), thread = getThread(ctx, tid);
-  try {
-    const r = await runTurn(ctx, tid, text, emit, files);
-    if (r?.meta?.quest) { const q = draftQuest(ctx, r.meta.quest, tid); if (q) { emit({ type: 'quest', quest: q }); emit({ type: 'thread.event', thread: tid, role: thread.role, ev: { type: 'quest.draft', quest: q.id, title: q.title } }); } }
-  } catch (e) { emit({ type: 'thread.event', thread: tid, role: thread.role, ev: { type: 'turn.error', message: e.message } }); }
-  if (thread.kind === 'quest' && thread.quest) await advance(ctx, thread.quest, emit);
+  try { await runTurn(ctx, tid, text, emit, files); }
+  catch (e) { emit({ type: 'thread.event', thread: tid, role: thread.role, ev: { type: 'turn.error', message: e.message } }); }
 }
 
 // ---------- routes ----------
@@ -86,7 +84,7 @@ route('GET', '/api/boot', () => {
   const k = allPacks().byKind, theme = resolveTheme(k, k.defaults?.defaults?.theme ?? 'default') ?? {};
   return {
     version: VERSION, home: HOME, vorlds: listVorlds(), detected: detected(),
-    templates: Object.values(k.template ?? {}).sort((a, b) => (a.order ?? 9) - (b.order ?? 9)).map((t) => ({ id: t.id, label: t.label, description: t.description, crew: t.crew ?? [], quests: (t.quests ?? []).map((q) => q.title) })),
+    templates: Object.values(k.template ?? {}).sort((a, b) => (a.order ?? 9) - (b.order ?? 9)).map((t) => ({ id: t.id, label: t.label, description: t.description, crew: t.crew ?? [], parties: (t.parties ?? []).map((p) => p.name) })),
     theme: { palette: theme.palette ?? {}, companion: theme.companion ?? {}, agent_names: theme.agent_names ?? [] },
     creatures: k.default_art?.default_art?.creatures ?? {},
   };
@@ -103,7 +101,7 @@ route('GET', '/api/art/:sheet', ({ p, res }) => {
 route('POST', '/api/vorlds', async ({ req }) => {
   const { id, starters } = createVorld(await body(req));
   const ctx = vorldCtx(id, { fresh: true });
-  for (const q of starters) { try { saveQuest(ctx, q, null, { starter: true }); } catch { /* a starter that no longer fits the crew is skipped */ } }
+  for (const x of starters) { try { saveParty(ctx, x, null, { starter: true }); } catch { /* a starter that no longer fits the crew is skipped */ } }
   gameFor(ctx);
   return { id };
 });
@@ -155,7 +153,8 @@ route('DELETE', '/api/vorlds/:id/crew/:mid', ({ p }) => {
   const ctx = W(p), m = ctx.member(p.mid);
   if (!m) fail('unknown crew member', 404);
   if (m.role === 'companion') fail('the companion stays');
-  if (listQuests(ctx).some((q) => ['running', 'waiting'].includes(q.status) && q.steps.some((s) => s.agent === p.mid))) fail(`${m.name} is on a running quest; stop it first`, 409);
+  if (listParties(ctx).some((x) => x.members.includes(p.mid) && partyChats(ctx, x.id).some((t) => partyBusy(t.id)))) fail(`${m.name} is busy in a party; stop it first`, 409);
+  removeFromParties(ctx, p.mid);
   for (const g of listGrants(ctx).filter((x) => x.role === p.mid)) revoke(ctx, g.id);
   const next = saveVorld(ctx, (d) => { d.crew = d.crew.filter((x) => x.id !== p.mid); });
   vorldChanged(p.id);
@@ -259,16 +258,16 @@ route('POST', '/api/vorlds/:id/threads', async ({ p, req }) => {
 route('GET', '/api/vorlds/:id/threads/:tid', ({ p }) => { const ctx = W(p); return { thread: getThread(ctx, p.tid), events: readEvents(ctx, p.tid) }; });
 route('POST', '/api/vorlds/:id/threads/:tid/messages', async ({ p, req }) => {
   const ctx = W(p), thread = getThread(ctx, p.tid);
-  if (isWorking(p.tid)) fail('this crew member is still working', 409);
-  if (thread.kind === 'quest') { const qs = getQuest(ctx, thread.quest); if (['running'].includes(qs.status)) fail('this quest step is running; wait for it', 409); }
+  if (isWorking(p.tid) || partyBusy(p.tid)) fail(thread.kind === 'party' ? 'the party is still working' : 'this crew member is still working', 409);
   const { text, attachments } = await body(req);
   const msg = String(text ?? '').trim(), files = resolveAttachments(ctx, p.tid, attachments);
   if (!msg && !files.length) fail('empty message');
   if (msg.length > 20000) fail('message too long', 413);
-  void turn(ctx, p.tid, msg, files);
+  if (thread.kind === 'party') void runParty(ctx, p.tid, msg, files, emitTo(p.id)).catch((e) => emitTo(p.id)({ type: 'thread.event', thread: p.tid, role: thread.speaker, ev: { type: 'turn.error', message: e.message } }));
+  else void turn(ctx, p.tid, msg, files);
   return { ok: true };
 });
-route('POST', '/api/vorlds/:id/threads/:tid/stop', ({ p }) => { stopTurn(p.tid); return { ok: true }; });
+route('POST', '/api/vorlds/:id/threads/:tid/stop', ({ p }) => { stopParty(p.tid); stopTurn(p.tid); return { ok: true }; });
 async function sendFile(res, file, download = false) {
   res.writeHead(200, { 'content-type': file.type, 'content-disposition': `${download || !file.type.startsWith('image/') ? 'attachment' : 'inline'}; filename="attachment"; filename*=UTF-8''${encodeURIComponent(file.name)}`, 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; sandbox" });
   if (file.kind === 'reference') return pipeline(fs.createReadStream(file.path), res);
@@ -306,11 +305,12 @@ route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
   const ev = appendEvent(ctx, p.tid, { type: 'writ.answered', id: p.wid, role: ask.role, answer: b.answer, scope });
   emit({ type: 'thread.event', thread: p.tid, role: ask.role, ev });
   const n = game.check(notes); if (n.length) emit({ type: 'game', notes: n, state: game.snapshot() });
-  // pick the work back up: always inside a quest (a refusal too, so the member can adapt), on request in a chat
+  // pick the work back up: a party room carries on, a chat on request
   const thread = getThread(ctx, p.tid);
-  if (!isWorking(p.tid) && (thread.kind === 'quest' || (b.answer !== 'deny' && b.continue !== false))) {
+  if (!partyBusy(p.tid) && thread.kind === 'party') void resumeParty(ctx, p.tid, ask.role, emit);
+  else if (!isWorking(p.tid) && b.answer !== 'deny' && b.continue !== false) {
     const label = ctx.packs.byKind.permissions?.permissions?.capabilities?.[ask.capability]?.label ?? ask.capability;
-    void turn(ctx, p.tid, b.answer === 'deny' ? `Access refused: you may not ${label} ${scope}. Carry on without it.` : `Access granted: you may ${label} ${scope}. Please continue.`);
+    void turn(ctx, p.tid, `Access granted: you may ${label} ${scope}. Please continue.`);
   }
   return { ok: true, scope };
 });
@@ -347,16 +347,18 @@ route('POST', '/api/vorlds/:id/browser/:role/:tool', async ({ p, q, req }) => {
   catch (e) { return { ok: false, output: `error: ${e.message}` }; }
 });
 
-// quests
-route('GET', '/api/vorlds/:id/quests', ({ p }) => listQuests(W(p)));
-route('GET', '/api/vorlds/:id/quests/:qid', ({ p }) => getQuest(W(p), p.qid));
-route('POST', '/api/vorlds/:id/quests', async ({ p, req }) => { const ctx = W(p), q = saveQuest(ctx, await body(req)); const g = gameFor(ctx), n = g.check([]); if (n.length) emitTo(p.id)({ type: 'game', notes: n, state: g.snapshot() }); emitTo(p.id)({ type: 'quest', quest: q }); return q; });
-route('PUT', '/api/vorlds/:id/quests/:qid', async ({ p, req }) => { const q = saveQuest(W(p), await body(req), p.qid); emitTo(p.id)({ type: 'quest', quest: q }); return q; });
-route('DELETE', '/api/vorlds/:id/quests/:qid', ({ p }) => { const r = deleteQuest(W(p), p.qid); emitTo(p.id)({ type: 'quest', removed: p.qid }); return r; });
-route('POST', '/api/vorlds/:id/quests/:qid/start', ({ p }) => startQuest(W(p), p.qid, emitTo(p.id)));
-route('POST', '/api/vorlds/:id/quests/:qid/stop', ({ p }) => stopQuest(W(p), p.qid, emitTo(p.id)));
-route('POST', '/api/vorlds/:id/quests/:qid/retry', ({ p }) => retry(W(p), p.qid, emitTo(p.id)));
-route('POST', '/api/vorlds/:id/quests/:qid/seal', async ({ p, req }) => seal(W(p), p.qid, await body(req), emitTo(p.id)));
+// parties: a name, a goal and members; their chats are shared rooms (see parties.mjs)
+route('GET', '/api/vorlds/:id/parties', ({ p }) => listParties(W(p)));
+route('POST', '/api/vorlds/:id/parties', async ({ p, req }) => {
+  const ctx = W(p), party = saveParty(ctx, await body(req));
+  const game = gameFor(ctx), n = game.check([]); if (n.length) emitTo(p.id)({ type: 'game', notes: n, state: game.snapshot() });
+  vorldChanged(p.id);
+  return { ...vorldView(vorldCtx(p.id, { fresh: true })), added: party.id };
+});
+route('PUT', '/api/vorlds/:id/parties/:pid', async ({ p, req }) => { const ctx = W(p); saveParty(ctx, await body(req), p.pid); vorldChanged(p.id); return vorldView(vorldCtx(p.id, { fresh: true })); });
+route('DELETE', '/api/vorlds/:id/parties/:pid', ({ p }) => { const ctx = W(p); deleteParty(ctx, p.pid); vorldChanged(p.id); return vorldView(vorldCtx(p.id, { fresh: true })); });
+route('GET', '/api/vorlds/:id/parties/:pid/chats', ({ p }) => { const ctx = W(p); getParty(ctx, p.pid); return partyChats(ctx, p.pid); });
+route('POST', '/api/vorlds/:id/parties/:pid/chats', async ({ p, req }) => createPartyChat(W(p), p.pid, (await body(req)).title));
 
 // ---------- server ----------
 function serveStatic(req, res) {
@@ -402,7 +404,6 @@ server.on('upgrade', (req, socket, head) => {
   });
 });
 
-for (const w of listVorlds()) { try { recoverQuests(vorldCtx(w.id)); } catch { /* a broken vorld never stops the server */ } }
 server.listen(PORT, '127.0.0.1', () => {
   console.log(`OpenVorld server on http://127.0.0.1:${PORT}  (home: ${HOME})`);
   if (!process.env.OV_TOKEN) console.log(`Open http://127.0.0.1:${PORT}/`);

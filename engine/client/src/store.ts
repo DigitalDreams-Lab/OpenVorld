@@ -1,25 +1,25 @@
 // Tiny global store (no library): get/set/subscribe + a React hook, and an event bus between React and the map.
 import { useSyncExternalStore } from 'react';
 
-export type Toast = { id: number; kind: 'deed' | 'level' | 'xp' | 'info' | 'error' | 'quest'; title: string; body?: string; xp?: number; icon?: string };
+export type Toast = { id: number; kind: 'deed' | 'level' | 'xp' | 'info' | 'error'; title: string; body?: string; xp?: number; icon?: string };
 export type Live = { role?: string; steps: any[]; working: boolean; error?: string | null };
 export type BrowserFrame = { url?: string; title?: string; image?: string; active?: boolean; signed?: boolean; at?: number };
-export type Modal = null | 'quests' | 'deeds' | 'settings' | 'member' | 'add';
+export type Modal = null | 'parties' | 'deeds' | 'settings' | 'member' | 'add';
 
 type State = {
   vorldId: string | null;
   vorld: any | null;
   talkingTo: string | null;           // crew member whose panel is open
   modal: Modal;
-  questId: string | null;             // the quest open on the board (null = the list)
-  quests: any[];
+  partyId: string | null;             // party whose chat panel is open
+  partyEdit: string | null;           // party open in the Party Hall form ('' = a new one, null = the list)
   toasts: Toast[];
   live: Record<string, Live>;         // threadId -> streaming turn
   browsers: Record<string, BrowserFrame>;   // crew member id -> what their browser last showed
   threadsVersion: number;             // bump to refetch thread lists
 };
 
-let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, questId: null, quests: [], toasts: [], live: {}, browsers: {}, threadsVersion: 0 };
+let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, partyId: null, partyEdit: null, toasts: [], live: {}, browsers: {}, threadsVersion: 0 };
 const subs = new Set<() => void>();
 export const getState = () => state;
 export function setState(patch: Partial<State> | ((s: State) => Partial<State>)) {

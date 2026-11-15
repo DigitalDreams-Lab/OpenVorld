@@ -2,6 +2,6 @@ kind: template
 id: blank
 label: Start empty
 order: 9
-description: Just you and your companion. Add agents and quests yourself.
+description: Just you and your companion. Add agents and parties yourself.
 crew: []
-quests: []
+parties: []

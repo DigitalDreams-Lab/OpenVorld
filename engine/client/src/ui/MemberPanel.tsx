@@ -1,5 +1,4 @@
-// Talking to one crew member: their chats (newest first) and the open conversation. Quest steps they ran are listed
-// too, so everything they did is in one place.
+// Talking to one crew member: their chats (newest first) and the open conversation.
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { emit, memberOf, setState, str, toast, useStore } from '../store';
@@ -57,7 +56,7 @@ export function MemberPanel({ id }: { id: string }) {
         <div className="thread-list">
           {(threads ?? []).map((t) => (
             <button key={t.id} className={`thread-tab ${t.id === active ? 'on' : ''} st-${t.state}`} onClick={() => { play('ui.click'); setActive(t.id); }}>
-              <span className="st-dot" />{t.kind === 'quest' ? '📜 ' : ''}{t.title ?? 'New chat'}
+              <span className="st-dot" />{t.title ?? 'New chat'}
             </button>
           ))}
         </div>

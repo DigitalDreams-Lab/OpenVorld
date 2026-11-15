@@ -39,6 +39,10 @@ agent:
       a private box appears in the chat where they paste it, so never ask them to type a secret in a normal message.
       The same tool asks approval to use a secret you already have. Then write %NAME% where the value belongs in the
       engine's command tool, or $NAME in your own shell. Values are hidden in the chat.
+  party:                           # parties (engine/server/parties.mjs)
+    max_turns: 12                  # most member turns after one message from the founder
+    message_chars: 2500            # longest message of the room shown to a member
+    room_events: 40                # how many of the latest room messages a member is shown
   transcript: { output_chars: 4000, detail_chars: 1500 }
   chat: { collapse_after: 6 }
   claude_code:
@@ -48,10 +52,7 @@ agent:
 xp:
   chat_message: 2
   chat_per_day: 60                 # chat XP stops here each day
-  step_done: 15
-  quest_done: 40                   # plus quest_per_step for every step in it
-  quest_per_step: 10
-  seal_given: 5
+  party_done: 40                   # a party finished a job
   writ_granted: 5
 
 levels: { base: 60, exponent: 1.6 }   # XP to reach level n = base * (n-1)^exponent
@@ -89,11 +90,3 @@ envelope:
       capability is one of fs.read, fs.write, cmd.run (scope = a command pattern, "*" for any arguments, e.g. "npm test" or "curl *"),
       net.fetch (scope = a domain), net.session (browse signed in as the founder; scope = one site), net.act (act as the founder there:
       post, send, buy, delete). The founder sees it as a request and answers; do not ask in prose only.
-  quest_instructions: |
-    You can draft a QUEST: a repeatable workflow the crew runs step by step. Only when the founder asks for a
-    workflow, a process or a recurring job, add "quest" to the ov block:
-      "quest": {"title": "Weekly newsletter", "goal": "what the whole quest delivers",
-                "steps": [{"agent": "<member name>", "task": "what this step does", "seal": false}]}
-    Each step goes to one crew member (by name). The output of a step is handed to the next one.
-    "seal": true means the founder must approve that step's result before the quest goes on.
-    The founder sees it as a draft on the quest board and can edit it before running it.

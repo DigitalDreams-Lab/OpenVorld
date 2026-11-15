@@ -21,7 +21,7 @@ Your dev vorlds go in `~/.openvorld` unless you set `OPENVORLD_HOME`, or pin a f
 npm test && npm run typecheck && npm run validate
 ```
 
-Tests use `node --test`, and nothing in them touches the network: model APIs are mocked with `fetch` stubs (see `tests/quests.test.mjs`).
+Tests use `node --test`, and nothing in them touches the network: model APIs are mocked with `fetch` stubs (see `tests/parties.test.mjs`).
 
 ## Guidelines
 

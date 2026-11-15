@@ -1,6 +1,6 @@
 // The condition language of deeds (packs/core/achievements.yaml):
-//   event:name                    something happened at least once        event:quest.done
-//   count(event:name) OP n        how many times it happened              count(event:quest.done) >= 10
+//   event:name                    something happened at least once        event:party.job_done
+//   count(event:name) OP n        how many times it happened              count(event:party.job_done) >= 10
 //   counter OP n                  an engine counter                       crew.agents >= 3
 //   all(a, b, ...) / any(a, ...)
 // OP is one of >= <= == > <.

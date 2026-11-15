@@ -1,8 +1,8 @@
-// One thread (a chat with a crew member, or one step of a quest): the saved events, the live turn, writ cards,
-// drafted quests, answer options and the composer. Chats and quest steps look exactly the same.
+// One thread (a chat with a crew member, or a party's shared room): the saved events, the live turn, writ cards,
+// answer options and the composer. In a party room every message shows who said it, like a group chat.
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../api';
-import { memberOf, setState, toast, useStore } from '../store';
+import { memberOf, toast, useStore } from '../store';
 import { AgentTurn, Markdown } from './Chat';
 import { MessageFiles } from './MessageFiles';
 import { WritCard } from './WritCard';
@@ -30,6 +30,10 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
   const events = data?.events ?? [];
   const thread = data?.thread;
   const m = memberOf(thread?.role);
+  const party = thread?.kind === 'party';
+  const speakerName = (role?: string | null) => memberOf(role)?.name ?? role ?? '';
+  const crew = useStore((s) => s.vorld?.crew);
+  const names = useMemo<string[]>(() => (party ? (crew ?? []).map((c: any) => c.name) : []), [party, crew]);
   const draft = useChatDraft({ wid, thread: tid, working, onEvents: setEvents });
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [events.length, live?.steps]);
   const lastAgent = useMemo(() => [...events].reverse().find((e: any) => e.type === 'agent.text'), [events]);
@@ -42,38 +46,20 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
       <div className="messages">
         {events.map((e: any, i: number) => {
           if (e.type === 'founder.message') return <div key={i} className="msg me"><Markdown text={e.text} thread={tid} /><MessageFiles files={e.attachments} /></div>;
-          if (e.type === 'brief') return <Brief key={i} text={e.text} />;
-          if (e.type === 'agent.text') return <AgentTurn key={i} role={thread.role} steps={e.steps} text={e.text} mood={e.meta?.mood} did={e.meta?.did} thread={tid} />;
-          if (e.type === 'writ.request') return <WritCard key={e.id} ask={e} answered={answered.get(e.id)} wid={wid} thread={tid} who={m?.name ?? e.role} />;
+          if (e.type === 'agent.text') return <AgentTurn key={i} role={e.role ?? thread.role} steps={e.steps} text={e.text} mood={e.meta?.mood} did={e.meta?.did} thread={tid} {...(party ? { speaker: speakerName(e.role), job: memberOf(e.role)?.job, mentions: names } : {})} />;
+          if (e.type === 'writ.request') return <WritCard key={e.id} ask={e} answered={answered.get(e.id)} wid={wid} thread={tid} who={speakerName(e.role)} />;
           if (e.type === 'turn.error') return <div key={i} className="log err">✖ {e.message}</div>;
-          if (e.type === 'sealed') return <div key={i} className="log sealed">✦ Sealed by you</div>;
-          if (e.type === 'quest.draft') return (
-            <div key={i} className="quest-draft-card">
-              <b>📜 Quest drafted: {e.title}</b>
-              <button className="btn small primary" onClick={() => setState({ modal: 'quests', questId: e.quest, talkingTo: null })}>Open on the Quest Board</button>
-            </div>
-          );
+          if (e.type === 'party.paused') return <div key={i} className="log">⏸ {e.text}</div>;
           return null;
         })}
-        {working && <AgentTurn role={thread.role} steps={live.steps} live thread={tid} />}
+        {working && <AgentTurn role={live.role ?? thread.role} steps={live.steps} live thread={tid} {...(party ? { speaker: speakerName(live.role), job: memberOf(live.role)?.job, mentions: names } : {})} />}
         {live?.error && !working && <div className="log err">✖ {live.error}</div>}
         <div ref={end} />
       </div>
       {canSend && !working && lastAgent?.meta?.options?.length > 0 && (
         <div className="options">{lastAgent.meta.options.map((o: string) => <button key={o} className="option" disabled={draft.busy} onClick={() => draft.send(o, true)}>▸ {o}</button>)}</div>
       )}
-      {canSend && <ChatComposer draft={draft} placeholder={placeholder ?? `Message ${m?.name ?? ''}…`} working={working} onStop={() => { void api(`/vorlds/${wid}/threads/${tid}/stop`, { body: {} }).catch((e) => toast({ kind: 'error', title: e.message })); }} />}
-    </div>
-  );
-}
-
-/** What a quest step was told, folded (it can be long: it carries the earlier steps' results). */
-function Brief({ text }: { text: string }) {
-  const [open, setOpen] = useState(false);
-  return (
-    <div className="brief">
-      <button className="link" onClick={() => setOpen(!open)}>{open ? '▾' : '▸'} Quest brief</button>
-      {open && <div className="bubble"><Markdown text={text} /></div>}
+      {canSend && <ChatComposer draft={draft} placeholder={placeholder ?? (party ? 'Message the party… (@Name picks who answers first)' : `Message ${m?.name ?? ''}…`)} working={working} onStop={() => { void api(`/vorlds/${wid}/threads/${tid}/stop`, { body: {} }).catch((e) => toast({ kind: 'error', title: e.message })); }} />}
     </div>
   );
 }

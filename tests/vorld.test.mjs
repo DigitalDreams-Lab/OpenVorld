@@ -15,12 +15,12 @@ const { runTurn } = await import('../engine/server/agents/runner.mjs');
 const { createThread } = await import('../engine/server/threads.mjs');
 
 test('the deed language: events, counts, counters, all/any', () => {
-  const ctx = { events: { 'quest.done': 3 }, counters: { 'crew.agents': 2 } };
-  assert.equal(evaluate(parse('event:quest.done'), ctx), true);
-  assert.equal(evaluate(parse('count(event:quest.done) >= 3'), ctx), true);
+  const ctx = { events: { 'party.job_done': 3 }, counters: { 'crew.agents': 2 } };
+  assert.equal(evaluate(parse('event:party.job_done'), ctx), true);
+  assert.equal(evaluate(parse('count(event:party.job_done) >= 3'), ctx), true);
   assert.equal(evaluate(parse('crew.agents >= 3'), ctx), false);
-  assert.equal(evaluate(parse('any(crew.agents >= 3, event:quest.done)'), ctx), true);
-  assert.equal(evaluate(parse('all(crew.agents >= 3, event:quest.done)'), ctx), false);
+  assert.equal(evaluate(parse('any(crew.agents >= 3, event:party.job_done)'), ctx), true);
+  assert.equal(evaluate(parse('all(crew.agents >= 3, event:party.job_done)'), ctx), false);
   assert.throws(() => parse('rm -rf'), /cannot read/);
 });
 
@@ -38,7 +38,7 @@ test('XP: chat is capped per day, finished work is not, levels follow the curve'
   const game = gameFor(ctx), notes = [];
   for (let i = 0; i < 100; i++) game.xp('chat_message', notes);
   assert.equal(game.s.chat.xp, ctx.interactions.xp.chat_per_day, 'chat stops at the daily cap');
-  game.xp('quest_done', notes).check(notes);
+  game.xp('party_done', notes).check(notes);
   assert.ok(notes.some((n) => n.type === 'level'));
   assert.ok(game.s.xp >= xpFor(game.s.level, ctx.interactions.levels) && game.s.xp < xpFor(game.s.level + 1, ctx.interactions.levels));
 });

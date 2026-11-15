@@ -1,5 +1,5 @@
 // Founding a vorld: one short form. Name it, say what it is for, pick its project folder (the one place the whole crew
-// works on), pick a start (a crew and starter quests), name your companion and pick the brain everyone thinks with.
+// works on), pick a start (a crew and a starter party), name your companion and pick the brain everyone thinks with.
 // Everything can be changed later in the game.
 import { useEffect, useState } from 'react';
 import { api } from '../api';
@@ -66,7 +66,7 @@ export function Onboarding({ boot, onDone, onCancel }: { boot: any; onDone: (id:
             {templates.map((x) => (
               <button type="button" key={x.id} className={`ob-template ${x.id === template ? 'on' : ''}`} onClick={() => { play('ui.click'); setTemplate(x.id); }}>
                 <b>{x.label}</b><span>{x.description}</span>
-                {x.quests.length > 0 && <small>Quests: {x.quests.join(', ')}</small>}
+                {x.parties?.length > 0 && <small>Starts with a party: {x.parties.join(', ')}</small>}
               </button>
             ))}
           </div>

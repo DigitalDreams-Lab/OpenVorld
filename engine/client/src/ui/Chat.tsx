@@ -18,14 +18,17 @@ const VERB: Record<string, string> = { 'tool.read': 'Read', 'tool.search': 'Sear
 const ENVELOPE = /```ov[\s\S]*$/;
 
 /** One turn of a crew member: portrait + interleaved bubbles and activity. */
-export function AgentTurn({ role, steps, text, mood, did, speaker, job, live, root, thread }: { role: string; did?: string[]; steps?: Step[]; text?: string; mood?: string; speaker?: string; job?: string; live?: boolean; root?: string; thread?: string }) {
+/** @Name of a crew member shown in bold, so a hand-over stands out in a group chat. */
+const boldMentions = (text: string, names: string[]) => names.reduce((t, n) => t.replace(new RegExp(`@${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}_])`, 'giu'), (m) => `**${m}**`), text);
+
+export function AgentTurn({ role, steps, text, mood, did, speaker, job, live, root, thread, mentions }: { role: string; mentions?: string[]; did?: string[]; steps?: Step[]; text?: string; mood?: string; speaker?: string; job?: string; live?: boolean; root?: string; thread?: string }) {
   const vorld = useStore((s) => s.vorld);
   const list: Step[] = steps?.length ? steps : text ? [{ t: 'text', text }] : [];
   // consecutive non-text steps form one activity block
   const blocks = useMemo(() => {
     const out: ({ kind: 'text'; text: string } | { kind: 'act'; steps: Step[] })[] = [];
     for (const s of list) {
-      if (s.t === 'text') { const t = s.text.replace(ENVELOPE, '').trim(); if (t) out.push({ kind: 'text', text: t }); continue; }
+      if (s.t === 'text') { const t = s.text.replace(ENVELOPE, '').trim(); if (t) out.push({ kind: 'text', text: mentions?.length ? boldMentions(t, mentions) : t }); continue; }
       const last = out[out.length - 1];
       if (last?.kind === 'act') last.steps.push(s); else out.push({ kind: 'act', steps: [s] });
     }
