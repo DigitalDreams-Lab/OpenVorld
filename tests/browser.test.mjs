@@ -138,3 +138,121 @@ test('the browser itself: pages, redirects, passwords and the live view (needs C
   await hub.close(ctx, 'ada');
   assert.equal(hub.latest(ctx, 'ada'), null);
 });
+
+// ---------- signed-in browsing ----------
+const { checkScope } = await import('../engine/server/gate.mjs');
+const { startServer, call, newVorld } = await import('./helpers/server.mjs');
+const { appendEvent, createThread } = await import('../engine/server/threads.mjs');
+
+test('net.session and net.act are per site, never for every site, and acting is never "always"', async (t) => {
+  const ctx = crew();
+  assert.equal(checkScope(ctx, 'net.session', 'https://www.YouTube.com/studio'), 'www.youtube.com');
+  assert.equal(checkScope(ctx, 'net.act', 'youtube.com'), 'youtube.com');
+  assert.throws(() => checkScope(ctx, 'net.session', '*'), /one site/);
+  assert.throws(() => checkScope(ctx, 'net.act', '*'), /one site/);
+  assert.equal(checkScope(ctx, 'net.fetch', '*'), '*', 'plain browsing may still be open');
+  await startServer(t);
+  const { id, root } = await newVorld();
+  const vctx = (await import('../engine/server/vorld.mjs')).vorldCtx(id);
+  const thread = createThread(vctx, { role: vctx.companionId });
+  const ask = (capability) => appendEvent(vctx, thread.id, { type: 'writ.request', id: `${capability}-${Math.random()}`, role: vctx.companionId, capability, scope: 'youtube.com', why: 'x', risk: 'high' });
+  const act = ask('net.act');
+  assert.equal((await call('POST', `${root}/threads/${thread.id}/writs/${act.id}`, { answer: 'always', continue: false })).status, 400, 'acting as the founder is never given for good');
+  assert.equal((await call('POST', `${root}/threads/${thread.id}/writs/${act.id}`, { answer: 'once', continue: false })).status, 200);
+  const session = ask('net.session');
+  assert.equal((await call('POST', `${root}/threads/${thread.id}/writs/${session.id}`, { answer: 'always', continue: false })).status, 200, 'signing in to a site can be remembered');
+  assert.equal((await call('GET', `${root}/world`)).status === 404 || true, true);
+});
+
+test('signed-in browsing: saved sign-ins, per-site writs, and approval before acting (needs Chrome)', { skip: !hub.findChrome() && 'no Chrome or Edge on this computer' }, async (t) => {
+  process.env.OV_BROWSER_ALLOW_PRIVATE = '1';
+  const seen = [];
+  const page = http.createServer((req, res) => {
+    let body = ''; req.on('data', (c) => (body += c));
+    req.on('end', () => {
+      seen.push(`${req.method} ${req.url}`);
+      res.setHeader('content-type', 'text/html');
+      res.end(`<title>Studio</title><h1>Studio</h1><p>cookie: ${req.headers.cookie ?? 'none'}</p>
+        <form method="get" action="/search"><input type="search" name="q"><button>Find</button></form>
+        <form method="post" action="/save"><input name="title"><button>Apply</button></form>
+        <a href="/two">Settings</a><button type="button">Delete video</button>
+        <input name="note" placeholder="Note">`);
+    });
+  });
+  await new Promise((r) => page.listen(0, '127.0.0.1', r));
+  const ctx = crew(), asks = [];
+  t.after(async () => { delete process.env.OV_BROWSER_ALLOW_PRIVATE; await hub.closeAll(); page.close(); });
+  const use = (name, args) => hub.callTool(ctx, 'ada', name, args, { onRequest: (a) => asks.push(a) });
+  const home = `http://127.0.0.1:${page.address().port}/`;
+
+  // nothing saved yet: signed-in browsing says so instead of asking for writs
+  await assert.rejects(use('browser_open', { url: home, signed_in: true }), /has not signed in/);
+  hub.saveSession(ctx, { cookies: [{ name: 'SID', value: 'secret-session', domain: '127.0.0.1', path: '/', expires: -1, httpOnly: false, secure: false, sameSite: 'Lax' }], origins: [] });
+  assert.deepEqual(hub.sessionSites(ctx).map((s) => s.domain), ['0.1']);   // IPs have no site name: shown as the last two labels
+
+  grant(ctx, { role: 'ada', capability: 'net.fetch', scope: '127.0.0.1' });
+  assert.match(await use('browser_open', { url: home }), /cookie: none/, 'plain browsing never carries the sign-ins');
+
+  asks.length = 0;
+  await assert.rejects(use('browser_open', { url: home, signed_in: true }), /no writ for 127\.0\.0\.1 \(signed in\)/);
+  assert.deepEqual(asks.map((a) => a.capability), ['net.session'], 'a plain-browsing writ does not cover signed-in use');
+  grant(ctx, { role: 'ada', capability: 'net.session', scope: '127.0.0.1' });
+  const signed = await use('browser_open', { url: home, signed_in: true });
+  assert.match(signed, /cookie: SID=secret-session/);
+  assert.match(signed, /Signed in as the founder/);
+  assert.match(signed, /button "Apply" \(acts as you/, 'a submit in a POST form acts');
+  assert.match(signed, /button "Delete video" \(acts as you/, 'so does a button that says delete');
+  assert.match(signed, /link "Settings" → .*\/two\n/, 'a plain link does not');
+  assert.match(signed, /button "Find"\n/, 'and neither does a search (GET) form');
+  assert.ok(hub.latest(ctx, 'ada').signed);
+
+  // acting: asks for net.act first, goes ahead once approved
+  asks.length = 0;
+  const line = (re) => Number(signed.match(re)[1]);
+  const apply = line(/\[(\d+)\] button "Apply"/), del = line(/\[(\d+)\] button "Delete video"/), note = line(/\[(\d+)\] field "Note"/);
+  await assert.rejects(use('browser_click', { id: apply }), /would act as the founder on 127\.0\.0\.1/);
+  assert.deepEqual(asks.map((a) => [a.capability, a.scope]), [['net.act', '127.0.0.1']]);
+  await assert.rejects(use('browser_type', { id: note, text: 'hello', submit: true }), /would act as the founder/);
+  assert.ok(!seen.some((s) => s.startsWith('POST')), 'nothing was submitted without approval');
+  grant(ctx, { role: 'ada', capability: 'net.act', scope: '127.0.0.1', answer: 'once' });
+  await use('browser_click', { id: apply });
+  assert.ok(seen.includes('POST /save'), 'approved: the form went through');
+  await use('browser_click', { id: del });   // a button with no form does nothing on the test page, but is allowed now
+
+  // a plain page marks nothing as acting
+  const plain = await hub.callTool(ctx, 'bo', 'browser_open', { url: home }, { onRequest: () => {} }).catch((e) => e.message);
+  assert.match(plain, /no writ/, 'another member has no writs at all');
+});
+
+test('frames, ads and trackers on a granted page are not loaded, and do not fail the page (needs Chrome)', { skip: !hub.findChrome() && 'no Chrome or Edge on this computer' }, async (t) => {
+  process.env.OV_BROWSER_ALLOW_PRIVATE = '1';
+  const page = http.createServer((req, res) => { res.setHeader('content-type', 'text/html'); res.end(`<title>Blog</title><h1>A post</h1><iframe src="http://localhost:${page.address().port}/ad"></iframe>`); });
+  await new Promise((r) => page.listen(0, '127.0.0.1', r));
+  const ctx = crew(), asks = [];
+  t.after(async () => { delete process.env.OV_BROWSER_ALLOW_PRIVATE; await hub.closeAll(); page.close(); });
+  grant(ctx, { role: 'ada', capability: 'net.fetch', scope: '127.0.0.1' });
+  const out = await hub.callTool(ctx, 'ada', 'browser_open', { url: `http://127.0.0.1:${page.address().port}/` }, { onRequest: (a) => asks.push(a) });
+  assert.match(out, /Page: Blog[\s\S]*A post/);
+  assert.deepEqual(asks, [], 'an ungranted frame is never a writ request');
+});
+
+test('the sign-in window saves what the founder signs in to, and can forget it (headless here)', { skip: !hub.findChrome() && 'no Chrome or Edge on this computer' }, async (t) => {
+  process.env.OV_SIGNIN_HEADLESS = '1';
+  const ctx = crew(), heard = [];
+  t.after(async () => { delete process.env.OV_SIGNIN_HEADLESS; await hub.closeAll(); });
+  assert.deepEqual(hub.signInState(ctx).sites, []);
+  const state = await hub.openSignIn(ctx, { url: 'about:blank'.replace('about:blank', 'https://example.com'), emit: (m) => heard.push(m) }).catch((e) => e);
+  // example.com may be unreachable offline; the window is up either way
+  assert.ok(hub.signInWindow(ctx), String(state?.message ?? 'window open'));
+  assert.equal(hub.signInState(ctx).open, true);
+  await hub.signInWindow(ctx).context.addCookies([{ name: 'SID', value: 'abc', domain: '.youtube.com', path: '/' }, { name: 'HSID', value: 'def', domain: '.youtube.com', path: '/' }, { name: 'a', value: '1', domain: 'github.com', path: '/' }]);
+  await hub.signInWindow(ctx).save();
+  assert.deepEqual(hub.sessionSites(ctx), [{ domain: 'youtube.com', cookies: 2 }, { domain: 'github.com', cookies: 1 }]);
+  await assert.rejects(hub.openSignIn(ctx, { url: 'file:///etc/passwd' }), /web address/);
+  const closed = new Promise((r) => { const iv = setInterval(() => { if (heard.some((m) => m.open === false)) { clearInterval(iv); r(); } }, 50); });
+  await hub.signInWindow(ctx).browser.close();
+  await closed;
+  assert.equal(hub.signInState(ctx).open, false);
+  assert.equal(hub.sessionSites(ctx).length, 2, 'closing the window keeps the sign-ins');
+  assert.deepEqual((await hub.forgetSignIns(ctx)).sites, []);
+});

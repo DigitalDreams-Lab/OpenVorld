@@ -56,7 +56,7 @@ function vorldView(ctx) {
     }),
     theme: { palette: ctx.theme.palette ?? {}, buildings: ctx.theme.buildings ?? {}, strings: ctx.theme.strings ?? {} },
     interactions: { reactions: ctx.interactions.reactions ?? {}, chat: ctx.interactions.agent?.chat ?? {} },
-    permissions: { answers: k.permissions?.permissions?.answers ?? [], capabilities: Object.fromEntries(Object.entries(k.permissions?.permissions?.capabilities ?? {}).map(([id, c]) => [id, { label: c.label ?? id, risk: c.risk ?? 'medium' }])) },
+    permissions: { answers: k.permissions?.permissions?.answers ?? [], capabilities: Object.fromEntries(Object.entries(k.permissions?.permissions?.capabilities ?? {}).map(([id, c]) => [id, { label: c.label ?? id, risk: c.risk ?? 'medium', seal: c.seal ?? null }])) },
     workspace: { default_space: defaultSpace(ctx).path, default_is_custom: defaultSpace(ctx).custom },
     scenery: ctx.scenery(),
     art: { scenery, creatures: k.default_art?.default_art?.creatures ?? {}, house_sprites: k.default_art?.default_art?.illustrated_houses ?? [], atlas: atlasFor(ctx) },
@@ -227,6 +227,7 @@ route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
   if (!ask) fail('unknown request', 404);
   if (events.some((e) => e.type === 'writ.answered' && e.id === p.wid)) fail('already answered', 409);
   if (!(ctx.packs.byKind.permissions?.permissions?.answers ?? []).some((a) => a.id === b.answer)) fail('unknown answer');
+  if (b.answer === 'always' && ctx.packs.byKind.permissions?.permissions?.capabilities?.[ask.capability]?.seal === 'every_time') fail('this kind of writ is never given for good; allow it once or for this session');
   const notes = [];
   let scope = ask.scope;
   if (b.answer === 'deny') { deny(ctx, { role: ask.role, capability: ask.capability, scope }); game.event('writ.refused'); }
@@ -277,6 +278,14 @@ route('POST', '/api/vorlds/:id/browser/:role/:tool', async ({ p, q, req }) => {
   try { return { ok: true, output: await browse.callTool(ctx, p.role, p.tool, await body(req), { emit, onRequest }) }; }
   catch (e) { return { ok: false, output: `error: ${e.message}` }; }
 });
+
+// signed-in browsing: the founder signs in to sites in a real window; members use it only through writs
+route('GET', '/api/vorlds/:id/signin', ({ p }) => browse.signInState(W(p)));
+route('POST', '/api/vorlds/:id/signin', async ({ p, req }) => {
+  const b = await body(req);
+  try { return await browse.openSignIn(W(p), { url: String(b.url ?? '').trim(), emit: emitTo(p.id) }); } catch (e) { fail(e.message); }
+});
+route('DELETE', '/api/vorlds/:id/signin', async ({ p }) => browse.forgetSignIns(W(p)));
 
 // quests
 route('GET', '/api/vorlds/:id/quests', ({ p }) => listQuests(W(p)));

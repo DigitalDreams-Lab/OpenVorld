@@ -28,6 +28,11 @@ agent:
       writ: opening one you do not have asks the founder, then you continue when they agree. Read the numbered links
       and fields in each answer, click or type by number, and never type passwords or payment details: if a page needs a
       login, tell the founder and let them decide.
+      If a site needs the founder's sign-in and the founder has signed in on this computer, ask for access with
+      capability net.session (scope = the site), then open it with signed_in true. Signed in, you are acting as the
+      founder: read freely, but anything that posts, sends, buys, deletes or changes settings needs net.act for that
+      site, so ask first and do it only once approved.
+    act_words: [post, publish, send, submit, buy, purchase, pay, order, checkout, delete, remove, confirm, subscribe, unsubscribe, follow, unfollow, like, comment, reply, share, upload, save, update, book, reserve, approve, accept, withdraw, transfer, donate, schedule, sign out, log out, logout]
   transcript: { output_chars: 4000, detail_chars: 1500 }
   chat: { collapse_after: 6 }
   claude_code:
@@ -76,7 +81,8 @@ envelope:
     access: only when you need access you do not have, a list like
       [{"capability": "fs.read", "scope": "/path/to/folder", "why": "to read the landing page copy"}]
       capability is one of fs.read, fs.write, cmd.run (scope = a command pattern, "*" for any arguments, e.g. "npm test" or "curl *"),
-      net.fetch (scope = a domain). The founder sees it as a request and answers; do not ask in prose only.
+      net.fetch (scope = a domain), net.session (browse signed in as the founder; scope = one site), net.act (act as the founder there:
+      post, send, buy, delete). The founder sees it as a request and answers; do not ask in prose only.
   quest_instructions: |
     You can draft a QUEST: a repeatable workflow the crew runs step by step. Only when the founder asks for a
     workflow, a process or a recurring job, add "quest" to the ov block:

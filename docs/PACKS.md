@@ -94,7 +94,7 @@ providers:
 | Kind | What it controls |
 | --- | --- |
 | `interactions` | XP rules, the level curve, how members react to events, the reply-envelope instructions, and the crew browser's limits (`agent.browser`) |
-| `permissions` | Writ capabilities (`fs.read`, `fs.write`, `cmd.run`, `net.fetch`), their scopes and never-lists, and the folder picker |
+| `permissions` | Writ capabilities (`fs.read`, `fs.write`, `cmd.run`, `net.fetch`, `net.session`, `net.act`), their scopes, never-lists and whether they can be given for good (`seal: every_time` means never "always"), and the folder picker |
 | `scenery` | Map size, moods, biomes, props, houses and labels |
 | `default_art` | Which sprite sheet and row each character and tile comes from (`packs/core/art`) |
 | `game_commands` | What members can do in the vorld (walk, say, emote), and the panels they can open |

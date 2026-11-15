@@ -393,3 +393,5 @@ select.field.small { padding-right: 26px; }
 .bd-foot { font-size: 12px; opacity: .75; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .browser-dock.mini, .browser-dock.beside.mini { width: auto; max-width: min(360px, calc(100% - 32px)); }
 @media (max-width: 640px) { .browser-dock, .browser-dock.big, .browser-dock.beside { left: 12px; bottom: 100px; width: calc(100% - 24px); } }
+.signin-sites { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 8px; }
+.bd-url.signed { background: color-mix(in srgb, var(--gold) 45%, #fffaf0); font-weight: 700; }

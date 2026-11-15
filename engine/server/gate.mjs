@@ -82,7 +82,12 @@ export function checkScope(ctx, capability, scope) {
     if (isNever(ctx, 'cmd.run', pattern)) bad('this command can never be granted');
     return pattern;
   }
-  if (capability === 'net.fetch') { const d = s.replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase(); if (!/^(\*|[a-z0-9.-]+\.[a-z]{2,})$/.test(d)) bad('name a domain like example.com'); return d; }
+  if (capability === 'net.fetch' || capability === 'net.session' || capability === 'net.act') {
+    const d = s.replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase();
+    if (!/^(\*|[a-z0-9.-]+\.[a-z]{2,})$/.test(d)) bad('name a domain like example.com');
+    if (d === '*' && capability !== 'net.fetch') bad('name one site: signed-in access is never given for every site');
+    return d;
+  }
   if (!s) bad('the scope is empty');
   return s.slice(0, 200);
 }

@@ -1,28 +1,40 @@
 // A small browser for the crew. Each member that browses gets its OWN private Chrome profile (no cookies of yours),
 // driven headless through playwright-core and the Chrome or Edge already installed on this computer.
 //
+// Two kinds of browsing, never mixed:
+//  - plain:  a clean profile. Pages must be on a domain the member holds a net.fetch writ for.
+//  - signed: the founder's saved sign-ins (see openSignIn). Only with browser_open{signed_in:true}, only on domains
+//            the member holds a net.session writ for, and anything that posts, sends, buys or deletes (a submit-type
+//            click, a form POST, Enter in a comment box) also needs a net.act writ. The founder signs in themselves, in a
+//            real window; members never see or type passwords.
+//
 // Safety, enforced here on every call (not by the model):
-//  - every page the browser navigates to must be on a domain the member holds a net.fetch writ for (re-read on each
-//    call, so a writ granted a moment ago applies at once); redirects and link clicks are checked the same way;
+//  - writs are re-read on each call, so one granted a moment ago applies at once; redirects, link clicks and frames
+//    are checked the same way (redirects are followed by us, one hop at a time: Chrome follows them inside its network
+//    stack without letting us intercept);
 //  - addresses on this computer or network (localhost, 192.168.x.x, ...) are always blocked, so a page can never reach
 //    the OpenVorld server or your router;
 //  - no typing into password or payment fields, no downloads, no file: or other non-web addresses.
 //
-// While a member browses, small JPEG frames are pushed to the game ({type:'browser', role, url, title, image, active})
-// so the founder can watch.
+// While a member browses, small JPEG frames are pushed to the game ({type:'browser', role, url, title, image, active,
+// signed}) so the founder can watch.
 import fs from 'node:fs';
+import path from 'node:path';
 import net from 'node:net';
 import dns from 'node:dns/promises';
 import crypto from 'node:crypto';
 import { grantsOf } from './gate.mjs';
 import { BROWSER_TOOLS, isBrowserTool } from './browser-tools.mjs';
 
-const sessions = new Map();     // `${vorld}:${role}` -> session
-let shared = null;              // the one Chrome process every session's context lives in
+const sessions = new Map();     // `${vorld}:${role}:${kind}` -> session
+const current = new Map();      // `${vorld}:${role}` -> the kind the member last opened a page in
+let shared = null;              // the one headless Chrome process every session's context lives in
+const signins = new Map();      // vorld id -> the open sign-in window
 
 const DEFAULTS = {
   enabled: true, viewport: { width: 1024, height: 640 }, text_chars: 12000, max_elements: 60,
   idle_seconds: 300, active_seconds: 6, frame_ms: 900, jpeg_quality: 55, nav_timeout_seconds: 20, allow_private: false,
+  act_words: ['post', 'publish', 'send', 'submit', 'buy', 'purchase', 'pay', 'order', 'checkout', 'delete', 'remove', 'confirm', 'subscribe', 'unsubscribe', 'follow', 'unfollow', 'like', 'comment', 'reply', 'share', 'upload', 'save', 'update', 'book', 'reserve', 'approve', 'accept', 'withdraw', 'transfer', 'donate', 'schedule', 'sign out', 'log out', 'logout'],
 };
 const cfgOf = (ctx) => ({ ...DEFAULTS, ...(ctx.interactions?.agent?.browser ?? {}), ...(process.env.OV_BROWSER_ALLOW_PRIVATE === '1' ? { allow_private: true } : {}) });
 
@@ -37,15 +49,16 @@ export const findChrome = () => [process.env.OV_CHROME, ...(CHROME_PATHS[process
 export const browserAvailable = () => !!findChrome();
 
 async function chrome() {
-  const path = findChrome();
-  if (!path) throw new Error('Browsing needs Google Chrome or Microsoft Edge installed on this computer.');
+  const exe = findChrome();
+  if (!exe) throw new Error('Browsing needs Google Chrome or Microsoft Edge installed on this computer.');
   if (shared) { try { const b = await shared; if (b.isConnected()) return b; } catch { /* launch again */ } shared = null; }
-  shared = import('playwright-core').then(({ chromium }) => chromium.launch({ executablePath: path, headless: true, args: ['--disable-dev-shm-usage', '--mute-audio'] }));
+  const mine = shared = import('playwright-core').then(({ chromium }) => chromium.launch({ executablePath: exe, headless: true, args: ['--disable-dev-shm-usage', '--mute-audio'] }));
   try {
-    const b = await shared;
-    b.on('disconnected', () => { shared = null; for (const [k, s] of sessions) { stopTimers(s); sessions.delete(k); } });
+    const b = await mine;
+    // only this browser's own state: a slow "disconnected" from an old Chrome must not wipe a newer one
+    b.on('disconnected', () => { if (shared === mine) shared = null; for (const [k, s] of sessions) if (s.browser === b) { stopTimers(s); sessions.delete(k); } });
     return b;
-  } catch (e) { shared = null; throw new Error(`Could not start the browser: ${String(e.message).split('\n')[0]}`); }
+  } catch (e) { if (shared === mine) shared = null; throw new Error(`Could not start the browser: ${String(e.message).split('\n')[0]}`); }
 }
 
 // ---------- the rules ----------
@@ -68,33 +81,106 @@ export async function isPrivateHost(host) {
   dnsCache.set(h, { at: Date.now(), priv });
   return priv;
 }
-export const domainsOf = (ctx, role) => grantsOf(ctx, role).filter((g) => g.capability === 'net.fetch').map((g) => g.scope);
+const CAP = { plain: 'net.fetch', signed: 'net.session' };
+/** The domains a member may open in a kind of browsing (plain = net.fetch writs, signed = net.session writs). */
+export const domainsOf = (ctx, role, kind = 'plain') => grantsOf(ctx, role).filter((g) => g.capability === CAP[kind]).map((g) => g.scope);
 export const allowsHost = (domains, host) => domains.includes('*') || domains.some((d) => host === d || host.endsWith('.' + d));
+/** Does the member hold a writ of this capability that covers the host? */
+const holds = (ctx, role, capability, host) => allowsHost(grantsOf(ctx, role).filter((g) => g.capability === capability).map((g) => g.scope), host);
 
 const fail = (msg) => { throw new Error(msg); };
 
+// ---------- the founder's saved sign-ins ----------
+const sessionFile = (ctx) => path.join(ctx.dir, 'browser', 'session.json');
+/** The saved sign-ins (Playwright storage state: cookies and local storage), or undefined. */
+function loadSession(ctx) { try { return JSON.parse(fs.readFileSync(sessionFile(ctx), 'utf8')); } catch { return undefined; } }
+export function saveSession(ctx, state) {
+  fs.mkdirSync(path.dirname(sessionFile(ctx)), { recursive: true, mode: 0o700 });
+  fs.writeFileSync(sessionFile(ctx), JSON.stringify(state), { mode: 0o600 });
+}
+const SLD = new Set(['co', 'com', 'org', 'net', 'gov', 'edu', 'ac']);
+const siteOf = (domain) => { const p = String(domain).replace(/^\./, '').toLowerCase().split('.'); return p.length > 2 && SLD.has(p.at(-2)) ? p.slice(-3).join('.') : p.slice(-2).join('.'); };
+/** Sites the founder is signed in to: [{ domain, cookies }], most cookies first. */
+export function sessionSites(ctx) {
+  const counts = new Map();
+  for (const c of loadSession(ctx)?.cookies ?? []) counts.set(siteOf(c.domain), (counts.get(siteOf(c.domain)) ?? 0) + 1);
+  return [...counts].map(([domain, cookies]) => ({ domain, cookies })).sort((a, b) => b.cookies - a.cookies || a.domain.localeCompare(b.domain));
+}
+export const signInState = (ctx) => ({ available: browserAvailable(), open: signins.has(ctx.id), sites: sessionSites(ctx) });
+
+/**
+ * Open a real, visible Chrome window for the founder to sign in to sites. Whatever they sign in to is saved (cookies
+ * and local storage, on this computer only) when they close the window; crew members use it only through writs.
+ * Resolves once the window is up. `emit` hears { type: 'signin', open, sites } when it closes.
+ */
+export async function openSignIn(ctx, { url = '', emit = null } = {}) {
+  let start = '';
+  if (url) {
+    let u; try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`); } catch { fail('that is not a web address'); }
+    if (!/^https?:$/.test(u.protocol)) fail('that is not a web address');
+    start = u.href;
+  }
+  if (signins.has(ctx.id)) { await signins.get(ctx.id).page.bringToFront().catch(() => {}); return signInState(ctx); }
+  const exe = findChrome();
+  if (!exe) fail('Signing in needs Google Chrome or Microsoft Edge installed on this computer.');
+  const { chromium } = await import('playwright-core');
+  // not flagged as automated: this is the founder's own window, and some sign-in pages refuse automated browsers
+  const browser = await chromium.launch({ executablePath: exe, headless: process.env.OV_SIGNIN_HEADLESS === '1', ignoreDefaultArgs: ['--enable-automation'], args: ['--no-first-run', '--no-default-browser-check'] });
+  const context = await browser.newContext({ viewport: null, storageState: loadSession(ctx) });
+  const w = { browser, context, page: await context.newPage(), timer: null, debounce: null };
+  signins.set(ctx.id, w);
+  const save = async () => { const st = await context.storageState({ indexedDB: true }).catch(() => null); if (st) saveSession(ctx, st); };
+  w.save = save;
+  w.timer = setInterval(save, 3000); w.timer.unref?.();
+  const later = () => { clearTimeout(w.debounce); w.debounce = setTimeout(save, 600); };
+  context.on('page', (p) => p.on('framenavigated', later));
+  w.page.on('framenavigated', later);
+  browser.on('disconnected', async () => {
+    clearInterval(w.timer); clearTimeout(w.debounce);
+    signins.delete(ctx.id);
+    await closeKind(ctx, 'signed');          // members pick up the new sign-ins the next time they open a page
+    emit?.({ type: 'signin', ...signInState(ctx) });
+  });
+  if (start) await w.page.goto(start, { timeout: 20000, waitUntil: 'domcontentloaded' }).catch(() => {});
+  emit?.({ type: 'signin', ...signInState(ctx) });
+  return signInState(ctx);
+}
+/** For tests: the open sign-in window ({ context, page, save, browser }), or null. */
+export const signInWindow = (ctx) => signins.get(ctx.id) ?? null;
+
+/** Delete every saved sign-in. */
+export async function forgetSignIns(ctx) {
+  try { fs.rmSync(sessionFile(ctx), { force: true }); } catch { /* nothing saved */ }
+  await closeKind(ctx, 'signed');
+  return signInState(ctx);
+}
+
 // ---------- sessions ----------
-const keyOf = (ctx, role) => `${ctx.id}:${role}`;
+const rkey = (ctx, role) => `${ctx.id}:${role}`;
+const skey = (ctx, role, kind) => `${rkey(ctx, role)}:${kind}`;
 const stopTimers = (s) => { clearInterval(s.timer); clearTimeout(s.idle); s.timer = s.idle = null; };
 
-async function sessionOf(ctx, role) {
-  const key = keyOf(ctx, role), cfg = cfgOf(ctx);
+async function sessionOf(ctx, role, kind) {
+  const key = skey(ctx, role, kind), cfg = cfgOf(ctx);
   let s = sessions.get(key);
   if (s?.page && !s.page.isClosed()) return s;
   const browser = await chrome();
   const ua = `Mozilla/5.0 (${process.platform === 'darwin' ? 'Macintosh; Intel Mac OS X 10_15_7' : process.platform === 'win32' ? 'Windows NT 10.0; Win64; x64' : 'X11; Linux x86_64'}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browser.version()} Safari/537.36 OpenVorld/1`;
-  const context = await browser.newContext({ viewport: cfg.viewport, acceptDownloads: false, serviceWorkers: 'block', locale: 'en-US', userAgent: ua, permissions: [] });
-  s = { key, ctx, role, context, page: null, queue: Promise.resolve(), denied: [], hops: 0, last: null, hash: '', timer: null, idle: null, activeUntil: 0, emit: null, cfg };
+  const context = await browser.newContext({ viewport: cfg.viewport, acceptDownloads: false, serviceWorkers: 'block', locale: 'en-US', userAgent: ua, permissions: [], ...(kind === 'signed' ? { storageState: loadSession(ctx) } : {}) });
+  s = { key, ctx, role, kind, browser, context, page: null, queue: Promise.resolve(), denied: [], hops: 0, last: null, hash: '', timer: null, idle: null, activeUntil: 0, emit: null, cfg };
   context.on('page', (p) => { s.page = p; p.on('dialog', (d) => d.dismiss().catch(() => {})); });
   await context.route('**/*', async (route) => {
     const req = route.request();
     let u; try { u = new URL(req.url()); } catch { return route.abort('blockedbyclient'); }
     if (!/^https?:$/.test(u.protocol)) return route.abort('blockedbyclient');
-    if (!s.cfg.allow_private && await isPrivateHost(u.hostname)) { s.denied.push({ host: u.hostname, private: true }); return route.abort('blockedbyclient'); }
+    // a blocked page the member asked for is reported; a blocked frame, ad or tracker on an allowed page is just not loaded
+    const main = req.resourceType() === 'document' && (() => { try { return !req.frame().parentFrame(); } catch { return true; } })();
+    if (!s.cfg.allow_private && await isPrivateHost(u.hostname)) { if (main) s.denied.push({ host: u.hostname, private: true }); return route.abort('blockedbyclient'); }
     if (req.resourceType() !== 'document') return route.continue();
-    // pages and frames: the domain must be granted, and redirects are followed HERE, one hop at a time. (Chrome follows
-    // redirects inside its network stack without asking us, so a granted site could otherwise send the browser anywhere.)
-    if (!allowsHost(domainsOf(s.ctx, s.role), u.hostname)) { s.denied.push({ host: u.hostname, url: u.href }); return route.abort('blockedbyclient'); }
+    // pages and frames: the domain must be granted, and redirects are followed HERE, one hop at a time
+    if (!allowsHost(domainsOf(s.ctx, s.role, s.kind), u.hostname)) { if (main) s.denied.push({ host: u.hostname, url: u.href }); return route.abort('blockedbyclient'); }
+    // a form submission (POST) while signed in changes things as the founder
+    if (s.kind === 'signed' && !['GET', 'HEAD'].includes(req.method()) && !holds(s.ctx, s.role, 'net.act', u.hostname)) { if (main) s.denied.push({ host: u.hostname, url: u.href, act: true }); return route.abort('blockedbyclient'); }
     let resp;
     try { resp = await route.fetch({ maxRedirects: 0, timeout: 30000 }); } catch { return route.abort('failed'); }
     const loc = resp.headers().location;
@@ -116,15 +202,23 @@ async function sessionOf(ctx, role) {
 async function closeSession(s) {
   stopTimers(s);
   sessions.delete(s.key);
-  s.emit?.({ type: 'browser', role: s.role, closed: true });
+  if (![...sessions.values()].some((x) => x.ctx.id === s.ctx.id && x.role === s.role)) { current.delete(rkey(s.ctx, s.role)); s.emit?.({ type: 'browser', role: s.role, closed: true }); }
   await s.context.close().catch(() => {});
   if (!sessions.size && shared) { const b = shared; shared = null; b.then((x) => x.close()).catch(() => {}); }
 }
-export async function close(ctx, role) { const s = sessions.get(keyOf(ctx, role)); if (s) await closeSession(s); }
-export async function closeAll() { for (const s of [...sessions.values()]) await closeSession(s); }
+async function closeKind(ctx, kind) { for (const s of [...sessions.values()]) if (s.ctx.id === ctx.id && s.kind === kind) await closeSession(s); }
+export async function close(ctx, role) { for (const s of [...sessions.values()]) if (s.ctx.id === ctx.id && s.role === role) await closeSession(s); }
+export async function closeAll() {
+  for (const s of [...sessions.values()]) await closeSession(s);
+  for (const w of [...signins.values()]) { clearInterval(w.timer); await w.browser.close().catch(() => {}); }
+  signins.clear();
+}
 
 /** The last frame this member's browser showed (for a panel opened later), or null. */
-export const latest = (ctx, role) => { const s = sessions.get(keyOf(ctx, role)); return s?.last ? { ...s.last, active: !!s.timer } : null; };
+export function latest(ctx, role) {
+  const list = [...sessions.values()].filter((s) => s.ctx.id === ctx.id && s.role === role && s.last).sort((a, b) => b.last.at - a.last.at);
+  return list[0] ? { ...list[0].last, active: !!list[0].timer, signed: list[0].kind === 'signed' } : null;
+}
 
 // ---------- the live view ----------
 async function frame(s) {
@@ -133,7 +227,7 @@ async function frame(s) {
     const buf = await s.page.screenshot({ type: 'jpeg', quality: s.cfg.jpeg_quality, timeout: 4000 });
     const hash = crypto.createHash('md5').update(buf).digest('hex');
     s.last = { url: s.page.url(), title: await s.page.title().catch(() => ''), image: buf.toString('base64'), at: Date.now() };
-    if (hash !== s.hash || s.final) { s.hash = hash; s.emit?.({ type: 'browser', role: s.role, ...s.last, active: !!s.timer }); }
+    if (hash !== s.hash || s.final) { s.hash = hash; s.emit?.({ type: 'browser', role: s.role, ...s.last, active: !!s.timer, signed: s.kind === 'signed' }); }
   } catch { /* the page is changing; the next frame will do */ }
 }
 /** Keep sending frames while the member is busy; one last frame when it stops. */
@@ -154,31 +248,45 @@ async function snapshot(s) {
   const { max_elements: maxEls, text_chars: maxChars } = s.cfg;
   // belt and braces: whatever happened on the way, the member only ever reads a page on an allowed domain
   const here = (() => { try { return new URL(s.page.url()); } catch { return null; } })();
-  if (here && /^https?:$/.test(here.protocol) && (!allowsHost(domainsOf(s.ctx, s.role), here.hostname) || (!s.cfg.allow_private && await isPrivateHost(here.hostname)))) {
+  if (here && /^https?:$/.test(here.protocol) && (!allowsHost(domainsOf(s.ctx, s.role, s.kind), here.hostname) || (!s.cfg.allow_private && await isPrivateHost(here.hostname)))) {
     await s.page.goto('about:blank').catch(() => {});
     fail(`the page ended up on ${here.hostname}, which this member may not read`);
   }
-  const d = await s.page.evaluate(({ maxEls }) => {
-    document.querySelectorAll('[data-ov-id]').forEach((e) => e.removeAttribute('data-ov-id'));
+  const signed = s.kind === 'signed';
+  const actSource = `(?:^|[^a-z])(?:${(s.cfg.act_words ?? []).map((w) => String(w).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?:[^a-z]|$)`;
+  const d = await s.page.evaluate(({ maxEls, signed, actSource }) => {
+    document.querySelectorAll('[data-ov-id]').forEach((e) => { e.removeAttribute('data-ov-id'); e.removeAttribute('data-ov-act'); });
+    const actRe = new RegExp(actSource, 'i');
     const visible = (e) => { const r = e.getBoundingClientRect(), st = getComputedStyle(e); return r.width > 2 && r.height > 2 && st.visibility !== 'hidden' && st.display !== 'none' && r.bottom > -innerHeight && r.top < innerHeight * 4; };
     const label = (e) => (e.getAttribute('aria-label') || e.innerText || e.placeholder || e.getAttribute('title') || e.name || e.value || '').replace(/\s+/g, ' ').trim().slice(0, 80);
+    // while signed in, a click that submits a form (not a plain search) or whose label says it posts, sends, buys or deletes acts as the founder
+    const acts = (e, tag, type, text) => {
+      if (!signed) return false;
+      const submits = type === 'submit' || (tag === 'button' && !type && e.form);
+      if (submits && e.form && (e.form.getAttribute('method') || 'get').toLowerCase() !== 'get') return true;
+      return actRe.test(text);
+    };
     const els = [...document.querySelectorAll('a[href], button, input:not([type=hidden]), select, textarea, [role=button], [role=link]')].filter(visible).slice(0, maxEls);
     const items = els.map((e, i) => {
       e.setAttribute('data-ov-id', String(i + 1));
-      const tag = e.tagName.toLowerCase(), type = (e.getAttribute('type') || '').toLowerCase();
-      if (tag === 'a') return `[${i + 1}] link "${label(e)}" → ${String(e.href).slice(0, 120)}`;
-      if (tag === 'select') return `[${i + 1}] select "${label(e) || e.name}" = "${e.value}"`;
-      if (tag === 'input' && ['submit', 'button', 'reset'].includes(type)) return `[${i + 1}] button "${label(e)}"`;
-      if (tag === 'input' && ['checkbox', 'radio'].includes(type)) return `[${i + 1}] ${type} "${label(e)}" ${e.checked ? '(checked)' : ''}`;
-      if (tag === 'input' || tag === 'textarea') return type === 'password' ? `[${i + 1}] password field (you cannot type here)` : `[${i + 1}] field${type ? `(${type})` : ''} "${label(e)}" = "${String(e.value).slice(0, 60)}"`;
-      return `[${i + 1}] button "${label(e)}"`;
+      const tag = e.tagName.toLowerCase(), type = (e.getAttribute('type') || '').toLowerCase(), text = label(e);
+      const typing = (tag === 'input' && !['submit', 'button', 'reset', 'checkbox', 'radio'].includes(type)) || tag === 'textarea' || tag === 'select';
+      const act = !typing && acts(e, tag, type, text);
+      if (act) e.setAttribute('data-ov-act', '1');
+      const flag = act ? ' (acts as you: needs approval)' : '';
+      if (tag === 'a') return `[${i + 1}] link "${text}" → ${String(e.href).slice(0, 120)}${flag}`;
+      if (tag === 'select') return `[${i + 1}] select "${text || e.name}" = "${e.value}"`;
+      if (tag === 'input' && ['submit', 'button', 'reset'].includes(type)) return `[${i + 1}] button "${text}"${flag}`;
+      if (tag === 'input' && ['checkbox', 'radio'].includes(type)) return `[${i + 1}] ${type} "${text}" ${e.checked ? '(checked)' : ''}`;
+      if (tag === 'input' || tag === 'textarea') return type === 'password' ? `[${i + 1}] password field (you cannot type here)` : `[${i + 1}] field${type ? `(${type})` : ''} "${text}" = "${String(e.value).slice(0, 60)}"`;
+      return `[${i + 1}] button "${text}"${flag}`;
     });
     const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
     return { title: document.title, url: location.href, text: document.body?.innerText ?? '', items, percent: Math.min(100, Math.round((scrollY / max) * 100)) };
-  }, { maxEls });
+  }, { maxEls, signed, actSource });
   const text = d.text.replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n\n').trim();
   const body = text.length > maxChars ? `${text.slice(0, maxChars)}\n… (${text.length - maxChars} more characters; use browser_read with scroll to see more)` : text;
-  return `Page: ${d.title || '(no title)'}\nURL: ${d.url}\nScrolled: ${d.percent}%\n\n${body || '(no text on this page)'}\n\nElements:\n${d.items.join('\n') || '(none)'}`;
+  return `Page: ${d.title || '(no title)'}\nURL: ${d.url}${signed ? '\nSigned in as the founder: be careful, and never act without approval' : ''}\nScrolled: ${d.percent}%\n\n${body || '(no text on this page)'}\n\nElements:\n${d.items.join('\n') || '(none)'}`;
 }
 
 /** Turn pages the browser refused into writ requests, and say so. */
@@ -186,15 +294,25 @@ function settle(s, onRequest) {
   const denied = s.denied.splice(0);
   const seen = new Set(), notes = [];
   for (const d of denied) {
-    if (seen.has(d.host)) continue; seen.add(d.host);
+    const id = `${d.host}|${d.act ? 'act' : ''}`;
+    if (seen.has(id)) continue; seen.add(id);
     if (d.private) { notes.push(`${d.host} is on this computer or network and is always blocked`); continue; }
-    onRequest?.({ capability: 'net.fetch', scope: d.host, why: `open ${String(d.url ?? d.host).slice(0, 80)}` });
+    if (d.act) { onRequest?.({ capability: 'net.act', scope: d.host, why: `submit a form at ${String(d.url ?? d.host).slice(0, 80)}` }); notes.push(`submitting at ${d.host} acts as the founder. The founder has been asked to approve; wait for their answer`); continue; }
+    onRequest?.({ capability: CAP[s.kind], scope: d.host, why: `open ${String(d.url ?? d.host).slice(0, 80)}${s.kind === 'signed' ? ' signed in as you' : ''}` });
     notes.push(`no writ for ${d.host}. The founder has been asked; wait for their answer`);
   }
   return notes;
 }
 
 const settled = async (s) => { await s.page.waitForLoadState('domcontentloaded', { timeout: 5000 }).catch(() => {}); await s.page.waitForLoadState('networkidle', { timeout: 2500 }).catch(() => {}); };
+
+/** Acting as the founder (signed in only): ask for a net.act writ, or say why not. */
+function needAct(s, onRequest, what) {
+  const host = (() => { try { return new URL(s.page.url()).hostname; } catch { return ''; } })();
+  if (holds(s.ctx, s.role, 'net.act', host)) return;
+  onRequest?.({ capability: 'net.act', scope: host, why: what });
+  fail(`${what} would act as the founder on ${host}. The founder has been asked to approve; wait for their answer`);
+}
 
 const IMPL = {
   async browser_open(s, { url }, o) {
@@ -216,19 +334,25 @@ const IMPL = {
   async browser_click(s, { id }, o) {
     const el = s.page.locator(`[data-ov-id="${Number(id)}"]`);
     if (!(await el.count())) fail(`there is no element [${id}] on this page; call browser_read to get the current numbers`);
+    if (s.kind === 'signed' && (await el.first().getAttribute('data-ov-act'))) {
+      const text = await el.first().evaluate((e) => (e.getAttribute('aria-label') || e.innerText || e.value || '').replace(/\s+/g, ' ').trim().slice(0, 60));
+      needAct(s, o.onRequest, `clicking "${text}"`);
+    }
     await el.first().click({ timeout: 5000 }).catch((e) => fail(`could not click [${id}]: ${String(e.message).split('\n')[0]}`));
     await settled(s);
     const notes = settle(s, o.onRequest);
     if (notes.length) { if (/^chrome-error:/.test(s.page.url())) await s.page.goBack().catch(() => {}); fail(`${notes.join('; ')}. You are still on the previous page`); }
     return snapshot(s);
   },
-  async browser_type(s, { id, text, submit }) {
+  async browser_type(s, { id, text, submit }, o) {
     const el = s.page.locator(`[data-ov-id="${Number(id)}"]`);
     if (!(await el.count())) fail(`there is no element [${id}] on this page; call browser_read to get the current numbers`);
-    const info = await el.first().evaluate((e) => ({ type: (e.getAttribute('type') || '').toLowerCase(), hint: `${e.name ?? ''} ${e.id ?? ''} ${e.getAttribute('autocomplete') ?? ''} ${e.getAttribute('aria-label') ?? ''}` }));
+    const info = await el.first().evaluate((e) => ({ type: (e.getAttribute('type') || '').toLowerCase(), hint: `${e.name ?? ''} ${e.id ?? ''} ${e.getAttribute('autocomplete') ?? ''} ${e.getAttribute('aria-label') ?? ''}`, label: (e.getAttribute('aria-label') || e.placeholder || e.name || '').slice(0, 40), inForm: !!e.form, method: e.form ? (e.form.getAttribute('method') || 'get').toLowerCase() : null }));
     if (info.type === 'password' || /passw|passwd|card.?n|cc-|cvv|cvc|\bssn\b|iban/i.test(info.hint)) fail('you cannot type passwords or payment details; ask the founder to do that themselves');
+    // Enter in a signed-in comment box or message field posts it; Enter in a plain search form does not
+    if (submit && s.kind === 'signed' && !(info.inForm && info.method === 'get') && info.type !== 'search') needAct(s, o.onRequest, `pressing Enter in "${info.label || 'a field'}"`);
     await el.first().fill(String(text), { timeout: 5000 }).catch((e) => fail(`could not type into [${id}]: ${String(e.message).split('\n')[0]}`));
-    if (submit) { await s.page.keyboard.press('Enter'); await settled(s); }
+    if (submit) { await s.page.keyboard.press('Enter'); await settled(s); const notes = settle(s, o.onRequest); if (notes.length) fail(notes.join('; ')); }
     return snapshot(s);
   },
   async browser_back(s) {
@@ -240,24 +364,32 @@ const IMPL = {
 
 /**
  * Run one browser tool for a member. `emit` receives live frames; `onRequest` receives writ requests for sites the
- * member may not open yet. Rejects with a plain message the model can act on.
+ * member may not open yet (net.fetch), signed-in use (net.session) or acting as the founder (net.act). Rejects with a
+ * plain message the model can act on.
  */
 export async function callTool(ctx, role, name, args = {}, { emit = null, onRequest = null } = {}) {
   if (!isBrowserTool(name)) fail(`unknown tool ${name}`);
   const cfg = cfgOf(ctx);
   if (cfg.enabled === false) fail('the browser is switched off for this vorld');
+  let kind;
   // before opening Chrome at all: a page the member has no writ for, or that is private, never starts a browser
   if (name === 'browser_open') {
     let u; try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(String(args.url)) ? String(args.url) : `https://${args.url}`); } catch { fail('that is not a web address'); }
     if (!/^https?:$/.test(u.protocol)) fail('only http and https addresses can be opened');
     if (!cfg.allow_private && await isPrivateHost(u.hostname)) fail(`${u.hostname} is on this computer or network and is always blocked`);
     if (net.isIP(u.hostname.replace(/^\[|\]$/g, '')) && !cfg.allow_private) fail('open sites by their domain name, not by an IP address');
-    if (!allowsHost(domainsOf(ctx, role), u.hostname)) {
-      onRequest?.({ capability: 'net.fetch', scope: u.hostname, why: `open ${u.href.slice(0, 80)}` });
-      fail(`no writ for ${u.hostname}. The founder has been asked; wait for their answer.`);
+    kind = args.signed_in === true ? 'signed' : 'plain';
+    if (kind === 'signed' && !sessionSites(ctx).length) fail('the founder has not signed in to anything yet. Ask them to sign in to this site first (Settings > Signed-in browsing), then try again');
+    if (!allowsHost(domainsOf(ctx, role, kind), u.hostname)) {
+      onRequest?.({ capability: CAP[kind], scope: u.hostname, why: `open ${u.href.slice(0, 80)}${kind === 'signed' ? ' signed in as you' : ''}` });
+      fail(`no writ for ${u.hostname}${kind === 'signed' ? ' (signed in)' : ''}. The founder has been asked; wait for their answer.`);
     }
-  } else if (!sessions.has(keyOf(ctx, role))) fail('no page is open yet; use browser_open first');
-  const s = await sessionOf(ctx, role);
+    current.set(rkey(ctx, role), kind);
+  } else {
+    kind = current.get(rkey(ctx, role));
+    if (!kind || !sessions.has(skey(ctx, role, kind))) fail('no page is open yet; use browser_open first');
+  }
+  const s = await sessionOf(ctx, role, kind);
   s.emit = emit ?? s.emit; s.cfg = cfg;
   // one action at a time per member, in order
   const run = s.queue.then(async () => {

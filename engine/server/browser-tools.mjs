@@ -5,8 +5,8 @@ export const BROWSER_SERVER = 'ov_browser';
 const WATCH = 'Your own private browser; the founder can watch it in the game.';
 
 export const BROWSER_TOOLS = [
-  { name: 'browser_open', description: `Open a web page. ${WATCH} Each site needs a writ: if you do not have one, the founder is asked. You never sign in or type passwords; if a page needs a login, tell the founder. Returns the page text and the numbered links, buttons and fields.`,
-    properties: { url: { type: 'string', description: 'Address, e.g. https://example.com/pricing' } }, required: ['url'] },
+  { name: 'browser_open', description: `Open a web page. ${WATCH} Each site needs a writ: if you do not have one, the founder is asked. You never sign in or type passwords. If a page needs a login and the founder has signed in on this computer, open it with signed_in true: that needs its own writ (net.session) and anything that posts, sends, buys or deletes needs another (net.act). Returns the page text and the numbered links, buttons and fields.`,
+    properties: { url: { type: 'string', description: 'Address, e.g. https://example.com/pricing' }, signed_in: { type: 'boolean', description: "Use the founder's saved sign-ins for this site" } }, required: ['url'] },
   { name: 'browser_read', description: 'Read the current page again (text plus numbered links, buttons and fields), optionally scrolling first.',
     properties: { scroll: { type: 'string', enum: ['down', 'up', 'top'], description: 'Scroll before reading' } }, required: [] },
   { name: 'browser_click', description: 'Click a numbered link or button from the last page reading. Returns the page afterwards.',

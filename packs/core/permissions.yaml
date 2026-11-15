@@ -56,3 +56,12 @@ capabilities:
     label: "visit websites at"                 # "<name> asks to <label> <scope>"
     risk: medium
     scope: domain                     # e.g. "api.example.com", "*" means open web search
+  net.session:
+    label: "browse signed in as you at"        # the founder signs in themselves (Settings > Signed-in browsing); members never see passwords
+    risk: high
+    scope: domain                     # one site, e.g. "youtube.com"; never "*"
+  net.act:
+    label: "act as you (post, send, buy, delete) at"
+    risk: high
+    scope: domain
+    seal: every_time                  # never "always": the founder approves this time or for the session

@@ -42,7 +42,7 @@ export function BrowserDock() {
       </header>
       {!mini && (
         <>
-          <div className="bd-url" title={frame.url}>🌐 {shorten(frame.url)}</div>
+          <div className={`bd-url ${frame.signed ? 'signed' : ''}`} title={frame.url}>{frame.signed ? '🔒 signed in as you · ' : '🌐 '}{shorten(frame.url)}</div>
           <img className="bd-shot" src={`data:image/jpeg;base64,${frame.image}`} alt={`${nameOf(current)}'s browser: ${frame.title || frame.url}`} />
           <footer className="bd-foot" title="View only">{frame.active ? 'Live' : 'Idle'} · {frame.title || 'untitled page'}</footer>
         </>

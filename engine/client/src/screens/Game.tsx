@@ -61,6 +61,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
       if (m.type === 'vorld') void refreshVorld().catch((e) => toast({ kind: 'error', title: e.message }));
       if (m.type === 'thread.event') handleThreadEvent(m);
       if (m.type === 'browser') handleBrowser(m);
+      if (m.type === 'signin') emit('signin', m);
       if (m.type === 'game') handleGame(m);
       if (m.type === 'quest') handleQuest(m);
       if (m.type === 'command') {
@@ -108,7 +109,7 @@ function handleBrowser(m: any) {
   setState((s) => {
     const next = { ...s.browsers };
     if (m.closed) delete next[m.role];
-    else next[m.role] = { ...next[m.role], ...(m.image ? { url: m.url, title: m.title, image: m.image } : {}), active: !!m.active, at: Date.now() };
+    else next[m.role] = { ...next[m.role], ...(m.image ? { url: m.url, title: m.title, image: m.image, signed: !!m.signed } : {}), active: !!m.active, at: Date.now() };
     return { browsers: next };
   });
   const b = getState().browsers;

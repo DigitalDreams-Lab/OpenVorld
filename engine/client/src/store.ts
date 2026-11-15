@@ -3,7 +3,7 @@ import { useSyncExternalStore } from 'react';
 
 export type Toast = { id: number; kind: 'deed' | 'level' | 'xp' | 'info' | 'error' | 'quest'; title: string; body?: string; xp?: number; icon?: string };
 export type Live = { role?: string; steps: any[]; working: boolean; error?: string | null };
-export type BrowserFrame = { url?: string; title?: string; image?: string; active?: boolean; at?: number };
+export type BrowserFrame = { url?: string; title?: string; image?: string; active?: boolean; signed?: boolean; at?: number };
 export type Modal = null | 'quests' | 'deeds' | 'settings' | 'member' | 'add';
 
 type State = {

@@ -2,7 +2,7 @@
 // you name, never stored), the project folder, the private workspaces folder, the writs you granted, and sound.
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import { emit, setState, toast, useStore } from '../store';
+import { emit, on, setState, toast, useStore } from '../store';
 import { play, setSfxVolume } from '../audio/sfx';
 import { WritsList } from './WritsList';
 import { FolderPicker, useFolderDialog } from './FolderPicker';
@@ -55,6 +55,7 @@ export function Settings() {
         <p className="muted small">Keys are never saved: set the environment variable before starting OpenVorld.</p>
 
         <ProjectFolder />
+        <SignedIn />
         <DefaultFolder />
         <WritsList />
         <h3>Sound</h3>
@@ -99,6 +100,50 @@ function ProjectFolder() {
           <div className="row"><button className="btn small primary" disabled={!folder.trim()} onClick={() => save(folder)}>Use this folder</button><button className="btn small" onClick={() => setTyping(false)}>Cancel</button></div>
         </>
       )}
+    </>
+  );
+}
+
+/** Signed-in browsing: the founder signs in to sites in a real window; crew members use it only through writs. */
+function SignedIn() {
+  const wid = useStore((s) => s.vorldId)!;
+  const [st, setSt] = useState<any>(null);
+  const [url, setUrl] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [sure, setSure] = useState(false);
+  const load = () => api(`/vorlds/${wid}/signin`).then(setSt).catch(() => {});
+  useEffect(() => { void load(); const off = on('signin', setSt); return () => { off(); }; }, [wid]);
+  useEffect(() => { if (!st?.open) return; const t = setInterval(load, 3000); return () => clearInterval(t); }, [st?.open]);
+  const open = async () => {
+    setBusy(true);
+    try { setSt(await api(`/vorlds/${wid}/signin`, { body: { url } })); play('ui.open'); }
+    catch (e: any) { toast({ kind: 'error', title: e.message }); } finally { setBusy(false); }
+  };
+  const forget = async () => {
+    try { setSt(await api(`/vorlds/${wid}/signin`, { method: 'DELETE' })); setSure(false); }
+    catch (e: any) { toast({ kind: 'error', title: e.message }); }
+  };
+  if (!st) return null;
+  return (
+    <>
+      <h3>Signed-in browsing</h3>
+      <p className="muted">Sign in to the sites your crew should use, in a real browser window. They never see or type your passwords. A member can use your sign-in only on a site where you grant them a writ, and anything that posts, sends, buys or deletes needs your approval each time.</p>
+      {!st.available ? <p className="error small">This needs Google Chrome or Microsoft Edge installed on this computer.</p> : (
+        <div className="pf-row">
+          <input className="field grow" value={url} placeholder="https://www.youtube.com (optional start page)" disabled={st.open} onChange={(e) => setUrl(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') void open(); }} />
+          <button className="btn small primary" disabled={busy} onClick={open}>{st.open ? 'Show the window' : 'Open sign-in window'}</button>
+        </div>
+      )}
+      {st.open && <p className="small">A browser window is open. Sign in there, then close the window to save.</p>}
+      {st.sites.length > 0 ? (
+        <>
+          <p className="small">Saved sign-ins on this computer:</p>
+          <div className="signin-sites">{st.sites.map((x: any) => <span key={x.domain} className="chip" title={`${x.cookies} cookies`}>🔒 {x.domain}</span>)}</div>
+          {!sure
+            ? <button className="btn small" onClick={() => setSure(true)}>Forget all sign-ins</button>
+            : <div className="row"><span className="small">Delete every saved sign-in?</span><button className="btn small primary" onClick={forget}>Yes, forget them</button><button className="btn small" onClick={() => setSure(false)}>Keep</button></div>}
+        </>
+      ) : <p className="muted small">No saved sign-ins yet.</p>}
     </>
   );
 }
