@@ -17,9 +17,10 @@ type State = {
   live: Record<string, Live>;         // threadId -> streaming turn
   browsers: Record<string, BrowserFrame>;   // crew member id -> what their browser last showed
   threadsVersion: number;             // bump to refetch thread lists
+  following: string[];                // crew members walking with the founder right now (the map reports them)
 };
 
-let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, partyId: null, partyEdit: null, toasts: [], live: {}, browsers: {}, threadsVersion: 0 };
+let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, partyId: null, partyEdit: null, toasts: [], live: {}, browsers: {}, threadsVersion: 0, following: [] };
 const subs = new Set<() => void>();
 export const getState = () => state;
 export function setState(patch: Partial<State> | ((s: State) => Partial<State>)) {
@@ -54,3 +55,4 @@ type Handler = (payload: any) => void;
 const bus = new Map<string, Set<Handler>>();
 export const on = (ev: string, h: Handler) => { if (!bus.has(ev)) bus.set(ev, new Set()); bus.get(ev)!.add(h); return () => bus.get(ev)!.delete(h); };
 export const emit = (ev: string, payload?: any) => bus.get(ev)?.forEach((h) => h(payload));
+on('following', (ids: string[]) => setState({ following: ids }));   // the map says who is following the founder

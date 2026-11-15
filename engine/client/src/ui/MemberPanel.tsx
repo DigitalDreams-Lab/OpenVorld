@@ -25,6 +25,7 @@ export function MemberPanel({ id }: { id: string }) {
     return () => { live = false; };
   }, [wid, id, version]);
   if (!m) return null;
+  const following = useStore((s) => s.following.includes(id));
   const newChat = async () => {
     play('ui.open');
     try { const t = await api(`/vorlds/${wid}/threads`, { body: { role: id, ...(bench ? { bench } : {}) } }); setThreads((x) => [t, ...(x ?? [])]); setActive(t.id); }
@@ -41,7 +42,9 @@ export function MemberPanel({ id }: { id: string }) {
           <div className="cp-meta"><span className="brain">{m.brain_label ?? 'no brain yet'}</span></div>
         </div>
         <div className="cp-actions">
-          <IconButton icon="call" title={`Call ${m.name} over`} onClick={() => { play('ui.click'); emit('summon', { ids: [id] }); }} />
+          {following
+            ? <IconButton icon="following" active title={`${m.name} is following you: send them home`} onClick={() => { play('ui.click'); emit('dismiss', { ids: [id] }); }} />
+            : <IconButton icon="call" title={`Call ${m.name} over`} onClick={() => { play('ui.click'); emit('summon', { ids: [id] }); }} />}
           <IconButton icon="gear" title="Settings" onClick={() => { play('ui.open'); setState({ modal: 'member' }); }} />
           <IconButton icon="close" title="Close" onClick={() => setState({ talkingTo: null })} />
         </div>

@@ -45,7 +45,7 @@ export class VorldScene extends Phaser.Scene {
   terminal = { x: 0, y: 0 };
   homeRects: Array<{ x: number; y: number; w: number; h: number }> = [];
   companionDir: Direction = 'down';
-  beeShadow?: Phaser.GameObjects.Ellipse; beeLastX = 0; beeLean = 0; beeBobT = 0;
+  beeShadow?: Phaser.GameObjects.Ellipse; beeLastX = 0; beeLean = 0; beeBobT = 0; followersKey = '';
   browsing = new Set<string>();              // members whose browser is in use right now: a globe over their head
   attention = new Set<string>();             // members waiting for the founder (a seal or a writ): a "!" over their head
   atlasRev: string | null = null;
@@ -623,6 +623,8 @@ export class VorldScene extends Phaser.Scene {
       if (dp < bestD) { bestD = dp; best = n.id; }
     }
     this.separate();
+    const followers = [...this.npcs.values()].filter((n) => n.mode === 'summoned' || (n.mode === 'task' && n.base === 'summoned')).map((n) => n.id).join(',');
+    if (followers !== this.followersKey) { this.followersKey = followers; emit('following', followers ? followers.split(',') : []); }
     if (best !== this.near) {
       this.near = best;
       emit('near', best);
