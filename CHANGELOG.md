@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.3.1 - 2026-11-15
+
+- Fix a chat that switched brains: a session is resumed only by the brain it came from, a lost session starts fresh with the conversation so far (no more 'no rollout found'), and an error is no longer shown twice
+
 ## 0.3.0 - 2026-11-15
 
 The version line starts again at 0.3.0 (OpenVorld is not at 1.0 yet).

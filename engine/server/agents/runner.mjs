@@ -81,7 +81,7 @@ export async function runTurn(ctx, threadId, text, emit, attachments = [], { fro
     const role = speakerRole ?? thread.role;
     const r = await speak(ctx, thread, prompt ?? text, emit, ac.signal, attachments, role, !!speakerRole);
     const patch = { state: 'waiting' };
-    if (!speakerRole) patch.session_id = r.sessionId ?? thread.session_id;
+    if (!speakerRole) { patch.session_id = r.sessionId ?? thread.session_id; if (r.sessionProvider) patch.session_provider = r.sessionProvider; }
     if (!thread.title && !speakerRole) patch.title = r.meta?.title || text.slice(0, 48) || attachments[0]?.name || 'Chat';
     const t = updateThread(ctx, threadId, patch);
     if (r.ok) emit({ type: 'thread.event', thread: threadId, role, ev: { type: 'turn.done', text: r.shown, meta: r.meta, thread: t } });
@@ -91,6 +91,29 @@ export async function runTurn(ctx, threadId, text, emit, attachments = [], { fro
     try { if (getThread(ctx, threadId).state === 'working') updateThread(ctx, threadId, { state: 'waiting' }); } catch { /* deleted */ }
     const n = game.check(notes); if (n.length) emit({ type: 'game', notes: n, state: game.snapshot() });
   }
+}
+
+/**
+ * The session a chat may continue. A CLI brain keeps its own conversation under a session id that only that brain can resume,
+ * so the id is used only while the member still has the brain it came from (a chat that switched from Claude Code to Codex must
+ * not hand Codex a Claude Code id). Chats saved before the brain was recorded are tried, and fall back if the brain says it is gone.
+ */
+export function sessionFor(thread, brain, inRoom) {
+  if (inRoom || !thread.session_id) return null;
+  return !thread.session_provider || thread.session_provider === brain.provider ? thread.session_id : null;
+}
+/** What a brain says when the session it was asked to resume no longer exists. */
+export const SESSION_LOST = /no rollout found|no conversation found|session[^.]{0,40}not found|could not (find|resume)[^.]{0,30}(session|conversation|thread)|thread\/resume failed/i;
+
+/** The conversation so far as plain text, newest turns kept, for a brain that starts a chat fresh (it was switched, or its session is gone). */
+export function catchUp(turns, maxChars = 12000) {
+  const lines = []; let size = 0;
+  for (const t of [...turns].reverse()) {
+    const line = `${t.role === 'user' ? 'Founder' : 'You'}: ${String(t.content ?? '').trim()}`;
+    if (size + line.length > maxChars && lines.length) break;
+    lines.unshift(line.slice(0, maxChars)); size += line.length;
+  }
+  return lines.length ? `This chat is already under way; you are picking it up with a fresh mind. The conversation so far:\n\n${lines.join('\n\n')}\n\n---\nThe founder's new message:\n` : '';
 }
 
 async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom) {
@@ -161,7 +184,10 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
   try {
     const web = browserFor(ctx, role, threadId, { emit, onRequest: (a) => asks.push(a) });
     const system = [systemPrompt(ctx, role, thread.bench), web ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
-    const common = { system, prompt: attachmentPrompt(text, attachments), sessionId: inRoom ? null : thread.session_id, cwd, model: brain.model, signal, onEvent };
+    // with no session to resume, a CLI brain is told the conversation so far; the API driver is handed the history itself
+    const drive = async (sessionId) => {
+    const catchup = !inRoom && !sessionId && brain.driver !== 'openai' ? catchUp(history(ctx, threadId).slice(0, -1)) : '';
+    const common = { system, prompt: catchup + attachmentPrompt(text, attachments), sessionId, cwd, model: brain.model, signal, onEvent };
     let result;
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
     else if (brain.provider === 'claude-code') result = await claude.run({ ...common, env: heldSecrets(ctx, role), tools, allowed: [...allowed, ...(web?.allowed ?? [])], addDirs, mcp: web?.mcp });
@@ -178,6 +204,12 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
       });
       result = await openai.run({ ...common, history: prior, cfg: brain.cfg, tools: engine, maxRounds: et.max_rounds ?? 16 });
     } else throw new Error(`${brain.label} is not supported in this version; pick another brain in settings`);
+    return result;
+    };
+    const sessionId = sessionFor(thread, brain, inRoom);
+    let result;
+    try { result = await drive(sessionId); }
+    catch (e) { if (!sessionId || !SESSION_LOST.test(e.message ?? '')) throw e; result = await drive(null); }      // its session is gone: start fresh, with the conversation so far
 
     const { text: shown, meta } = splitEnvelope(redactSecrets(ctx, role, result.text ?? ''), lang);
     const { access, commands: askedCommands, ...metaShown } = meta;
@@ -186,7 +218,7 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     appendEvent(ctx, threadId, { type: 'agent.text', role, text: shown, meta: metaShown, steps: steps() });
     requestAccess(ctx, thread, role, [...asks, ...(access ?? [])], send);
     if (done.commands.length) emit({ type: 'command', role, thread: threadId, commands: done.commands });
-    return { ok: true, shown, meta: metaShown, sessionId: result.sessionId ?? thread.session_id };
+    return { ok: true, shown, meta: metaShown, sessionId: result.sessionId ?? thread.session_id, sessionProvider: result.sessionId ? brain.provider : thread.session_provider };
   } catch (err) {
     // keep what the member did before it stopped, so the chat still shows it
     const partial = tr.final(strip);

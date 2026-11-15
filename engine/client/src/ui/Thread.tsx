@@ -54,7 +54,7 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
           return null;
         })}
         {working && <AgentTurn role={live.role ?? thread.role} steps={live.steps} live thread={tid} {...(party ? { speaker: speakerName(live.role), job: memberOf(live.role)?.job, mentions: names } : {})} />}
-        {live?.error && !working && <div className="log err">✖ {live.error}</div>}
+        {live?.error && !working && !events.some((e: any) => e.type === 'turn.error' && e.message === live.error) && <div className="log err">✖ {live.error}</div>}      {/* the saved copy of the same error is already shown above */}
         <div ref={end} />
       </div>
       {canSend && !working && lastAgent?.meta?.options?.length > 0 && (
