@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { isNever, commandMatches, capabilityLimit } from '../gate.mjs';
+import { isNever, commandMatches, capabilityLimit, commandPattern, redact } from '../gate.mjs';
 import { clip, kindOf, targetOf, detailOf } from './steps.mjs';
 import { cleanEnv } from './drivers/proc.mjs';
 import { imageType, MAX_FILE } from '../attachments.mjs';
@@ -149,7 +149,7 @@ export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], c
     async run_command({ command }, signal) {
       const c = String(command ?? '').trim();
       if (SHELL_META.test(c)) throw new Error('shell features (pipes, redirects, ;, &&, $) are not allowed; run one command');
-      if (!commands.some((s) => commandMatches(s, c))) { onRequest({ capability: 'cmd.run', scope: c, why: 'run this command' }); throw new Error(`no writ for "${c}". The founder has been asked; allowed now: ${commands.join(' | ') || 'none'}`); }
+      if (!commands.some((s) => commandMatches(s, c))) { onRequest({ capability: 'cmd.run', scope: commandPattern(c), why: `run: ${redact(c).slice(0, 140)}` }); throw new Error(`no writ for "${c}". The founder has been asked; allowed now: ${commands.join(' | ') || 'none'}`); }
       if (isNever(ctx, 'cmd.run', c)) throw new Error('this command can never be granted');
       const [cmd, ...args] = argvOf(c);
       const seconds = Math.min(lim.command_seconds, capabilityLimit(ctx, 'cmd.run', 'max_seconds') ?? lim.command_seconds);

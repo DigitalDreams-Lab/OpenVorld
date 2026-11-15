@@ -41,3 +41,26 @@ test('work folder per crew member, default space, validation and persistence', a
   const back = await call('PUT', root, { workspace_base: null });
   assert.equal(back.data.workspace.default_is_custom, false);
 });
+
+// Command writs: what the founder approves must match the next call, and secrets stay out of the card.
+test('a refused command becomes a short pattern, a bare program means any arguments, secrets are hidden', async () => {
+  const { commandPattern, redact, checkScope, commandMatches } = await import('../engine/server/gate.mjs');
+  const { deniedAccess } = await import('../engine/server/agents/drivers/claude.mjs');
+  const { makeVorld } = await import('./helpers/vorld.mjs');
+  const curl = 'curl -sS -X POST https://oauth2.googleapis.com/token -H "Content-Type: application/x-www-form-urlencoded" --data-urlencode "client_id=abc.apps.googleusercontent.com" --data-urlencode "client_secret=GOCSPX-supersecret" --data-urlencode "refresh_token=1//0gtoken"';
+  assert.equal(commandPattern(curl), 'curl *');
+  assert.equal(commandPattern('npm test'), 'npm test');
+  assert.equal(commandPattern('npm test -- --watch'), 'npm test *');
+  assert.equal(commandPattern('python3 stats.py --json'), 'python3 stats.py *');
+  assert.equal(commandPattern('ls'), 'ls');
+  const ask = deniedAccess('Bash', { command: curl, description: 'Swap the refresh token' }, '/tmp');
+  assert.equal(ask.scope, 'curl *', 'the writ is a pattern that also matches the next call, never a cut-off command line');
+  assert.ok(!/supersecret|1\/\/0gtoken/.test(ask.why), 'secrets never reach the writ card');
+  assert.match(redact('Authorization: Bearer abc123 x'), /Bearer \S*•••/);
+  const ctx = makeVorld();
+  assert.equal(checkScope(ctx, 'cmd.run', 'curl'), 'curl *', 'allowing "curl" allows curl with any arguments');
+  assert.equal(checkScope(ctx, 'cmd.run', 'npm test'), 'npm test');
+  assert.throws(() => checkScope(ctx, 'cmd.run', 'sudo'), /never/);
+  assert.throws(() => checkScope(ctx, 'cmd.run', 'x '.repeat(120)), /short pattern/);
+  assert.ok(commandMatches('curl *', curl), 'the granted pattern covers the call that was refused');
+});

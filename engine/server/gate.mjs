@@ -74,7 +74,14 @@ export function checkScope(ctx, capability, scope) {
     if (fs.existsSync(abs) && !fs.statSync(abs).isDirectory()) abs = path.dirname(abs);
     return checkFolder(ctx, capability, abs);
   }
-  if (capability === 'cmd.run') { if (!s || /[;&|`$<>\n]/.test(s)) bad('a command writ names one program and its arguments'); if (isNever(ctx, 'cmd.run', s)) bad('this command can never be granted'); return s; }
+  if (capability === 'cmd.run') {
+    if (!s || /[;&|`$<>\n]/.test(s)) bad('a command writ names one program and its arguments');
+    if (s.length > 200) bad('a command writ is a short pattern like "curl *", not a whole command line');
+    // "curl" means the founder allows curl, so a bare program name is the same as "curl *" (arguments are free)
+    const pattern = /^[^\s*]+$/.test(s) ? `${s} *` : s;
+    if (isNever(ctx, 'cmd.run', pattern)) bad('this command can never be granted');
+    return pattern;
+  }
   if (capability === 'net.fetch') { const d = s.replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase(); if (!/^(\*|[a-z0-9.-]+\.[a-z]{2,})$/.test(d)) bad('name a domain like example.com'); return d; }
   if (!s) bad('the scope is empty');
   return s.slice(0, 200);
@@ -88,6 +95,25 @@ export function isNever(ctx, capability, value) {
     const re = globToRe(expand(n, ctx));
     return re.test(value) || re.test(value + '/x') || (capability === 'cmd.run' && new RegExp('^' + n.split('*').map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$').test(value));
   });
+}
+/**
+ * The writ pattern to ask for when a command was refused: the program, plus a plain subcommand or script when there is
+ * one, and "*" for the arguments. "npm test" stays "npm test"; the long curl call becomes "curl *". Never the whole
+ * command line: it can hold secrets, and a pattern that long would not match the next call anyway.
+ */
+export function commandPattern(command) {
+  const t = String(command ?? '').trim().split(/\s+/).filter(Boolean);
+  if (!t.length) return '';
+  const plain = (x) => /^[A-Za-z0-9_./~][\w./~@+-]*$/.test(x ?? '');
+  if (t.length === 1) return t[0];
+  if (t.length === 2 && plain(t[1])) return `${t[0]} ${t[1]}`;
+  return plain(t[1]) ? `${t[0]} ${t[1]} *` : `${t[0]} *`;
+}
+/** A command line for showing to the founder: values that look like secrets are hidden. */
+export function redact(text) {
+  return String(text ?? '')
+    .replace(/\b(bearer|basic)\s+[^\s"']+/gi, '$1 •••')
+    .replace(/((?:client_)?secret|token|api[_-]?key|apikey|key|password|passwd)(["']?\s*[=:]\s*|\s+)(["']?)[^\s"']+/gi, '$1$2$3•••');
 }
 /** cmd.run scopes are command patterns: "*" matches any run of characters. */
 export const commandMatches = (scope, command) => new RegExp('^' + String(scope).split('*').map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$').test(command);

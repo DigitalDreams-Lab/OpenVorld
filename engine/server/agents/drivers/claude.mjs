@@ -3,6 +3,7 @@
 import crypto from 'node:crypto';
 import { runJsonLines } from './proc.mjs';
 import { kindOf, targetOf, detailOf, textOf, imagesOf } from '../steps.mjs';
+import { commandPattern, redact } from '../../gate.mjs';
 
 const PLAN_TOOLS = new Set(['TodoWrite']);
 
@@ -64,7 +65,7 @@ export function deniedAccess(tool, input, cwd) {
   const dir = (f) => (f ? (/\.[a-z0-9]{1,6}$/i.test(f) ? f.replace(/\/[^/]*$/, '') : f) : cwd);
   if (['Read', 'Glob', 'Grep', 'LS', 'NotebookRead'].includes(tool)) return { capability: 'fs.read', scope: dir(p), why: `read ${p ?? 'files'}` };
   if (['Edit', 'MultiEdit', 'Write', 'NotebookEdit'].includes(tool)) return { capability: 'fs.write', scope: dir(p), why: `change ${p ?? 'files'}` };
-  if (tool === 'Bash' && input.command) return { capability: 'cmd.run', scope: String(input.command).slice(0, 200), why: input.description ?? 'run a command' };
+  if (tool === 'Bash' && input.command) return { capability: 'cmd.run', scope: commandPattern(input.command), why: `${input.description ?? 'run a command'}: ${redact(input.command).slice(0, 140)}` };
   if (tool === 'WebFetch' && input.url) { try { return { capability: 'net.fetch', scope: new URL(input.url).hostname, why: `open ${input.url}` }; } catch { return null; } }
   if (tool === 'WebSearch') return { capability: 'net.fetch', scope: '*', why: `search the web for "${input.query ?? ''}"` };
   return null;
