@@ -6,8 +6,8 @@ export function Deeds() {
   const vorld = useStore((s) => s.vorld);
   const got = vorld.state.deeds ?? {};
   return (
-    <div className="modal-bg" onClick={() => setState({ modal: null })}>
-      <div className="modal panel deeds" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-bg" onPointerDown={(e) => e.stopPropagation()} onClick={() => setState({ modal: null })}>
+      <div className="modal panel deeds" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
         <header className="row between"><h2>Deeds <small>{Object.keys(got).length}/{vorld.deeds.length}</small></h2><button className="x" onClick={() => setState({ modal: null })}>✕</button></header>
         <p className="muted">Level {vorld.state.level} · {vorld.state.xp} XP. XP comes from jobs your parties finish and a little from chatting.</p>
         <div className="deed-grid">

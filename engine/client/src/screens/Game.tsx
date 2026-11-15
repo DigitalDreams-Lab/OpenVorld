@@ -46,6 +46,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
           scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
           render: { antialias: true, pixelArt: false, roundPixels: false },
           physics: { default: 'arcade', arcade: { debug: false } }, scene: [],
+          input: { windowEvents: false },
         });
         game.scene.add('vorld', VorldScene, true, { vorld: w });
         if (import.meta.env.DEV) (window as any).__ovGame = game;

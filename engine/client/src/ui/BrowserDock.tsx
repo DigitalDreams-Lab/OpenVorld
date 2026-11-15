@@ -26,7 +26,7 @@ export function BrowserDock() {
   if (!frame || !current || closedAt) return null;
   const nameOf = (id: string) => crew.find((c) => c.id === id)?.name ?? id;
   return (
-    <aside className={`browser-dock panel ${big ? 'big' : ''} ${mini ? 'mini' : ''} ${panelOpen ? 'beside' : ''}`} aria-label="Crew browser (view only)">
+    <aside className={`browser-dock panel ${big ? 'big' : ''} ${mini ? 'mini' : ''} ${panelOpen ? 'beside' : ''}`} aria-label="Crew browser (view only)" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
       <header className="bd-head">
         <span className={`bd-dot ${frame.active ? 'live' : ''}`} title={frame.active ? 'Browsing now' : 'Idle'} />
         <div className="bd-tabs" role="tablist">

@@ -53,8 +53,8 @@ export function MemberSettings({ id }: { id: string }) {
     catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   return (
-    <div className="modal-bg" onClick={close}>
-      <div className="modal panel member-settings" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-bg" onPointerDown={(e) => e.stopPropagation()} onClick={close}>
+      <div className="modal panel member-settings" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
         <header className="row between"><h2>{f.name} <small>{c.role === 'companion' ? 'companion' : 'agent'}</small></h2><button className="x" onClick={close}>✕</button></header>
         <div className="cs-grid">
           <div className="cs-preview">

@@ -21,7 +21,7 @@ export function CrewBar() {
   const working = new Set(Object.values(live).filter((l: any) => l.working).map((l: any) => l.role));
   return (
     <>
-      <nav className="crew-bar panel" aria-label="Crew">
+      <nav className="crew-bar panel" aria-label="Crew" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
         {vorld.crew.map((c: any) => (
           <button key={c.id} className={`cb-item ${talkingTo === c.id ? 'on' : ''} ${working.has(c.id) ? 'working' : ''}`}
             title={`${c.name}${c.job ? ` · ${c.job}` : ''}`} onClick={() => { play('ui.open'); setState({ talkingTo: c.id }); }}>
@@ -75,8 +75,8 @@ function AddAgent({ onClose }: { onClose: () => void }) {
     catch (e: any) { toast({ kind: 'error', title: e.message }); } finally { setBusy(false); }
   };
   return (
-    <div className="modal-bg" onClick={onClose}>
-      <form className="modal panel add-agent" onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void add(); }}>
+    <div className="modal-bg" onPointerDown={(e) => e.stopPropagation()} onClick={onClose}>
+      <form className="modal panel add-agent" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void add(); }}>
         <header className="row between"><h2>New agent</h2><button type="button" className="x" onClick={onClose}>✕</button></header>
         <p className="muted">An agent is a name, a job title and a job description. It uses your companion's brain and Main bench unless you pick another folder.</p>
         <div className="add-agent-face-row">

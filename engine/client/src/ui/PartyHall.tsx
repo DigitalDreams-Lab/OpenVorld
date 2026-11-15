@@ -16,8 +16,8 @@ export function PartyHall() {
   const open = (id: string) => { play('ui.open'); setState({ modal: null, partyEdit: null, talkingTo: null, partyId: id }); };
   const editing = edit === null ? null : edit === '' ? {} : parties.find((p) => p.id === edit) ?? null;
   return (
-    <div className="modal-bg" onClick={close}>
-      <div className="modal panel party-hall" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-bg" onPointerDown={(e) => e.stopPropagation()} onClick={close}>
+      <div className="modal panel party-hall" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
         <header className="row between">
           <h2>{editing ? (editing.id ? 'Edit party' : 'New party') : 'Party Hall'}</h2>
           <span className="row">

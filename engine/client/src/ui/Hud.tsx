@@ -11,7 +11,7 @@ export function Hud({ onExit }: { onExit: () => void }) {
   const pct = Math.max(0, Math.min(100, ((st.xp - st.xpThis) / span) * 100));
   const open = (modal: 'deeds' | 'settings' | 'parties') => { play('ui.open'); setState({ modal, partyEdit: null }); };
   return (
-    <div className="hud">
+    <div className="hud" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
       <div className="hud-left panel">
         <Portrait role="founder" size={40} />
         <div>

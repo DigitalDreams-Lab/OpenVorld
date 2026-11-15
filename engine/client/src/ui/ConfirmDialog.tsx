@@ -21,8 +21,8 @@ export function useConfirm(): [(a: Ask) => Promise<boolean>, ReactElement | null
     return () => window.removeEventListener('keydown', key, true);
   }, [open]);
   const dialog = open ? (
-    <div className="modal-bg confirm-bg" onClick={() => answer(false)} role="presentation">
-      <div className="modal panel confirm" role="alertdialog" aria-modal="true" aria-label={open.title} onClick={(e) => e.stopPropagation()}>
+    <div className="modal-bg confirm-bg" onPointerDown={(e) => e.stopPropagation()} onClick={() => answer(false)} role="presentation">
+      <div className="modal panel confirm" role="alertdialog" aria-modal="true" aria-label={open.title} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
         <h3>{open.title}</h3>
         {open.body && <p className="muted">{open.body}</p>}
         {open.input && <label className="confirm-input"><span>{open.input.label}</span>

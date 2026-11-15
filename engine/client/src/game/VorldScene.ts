@@ -45,6 +45,7 @@ export class VorldScene extends Phaser.Scene {
   terminal = { x: 0, y: 0 };
   homeRects: Array<{ x: number; y: number; w: number; h: number }> = [];
   companionDir: Direction = 'down';
+  beeShadow?: Phaser.GameObjects.Ellipse; beeLastX = 0; beeLean = 0; beeBobT = 0;
   browsing = new Set<string>();              // members whose browser is in use right now: a globe over their head
   attention = new Set<string>();             // members waiting for the founder (a seal or a writ): a "!" over their head
   atlasRev: string | null = null;
@@ -60,7 +61,7 @@ export class VorldScene extends Phaser.Scene {
     const plan = this.vorld.scenery;
     this.plan = plan;
     const MAP_W = plan.w, MAP_H = plan.h;
-    makeWorldArt(this, plan, this.vorld.art);
+    const { groundScale } = makeWorldArt(this, plan, this.vorld.art);
     const comp = companionOf(this.vorld);
     this.companionId = comp?.id ?? 'companion';
     this.companionForm = comp?.look?.form ?? 'creature';
@@ -70,14 +71,14 @@ export class VorldScene extends Phaser.Scene {
     const fs = makeMember(this, 'founder', 'founder');
 
     const cx = plan.plaza.x, cy = plan.plaza.y;
-    this.add.image(0, 0, 'ground').setOrigin(0).setScale(1 / TEX).setDepth(0);
+    this.add.image(0, 0, 'ground').setOrigin(0).setScale(groundScale).setDepth(0);
     this.solids = this.physics.add.staticGroup();
     this.physics.world.setBounds(T, T, (MAP_W - 2) * T, (MAP_H - 2) * T);
     this.addScenery(plan, pal);
 
     // the plaza landmark is the Party Hall: parties are formed and opened here
     const pillar = this.add.image(cx * T + 8, cy * T + 12, 'pillar').setOrigin(0.5, 1).setScale(1 / TEX).setDepth(cy * T + 12).setInteractive({ cursor: 'pointer' });
-    pillar.on('pointerdown', () => { play('ui.open'); emit('parties'); });
+    pillar.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; play('ui.open'); emit('parties'); });
     this.terminal = { x: pillar.x, y: pillar.y + 6 };
     this.solids.add(this.add.zone(pillar.x, pillar.y - 4, Math.min(28, pillarSize.w - 4), 8));
     this.add.text(pillar.x, pillar.y - pillarSize.h - 6, this.vorld.theme.buildings?.party_hall ?? 'Party Hall', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999);
@@ -96,7 +97,10 @@ export class VorldScene extends Phaser.Scene {
     (this.player.body as Phaser.Physics.Arcade.Body).setSize(8 * TEX / this.charScale, 6 * TEX / this.charScale).setOffset((fs.w - 8 * TEX / this.charScale) / 2, fs.h - 8 * TEX / this.charScale);   // the collision box stays the size of a tile-sized walker
     this.physics.add.collider(this.player, this.solids);
     this.bee = this.add.sprite(this.player.x - 14, this.player.y - 26, 'companion-down-2').setOrigin(0.5, 1).setScale(this.charScale / TEX).setDepth(5000).setInteractive({ cursor: 'pointer' });
-    this.bee.on('pointerdown', () => { emit('poke'); this.balloon(this.companionId, '♥', 900); play('ui.open'); emit('talk', this.companionId); });
+    this.beeShadow = this.add.ellipse(this.bee.x, this.bee.y + 20, 11, 4, 0x000000, 0.26).setDepth(1);
+    this.beeShadow.setVisible(this.companionForm === 'creature');
+    this.beeLastX = this.bee.x;
+    this.bee.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; emit('poke'); this.balloon(this.companionId, '♥', 900); play('ui.open'); emit('talk', this.companionId); });
 
     const cam = this.cameras.main;
     cam.setZoom(ZOOM).setBounds(0, 0, MAP_W * T, MAP_H * T).startFollow(this.player, true, 0.15, 0.15);
@@ -114,7 +118,7 @@ export class VorldScene extends Phaser.Scene {
     this.input.on('pointerdown', (p: Phaser.Input.Pointer, over: Phaser.GameObjects.GameObject[]) => {
       if (over.length) return;
       // Phaser also hears presses that start outside the canvas (HUD buttons, open dialogs): those must not move the player
-      if ((p.event as Event | undefined)?.target && (p.event as Event).target !== this.game.canvas) return;
+      if (!this.isOnCanvas(p)) return;
       this.walkTo = { x: p.worldX, y: p.worldY };
     });
 
@@ -142,6 +146,11 @@ export class VorldScene extends Phaser.Scene {
     emit('scene-ready');
   }
 
+  isOnCanvas(p?: Phaser.Input.Pointer) {
+    const t = (p?.event as Event | undefined)?.target as HTMLElement | undefined;
+    return !t || t === this.game.canvas;
+  }
+
   labelStyle(pal: any, size: number): Phaser.Types.GameObjects.Text.TextStyle {
     // names and signs in a bold readable face with a dark outline (the pixel font blurs at this size)
     const L = this.vorld.art?.scenery?.labels ?? {};                         // scenery.yaml > labels: how big map text is
@@ -167,8 +176,8 @@ export class VorldScene extends Phaser.Scene {
     for (const w of geo.walls) this.solids.add(this.add.zone(w.x, w.y, w.w, w.h));
     const sign = this.add.text(bx, geo.top - 8, '', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999);
     const sprite = this.add.sprite(bx, by, `npc-${c.id}-down-2`).setOrigin(0.5, 1).setScale(this.charScale / TEX).setDepth(by).setInteractive({ cursor: 'pointer' });
-    sprite.on('pointerdown', () => this.tryTalk(c.id));
-    hit.on('pointerdown', () => this.tryTalk(c.id));
+    sprite.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; this.tryTalk(c.id); });
+    hit.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; this.tryTalk(c.id); });
     const label = this.add.text(bx, by + 2, '', this.labelStyle(pal, 6)).setOrigin(0.5, 0).setDepth(9999);
     this.npcs.set(c.id, { mode: 'home', target: null, rest: 1500 + (i * 977) % 3000, slot: i, id: c.id, look: JSON.stringify(look ?? null), sprite, label, building, built: false, sign, home: { x: bx, y: by }, data: c, frame: 2, dir: 'down', lastX: bx, lastY: by, working: false });
   }
@@ -498,6 +507,28 @@ export class VorldScene extends Phaser.Scene {
     });
   }
 
+  /**
+   * A flying companion: the wings never stop (a quick flap when it travels, a lazy one when it hovers), it bobs up and
+   * down, leans into its movement, and a small shadow on the ground shows how high it floats.
+   */
+  animateBee(dt: number, travelling: boolean) {
+    this.beeBobT += dt;
+    const flapMs = travelling ? 55 : 85;
+    const frame = [0, 1, 2, 1][Math.floor(this.beeBobT / flapMs) % 4];
+    const bob = Math.sin(this.beeBobT / (travelling ? 170 : 300)) * (travelling ? 0.9 : 1.7);       // world pixels
+    const vx = (this.bee.x - this.beeLastX) / Math.max(dt, 1) * 1000;                              // world px per second
+    this.beeLastX = this.bee.x;
+    const wantLean = Phaser.Math.Clamp(vx / 90, -1, 1) * 9, ease = 1 - Math.exp(-dt / 120);
+    this.beeLean += (wantLean - this.beeLean) * ease;
+    this.bee.setTexture(`companion-${this.companionDir}-${frame}`).setDepth(this.bee.y);
+    this.bee.setOrigin(0.5, 1 + bob / Math.max(1, this.bee.displayHeight)).setAngle(this.beeLean);
+    // squash and stretch with the flap, so he feels light
+    const base = this.charScale / TEX, sq = 1 + (frame === 1 ? 0.03 : frame === 2 ? -0.025 : 0.01);
+    this.bee.setScale(base / sq, base * sq);
+    const sh = this.beeShadow;
+    if (sh) { const lift = 1 - Math.min(1, (bob + 2) / 8) * 0.12; sh.setPosition(this.bee.x, this.bee.y + 21).setScale(lift).setAlpha(0.26 - bob * 0.015).setDepth(this.bee.y - 1); }
+  }
+
   /** Soft collision: members never stand inside each other, the founder or a walking companion. */
   separate() {
     const MIN = 13, SQUASH = 1.8;               // feet are wide and flat: y distances count more
@@ -562,7 +593,8 @@ export class VorldScene extends Phaser.Scene {
       if (errand || (this.beeReturn && dist > 24)) { const step = Math.min(dist, (errand ? 70 : 100) * dt / 1000); this.bee.x += dx / dist * step; this.bee.y += dy / dist * step; }
       else { this.beeReturn = false; const ease = 1 - Math.exp(-dt / 160); this.bee.x += dx * ease; this.bee.y += dy * ease; }
     }
-    this.bee.setTexture(`companion-${this.companionDir}-${following ? [0, 2, 1, 2][Math.floor(this.walkT / (floating ? 90 : 140)) % 4] : 2}`).setDepth(this.bee.y);
+    if (floating) this.animateBee(dt, following);
+    else this.bee.setTexture(`companion-${this.companionDir}-${following ? [0, 2, 1, 2][Math.floor(this.walkT / 140) % 4] : 2}`).setDepth(this.bee.y);
 
     // members potter about their homes, come when called, and face the founder when close
     let best: string | null = null, bestD = 26;

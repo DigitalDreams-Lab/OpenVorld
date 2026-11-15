@@ -31,7 +31,7 @@ export function PartyPanel({ id }: { id: string }) {
   };
   const speaking = active && live[active]?.working ? memberOf(live[active].role)?.name : null;
   return (
-    <aside className="member-panel party-panel panel">
+    <aside className="member-panel party-panel panel" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
       <header className="cp-head">
         <div className="cp-who">
           <div className="cp-name" title={party.name}>🎲 {party.name}</div>

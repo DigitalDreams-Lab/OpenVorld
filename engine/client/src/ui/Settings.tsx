@@ -33,8 +33,8 @@ export function Settings() {
     } catch (e: any) { toast({ kind: 'error', title: e.message }); play('ui.error'); }
   };
   return (
-    <div className="modal-bg" onClick={close}>
-      <div className="modal panel settings" onClick={(e) => e.stopPropagation()}>
+    <div className="modal-bg" onPointerDown={(e) => e.stopPropagation()} onClick={close}>
+      <div className="modal panel settings" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
         <header className="row between"><h2>Settings</h2><button className="x" onClick={close}>✕</button></header>
         <h3>Vorld</h3>
         <label>Name<input className="field" value={w.name} maxLength={60} onChange={(e) => setW({ ...w, name: e.target.value })} /></label>

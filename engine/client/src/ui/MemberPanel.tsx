@@ -30,7 +30,7 @@ export function MemberPanel({ id }: { id: string }) {
     catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   return (
-    <aside className="member-panel panel">
+    <aside className="member-panel panel" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
       <header className="cp-head">
         <Portrait role={id} size={64} />
         <div className="cp-who">
