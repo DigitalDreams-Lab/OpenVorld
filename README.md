@@ -16,9 +16,11 @@
   <a href="CONTRIBUTING.md">Contribute</a>
 </p>
 
-![An OpenVorld village with the Launch Studio crew working around the Party Hall and a task balloon above Mira.](docs/images/village.png)
+<p align="center">
+  <a href="https://openvorld.com/play/"><img src="docs/images/demo.gif" width="720" alt="The OpenVorld web demo: Mira, Sage and Jules plan a surprise party for Buzz at the Party Hall, browse the web, ask before they save a file, and celebrate." /></a>
+</p>
 
-<p align="center"><sub>Real app captures from an illustrative demo world. Sample conversation and activity; no paid agent runs.</sub></p>
+<p align="center"><sub>The web demo, <em>Surprise for Buzz</em>, at 2x speed. <a href="https://openvorld.com/play/">Play it in your browser</a>, no download needed.</sub></p>
 
 ## Make the work visible
 
@@ -31,6 +33,12 @@ Use a vorld for a software project, a company, a content studio, or an activity 
 - **Follow the work.** Read task balloons, inspect tool activity, and watch a member's browser preview when they use the web.
 - **Keep the decisions.** A writ is an approval for access: a folder, a command, or a site. Members ask when they need more.
 - **Earn progress.** Finished work earns XP, levels, and deeds. Your profile adds your name and background while your founder character stays unique.
+
+## Watch the one minute tour
+
+<p align="center">
+  <a href="https://openvorld.com/media/openvorld-promo.mp4"><img src="docs/images/promo-video.jpg" width="720" alt="Watch the one minute OpenVorld tour, with sound" /></a>
+</p>
 
 ## One room. Several minds.
 
