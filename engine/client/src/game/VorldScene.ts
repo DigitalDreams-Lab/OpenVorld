@@ -337,6 +337,21 @@ export class VorldScene extends Phaser.Scene {
     });
     this.rotationReactions.set(role, { target, tween });
   }
+  /**
+   * Squash a crew member for a moment (reading, bowing, shrugging). Always relative to their normal size (the sprite is
+   * drawn from large art at a small scale, so an absolute scaleY like 0.92 would stretch them tall), only one squash at
+   * a time, and it always ends at exactly the normal size. The companion's scale is animated every frame, so it is skipped.
+   */
+  squash(target: Phaser.GameObjects.Sprite, factor: number, duration: number, extra: Partial<Phaser.Types.Tweens.TweenBuilderConfig> = {}) {
+    if (target === this.bee) return;
+    const normal = this.charScale / CHAR_TEX;
+    (target.getData('squash') as Phaser.Tweens.Tween | undefined)?.remove();
+    target.setScale(normal);
+    const tween = this.tweens.add({ ...extra, targets: target, scaleY: normal * factor, duration, yoyo: true,
+      onComplete: () => { if (target.getData('squash') === tween) { target.setData('squash', null); target.setScale(normal); } },
+      onStop: () => target.setScale(normal) });
+    target.setData('squash', tween);
+  }
 
   /** Visual reaction to an agent event (from packs/core/interactions.yaml). */
   react(role: string, r: any) {
@@ -354,15 +369,15 @@ export class VorldScene extends Phaser.Scene {
       case 'bellows': this.particles(target.x, target.y - 8, 0xbbbbbb, 6, 10); break;
       case 'cheer': this.tweens.add({ targets: target, y: target.y - 6, duration: 120, yoyo: true, repeat: 2 }); this.particles(target.x, target.y - 10, 0xffffff, 12, 18); break;
       case 'wince': case 'faint': this.tweens.add({ targets: target, x: target.x + 2, duration: 40, yoyo: true, repeat: 3 }); target.setTint(0xff7777); this.time.delayedCall(300, () => target.clearTint()); break;
-      case 'read_scroll': case 'gaze': this.tweens.add({ targets: target, scaleY: 0.92, duration: 120, yoyo: true }); break;
+      case 'read_scroll': case 'gaze': this.squash(target, 0.92, 120); break;
       case 'think': this.tweens.add({ targets: target, y: target.y - 2, duration: 300, yoyo: true }); break;
-      case 'bow': this.tweens.add({ targets: target, scaleY: 0.85, duration: 160, yoyo: true }); break;
+      case 'bow': this.squash(target, 0.85, 160); break;
       case 'wave': this.rotateReaction(role, target, 10, 110, 5); break;
       case 'dance': this.rotateReaction(role, target, 8, 140, 7); this.tweens.add({ targets: target, y: target.y - 4, duration: 140, yoyo: true, repeat: 7 }); this.particles(target.x, target.y - 10, col(pal.gold, '#fc0'), 8, 16); break;
       case 'idle': this.resetRotation(role); break;
-      case 'shrug': this.tweens.add({ targets: target, scaleY: target.scaleY * 0.93, x: target.x + 1, duration: 180, yoyo: true, repeat: 1 }); break;
+      case 'shrug': this.squash(target, 0.93, 180, { repeat: 1 }); break;
       case 'sniff': this.tweens.add({ targets: target, y: target.y - 1.5, duration: 160, yoyo: true, repeat: 3 }); break;
-      case 'rest': this.tweens.add({ targets: target, scaleY: target.scaleY * 0.88, duration: 260, yoyo: true, hold: Math.max(0, (r.ms ?? 2500) - 520) }); break;
+      case 'rest': this.squash(target, 0.88, 260, { hold: Math.max(0, (r.ms ?? 2500) - 520) }); break;
     }
     if (r.particles === 'steam') this.particles(target.x, target.y - 4, 0xffffff, 14, 16);
     if (r.balloon) this.balloon(role, r.balloonText ?? '', 1800);

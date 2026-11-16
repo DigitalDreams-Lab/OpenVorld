@@ -1,0 +1,25 @@
+/* The demo guide over the game (demo/DemoGuide.tsx), in the app's own panel and button style. */
+.demo-veil { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 20px; background: rgba(15, 12, 20, .45); animation: demo-in .35s ease-out; }
+.demo-card { width: min(520px, 100%); padding: 26px 28px 24px; color: var(--ink); }
+.demo-card h2 { font-size: 28px; line-height: 1.15; margin: 8px 0 12px; }
+.demo-card p { margin: 0 0 10px; font-size: 16px; line-height: 1.6; }
+.demo-secret { background: color-mix(in srgb, var(--gold) 22%, #fff6d6); border: 2px dashed color-mix(in srgb, var(--gold) 70%, var(--ink)); padding: 10px 12px; }
+.demo-kicker { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: color-mix(in srgb, var(--clay) 80%, var(--ink)); }
+.demo-dot { width: 8px; height: 8px; flex: none; background: var(--turquoise); box-shadow: 0 0 0 0 var(--turquoise); animation: demo-pulse 1.6s infinite; }
+.demo-actions { display: flex; flex-direction: column; align-items: stretch; gap: 10px; margin-top: 18px; }
+.demo-actions .btn { justify-content: center; text-decoration: none; }
+.demo-actions .btn:not(.big) { font-size: 16px; padding: 8px 14px; }
+.demo-actions .link { align-self: center; background: none; border: 0; color: var(--lapis); text-decoration: underline; cursor: pointer; font-size: 14px; padding: 2px; }
+.demo-fine { margin: 14px 0 0 !important; font-size: 13px !important; opacity: .7; text-align: center; }
+
+.demo-tip { position: fixed; z-index: 40; left: 50%; bottom: 46px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center;
+  max-width: calc(100vw - 32px); padding: 8px 12px; font-size: 15px; color: var(--ink); animation: demo-rise .35s ease-out; }
+.demo-tip .btn { text-decoration: none; }
+.demo-tip.attention { background: color-mix(in srgb, var(--gold) 35%, #fff3c4); animation: demo-rise .35s ease-out, demo-nudge 1.4s ease-in-out .4s infinite; }
+
+@keyframes demo-in { from { opacity: 0; } }
+@keyframes demo-rise { from { opacity: 0; transform: translate(-50%, 10px); } }
+@keyframes demo-nudge { 50% { transform: translate(-50%, -4px); } }
+@keyframes demo-pulse { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
+@media (max-width: 600px) { .demo-card { padding: 20px 18px; } .demo-card h2 { font-size: 23px; } .demo-tip { bottom: 12px; font-size: 14px; } }
+@media (prefers-reduced-motion: reduce) { .demo-veil, .demo-tip, .demo-dot { animation: none !important; } }

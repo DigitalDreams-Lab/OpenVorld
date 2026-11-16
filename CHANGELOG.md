@@ -2,6 +2,11 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.9.0 - 2026-11-16
+
+- Add a playable web demo, Surprise for Buzz: the real client with an in-browser scripted engine, built from data the real engine makes (npm run demo:build, output release/demo)
+- Fix crew members stretching tall for a moment when they read, browse, bow or shrug: reactions now squash relative to their normal size and always end at it
+
 ## 0.8.2 - 2026-11-16
 
 - The Send a test message explains the usual reason a banner does not show: macOS holds banners while the display is asleep (they wait in Notification Center) or a Focus mode mutes them
