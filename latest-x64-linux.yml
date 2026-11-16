@@ -1,0 +1,17 @@
+version: 0.11.3
+files:
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.3/OpenVorld-0.11.3-linux-x86_64.AppImage
+    sha512: wmDUAfDh7ZHkhWuo1x56GITG9RIutQMb659a8e7zZBY7rC1U/dXZrD/fDkzIgyjNQ7EniWXLDkjO7SdiA7qhYg==
+    size: 185596150
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.3/OpenVorld-0.11.3-linux-x86_64.AppImage
+sha512: wmDUAfDh7ZHkhWuo1x56GITG9RIutQMb659a8e7zZBY7rC1U/dXZrD/fDkzIgyjNQ7EniWXLDkjO7SdiA7qhYg==
+releaseNotes: >-
+  - Sign and notarize the Mac desktop releases with the correct Developer ID
+  identity selector.
+
+  - Keep four desktop downloads, with changelog and full-installer updates
+  served through a separate feed; versions before 0.11 need one manual upgrade.
+
+  - Include the Canvas fallback for Macs without WebGL and the fix for agent
+  CLIs that close their input early.
+releaseDate: 2026-11-16T17:10:44.577Z
