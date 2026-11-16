@@ -4,9 +4,11 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { setState, useStore } from '../src/store';
 import { play } from '../src/audio/sfx';
 import { api } from './api';
-import { IDS, getPhase, setPhase, subscribePhase } from './engine';
+import { EMBED, IDS, getPhase, setPhase, subscribePhase } from './engine';
 
 const DOWNLOAD = 'https://github.com/DigitalDreams-Lab/OpenVorld/releases/latest';
+/** The full-page demo (from the website's hero, where the demo runs in a small window). */
+const FULL = <a className="btn small" href="./" target="_top">Open the full demo ↗</a>;
 const FIRST_MESSAGE = 'Today is Buzz’s birthday! 🎂 Can you plan a surprise party? Shh, keep it secret!';
 
 export function DemoGuide() {
@@ -18,7 +20,8 @@ export function DemoGuide() {
 
   useEffect(() => { if (!loaded) return; const t = setTimeout(() => setReady(true), 900); return () => clearTimeout(t); }, [loaded]);
   useEffect(() => {
-    if (phase === 'writ' && !partyOpen) setState({ partyId: IDS.party, talkingTo: null, modal: null });
+    // in the small hero window Jules asks on the map (Allow buttons over Jules's head), so the chat stays closed
+    if (phase === 'writ' && !partyOpen && !EMBED) setState({ partyId: IDS.party, talkingTo: null, modal: null });
     if (phase !== 'done') { setEnding(false); return; }
     const t = setTimeout(() => setEnding(true), 2600);
     return () => clearTimeout(t);
@@ -26,7 +29,7 @@ export function DemoGuide() {
 
   const openRoom = () => setState({ partyId: IDS.party, talkingTo: null, modal: null });
   const start = async () => {
-    play('ui.open'); openRoom(); setPhase('running');
+    play('ui.open'); if (!EMBED) openRoom(); setPhase('running');
     try { await api(`/vorlds/${IDS.vorld}/threads/${IDS.room}/messages`, { body: { text: FIRST_MESSAGE } }); }
     catch { setPhase('idle'); }
   };
@@ -58,7 +61,7 @@ export function DemoGuide() {
         <p>In OpenVorld, they do this on <b>your own project</b>, with the AI you choose.</p>
         <div className="demo-actions">
           <a className="btn primary big" href={DOWNLOAD} target="_blank" rel="noopener noreferrer">Download OpenVorld</a>
-          <button className="btn" onClick={again}>Play again</button>
+          {EMBED ? <a className="btn" href="./" target="_top">See the invitation in the full demo ↗</a> : <button className="btn" onClick={again}>Play again</button>}
           <button className="link" onClick={() => setEnding(false)}>Stay in the vorld</button>
         </div>
         <p className="demo-fine">This demo is scripted and runs only in your browser.</p>
@@ -66,7 +69,13 @@ export function DemoGuide() {
     </div>
   );
 
-  const tip: Record<string, React.ReactNode> = {
+  const tip: Record<string, React.ReactNode> = EMBED ? {
+    idle: <><span>🐝 Walk around, click the crew.</span><button className="btn small primary" onClick={start}>Plan Buzz’s surprise</button></>,
+    running: <><span className="demo-dot" /><span>The crew is planning. Watch them on the map!</span>{!partyOpen && <button className="btn small" onClick={openRoom}>Open the chat</button>}</>,
+    writ: <><span>📜 <b>Jules needs your OK.</b> Press <b>Allow once</b> over Jules.</span></>,
+    denied: <><span>No invitation this time. 🙂</span><button className="btn small primary" onClick={again}>Play again</button></>,
+    done: <><span>🎂 Surprise!</span>{FULL}<a className="btn small primary" href={DOWNLOAD} target="_blank" rel="noopener noreferrer">Download</a></>,
+  } : {
     idle: <><span>🐝 Demo vorld. Walk around, click the crew.</span><button className="btn small primary" onClick={start}>Plan Buzz’s surprise</button></>,
     running: <><span className="demo-dot" /><span>The crew is planning Buzz’s surprise. Watch the map and the chat!</span>{!partyOpen && <button className="btn small" onClick={openRoom}>Open the chat</button>}</>,
     writ: <><span>📜 <b>Jules needs your OK.</b> Press <b>Allow once</b> in the chat.</span>{!partyOpen && <button className="btn small primary" onClick={openRoom}>Show me</button>}</>,

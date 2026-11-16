@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.9.1 - 2026-11-16
+
+- Demo embed mode (play/?embed) for the website's hero: smaller menus, the map leads, the chat opens on request, and balloons stay above the tips
+
 ## 0.9.0 - 2026-11-16
 
 - Add a playable web demo, Surprise for Buzz: the real client with an in-browser scripted engine, built from data the real engine makes (npm run demo:build, output release/demo)

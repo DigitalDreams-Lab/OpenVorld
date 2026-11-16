@@ -23,3 +23,13 @@
 @keyframes demo-pulse { 70% { box-shadow: 0 0 0 7px transparent; } 100% { box-shadow: 0 0 0 0 transparent; } }
 @media (max-width: 600px) { .demo-card { padding: 20px 18px; } .demo-card h2 { font-size: 23px; } .demo-tip { bottom: 12px; font-size: 14px; } }
 @media (prefers-reduced-motion: reduce) { .demo-veil, .demo-tip, .demo-dot { animation: none !important; } }
+
+/* Embed mode (play/?embed, inside the website's hero): a small window, so the menus and cards are drawn smaller and the
+   map stays in view. The map's balloons are left alone (they follow the characters on the canvas). */
+.demo-embed .hud, .demo-embed .crew-bar, .demo-embed .toasts, .demo-embed .demo-tip, .demo-embed .demo-veil > .demo-card { zoom: .78; }
+.demo-embed .member-panel { zoom: .8; width: min(420px, 70vw); }
+.demo-embed .hint { display: none; }
+.demo-embed .demo-tip { bottom: 14px; }
+.demo-embed .demo-card h2 { font-size: 25px; }
+/* in the small window the crew's balloons (and Jules's Allow buttons) must never hide under the menus or the tip */
+.demo-embed .agent-balloons { z-index: 45; }

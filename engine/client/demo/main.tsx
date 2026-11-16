@@ -5,7 +5,9 @@ import '../src/styles.css';
 import './demo.css';
 import { App } from '../src/App';
 import { DemoGuide } from './DemoGuide';
-import { IDS } from './engine';
+import { EMBED, IDS } from './engine';
+
+if (EMBED) document.documentElement.classList.add('demo-embed');
 
 // Open Honey Hollow straight away (the app reopens the last vorld), and never ask a visitor for notification permission.
 try {
