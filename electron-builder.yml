@@ -20,16 +20,14 @@ files:
   - '!**/node_modules/playwright-core/.local-browsers/**'
 npmRebuild: false
 publish:
-  provider: github
-  owner: DigitalDreams-Lab
-  repo: OpenVorld
-  releaseType: release
+  provider: generic
+  url: https://raw.githubusercontent.com/DigitalDreams-Lab/OpenVorld/updates
 mac:
   category: public.app-category.productivity
   icon: desktop/assets/icon.icns
   identity: '-'
+  hardenedRuntime: true
   target:
-    - dmg
     - zip
   extendInfo:
     NSMicrophoneUsageDescription: OpenVorld uses the microphone when you choose voice input.

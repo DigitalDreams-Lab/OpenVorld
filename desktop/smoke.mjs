@@ -11,7 +11,7 @@ const activityCheck = process.argv.includes('--activity');
 const profileCheck = process.argv.includes('--profile');
 const spriteCheck = process.argv.includes('--sprites');
 const executableArgument = process.argv.slice(2).find(argument => !argument.startsWith('--'));
-const executable = executableArgument ? path.resolve(executableArgument) : (await import('electron')).default;
+const executable = executableArgument ? path.resolve(executableArgument, ...(executableArgument.endsWith('.app') ? ['Contents', 'MacOS', 'OpenVorld'] : [])) : (await import('electron')).default;
 const env = { ...process.env, OPENVORLD_HOME: path.join(temporary, 'data'), OV_DESKTOP_USER_DATA: path.join(temporary, 'preferences') };
 delete env.ELECTRON_RUN_AS_NODE; delete env.NODE_OPTIONS; delete env.NODE_PATH;
 let desktop;

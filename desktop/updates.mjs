@@ -49,6 +49,7 @@ export function createUpdates({ updater, version, packaged, automaticInstall, sh
     } finally { prompting = false; }
   }
   updater.autoDownload = true;
+  updater.disableDifferentialDownload = true;
   // Never install during an ordinary quit or silently interrupt an agent run.
   updater.autoInstallOnAppQuit = false;
   updater.allowPrerelease = false;

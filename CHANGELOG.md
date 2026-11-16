@@ -2,6 +2,12 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.11.0 - 2026-11-16
+
+- Require Developer ID signing, notarization and Gatekeeper acceptance before publishing Mac apps.
+- Keep releases to four desktop downloads and move architecture-specific update metadata to a separate feed; older versions need one manual upgrade.
+- Download complete verified installers without public blockmaps and smoke test both packaged Mac architectures.
+
 ## 0.10.2 - 2026-11-16
 
 - README: the web demo as a GIF at the top, and the one minute promo video.

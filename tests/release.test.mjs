@@ -6,9 +6,11 @@ import YAML from 'yaml';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { spawnSync } from 'node:child_process';
 import { releaseNotes } from '../tools/release-notes.mjs';
 import { verifyUpdates } from '../tools/verify-updates.mjs';
+import { desktopBuildOptions } from '../tools/desktop-build.mjs';
+import { updateFeedFiles, publishUpdateFeed, MANIFESTS } from '../tools/publish-update-feed.mjs';
+import { verifyMac } from '../desktop/verify-mac.mjs';
 
 const CHANGELOG = '# Changelog\n\nintro\n\n## 0.6.0 - 2026-11-15\n\n- API keys\n- More\n\n## 0.5.0 - 2026-11-15\n\n- Images\n\n## 0.10.0 - 2026-11-16\n\n- Ten\n';
 
@@ -46,23 +48,81 @@ test('the desktop workflow builds three systems, then publishes one versioned re
   assert.equal(wf.permissions.contents, 'read');
   const text = fs.readFileSync(new URL('../.github/workflows/desktop.yml', import.meta.url), 'utf8');
   assert.match(text, /name: 'OpenVorld-\$\{\{ steps\.version\.outputs\.version \}\}-\$\{\{ matrix\.os \}\}-\$\{\{ matrix\.arch \}\}'/, 'artifacts are versioned and keep architectures separate');
-  assert.match(text, /gh release create "\$\{TAG\}"/); assert.match(text, /--clobber/); assert.match(text, /SHA256SUMS\.txt/);
+  assert.match(text, /gh release create "\$\{TAG\}" "\$\{ARTIFACTS\[@\]\}"/);
+  assert.match(text, /publish-update-feed\.mjs dist/);
+  assert.doesNotMatch(text, /SHA256SUMS|release\/\*\.blockmap|release\/\*\.dmg/);
   assert.match(text, /TAG="v\$\{VERSION\}"/, 'the tag is v<package version>');
-  assert.match(text, /release\/latest-\*\.yml/); assert.match(text, /release\/\*\.blockmap/);
+  assert.match(text, /release\/latest-\*\.yml/);
   assert.match(text, /--draft --target/); assert.match(text, /--draft=false --latest/);
   assert.ok('release' in wf.on.workflow_dispatch.inputs && wf.on.push.tags.includes('v*'));
   assert.match(fs.readFileSync(new URL('../electron-builder.yml', import.meta.url), 'utf8'), /artifactName: .*\$\{version\}.*\$\{os\}.*\$\{arch\}/, 'files carry the version');
 });
 
 test('the build command handles absent signing credentials and rejects an incomplete Mac identity', () => {
-  const workflow = YAML.parse(fs.readFileSync(new URL('../.github/workflows/desktop.yml', import.meta.url), 'utf8'));
-  const command = workflow.jobs.build.steps.find(step => step.name === 'Build installers and update manifests').run.replaceAll('${{ matrix.arch }}', 'x64');
-  // Substitute only npm: exercise the real CI shell logic without building or using real certificates.
-  const stub = 'npm() { test -z "${CSC_LINK+x}" && test -z "${CSC_KEY_PASSWORD+x}"; };\n';
-  const env = { ...process.env, RUNNER_OS: 'macOS', CSC_LINK: '', CSC_KEY_PASSWORD: '', CSC_NAME: '', APPLE_ID: '', APPLE_APP_SPECIFIC_PASSWORD: '', APPLE_TEAM_ID: '' };
-  const unsigned = spawnSync('bash', ['-e', '-c', stub + command], { env, encoding: 'utf8' });
-  assert.equal(unsigned.status, 0, unsigned.stderr || unsigned.stdout);
-  const incomplete = spawnSync('bash', ['-e', '-c', stub + command], { env: { ...env, CSC_LINK: 'dummy-certificate' }, encoding: 'utf8' });
-  assert.equal(incomplete.status, 1);
-  assert.match(incomplete.stdout, /Mac signing needs/);
+  const build = (env, distribution = true) => desktopBuildOptions({ platform: 'darwin', arch: 'arm64', env, distribution });
+  const local = build({ CSC_LINK: '', CSC_KEY_PASSWORD: '' }, false);
+  assert.equal('CSC_LINK' in local.env, false);
+  assert.equal('CSC_KEY_PASSWORD' in local.env, false);
+  assert.throws(() => build({}), /Public Mac releases require/);
+  assert.throws(() => build({ CSC_LINK: 'certificate' }, false), /MAC_SIGNING_IDENTITY/);
+  assert.throws(() => build({ CSC_NAME: '-', APPLE_KEYCHAIN_PROFILE: 'notary' }), /Public Mac releases require/);
+  assert.throws(() => build({ CSC_NAME: 'Apple Development: Test', APPLE_KEYCHAIN_PROFILE: 'notary' }), /Public Mac releases require/);
+  assert.throws(() => build({ CSC_NAME: 'Developer ID Application: Test' }), /notarization credentials/);
+  const signed = build({ CSC_NAME: 'Developer ID Application: Test', APPLE_KEYCHAIN_PROFILE: 'notary' });
+  assert.ok(signed.args.includes('--config.mac.notarize=true'));
+  assert.ok(signed.args.includes('--config.forceCodeSigning=true'));
+  assert.equal(desktopBuildOptions({ platform: 'win32', arch: 'x64', distribution: true }).args.includes('--config.forceCodeSigning=true'), false);
+});
+
+test('update feeds map each architecture to its full installer URL and reject partial or mixed releases', t => {
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-feed-publish-'));
+  t.after(() => fs.rmSync(directory, { recursive: true, force: true }));
+  const suffixes = ['mac-arm64.zip', 'mac-x64.zip', 'win-x64.exe', 'linux-x86_64.AppImage'];
+  const manifest = index => ({ version: '0.11.0', releaseNotes: '- Signed desktop updates', files: [{ url: `OpenVorld-0.11.0-${suffixes[index]}`, sha512: 'checksum', size: 123 }] });
+  MANIFESTS.forEach((name, index) => fs.writeFileSync(path.join(directory, name), YAML.stringify(manifest(index))));
+  const files = updateFeedFiles(directory, '0.11.0');
+  files.forEach((file, index) => {
+    const info = YAML.parse(file.content);
+    assert.equal(info.files.length, 1);
+    assert.equal(info.files[0].url, `https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.0/OpenVorld-0.11.0-${suffixes[index]}`);
+    assert.equal(info.path, info.files[0].url);
+  });
+  fs.writeFileSync(path.join(directory, MANIFESTS[0]), YAML.stringify(manifest(1)));
+  assert.throws(() => updateFeedFiles(directory, '0.11.0'), /Unexpected desktop artifact/);
+  assert.throws(() => updateFeedFiles(directory, '0.12.0'), /Incomplete/);
+  fs.unlinkSync(path.join(directory, MANIFESTS[0]));
+  assert.throws(() => updateFeedFiles(directory, '0.11.0'), /ENOENT/);
+});
+
+test('feed publication switches one branch only after all metadata is committed and never forces history', async () => {
+  const calls = [];
+  const files = [{ path: MANIFESTS[0], content: YAML.stringify({ version: '0.11.0' }) }];
+  const fetcher = async (url, options) => {
+    calls.push({ url, ...options, body: options.body && JSON.parse(options.body) });
+    const result = url.includes('/contents/') ? { content: Buffer.from('version: 0.10.0').toString('base64') } : url.endsWith('/git/ref/heads/updates') ? { object: { sha: 'previous' } } : { sha: url.endsWith('/git/trees') ? 'tree' : 'commit' };
+    return { ok: true, json: async () => result };
+  };
+  const result = await publishUpdateFeed(files, { token: 'test', fetcher });
+  assert.equal(result.commit, 'commit');
+  assert.deepEqual(calls.map(call => call.method), ['GET', 'GET', 'POST', 'POST', 'PATCH']);
+  assert.deepEqual(calls[2].body.tree, files);
+  assert.deepEqual(calls[3].body.parents, ['previous']);
+  assert.deepEqual(calls[4].body, { sha: 'commit', force: false });
+  await assert.rejects(publishUpdateFeed([{ ...files[0], content: 'version: 0.9.0' }], { token: 'test', fetcher }), /roll the update feed back/);
+  await assert.rejects(publishUpdateFeed(files, { token: 'test', fetcher: async () => ({ ok: false, status: 403 }) }), /403/);
+});
+
+test('public Mac verification rejects ad-hoc signatures and missing notarization instead of bypassing Gatekeeper', () => {
+  const signatures = { adhoc: 'Signature=adhoc\nTeamIdentifier=not set', developer: 'Authority=Developer ID Application: Test\nTeamIdentifier=ABCDEFGHIJ\nCodeDirectory flags=0x10000(runtime)' };
+  const run = (signature, stapled = true) => (command, args) => {
+    if (command.endsWith('PlistBuddy')) return { status: 0, stdout: '0.11.0' };
+    if (command.endsWith('lipo')) return { status: 0, stdout: 'arm64' };
+    if (args.includes('-dv')) return { status: 0, stderr: signature };
+    if (args.includes('stapler') && !stapled) return { status: 65, stderr: 'No ticket' };
+    return { status: 0 };
+  };
+  const verify = (signature, stapled) => verifyMac('/tmp/OpenVorld.app', { distribution: true, arch: 'arm64', version: '0.11.0', run: run(signature, stapled) });
+  assert.throws(() => verify(signatures.adhoc), /Developer ID Application/);
+  assert.throws(() => verify(signatures.developer, false), /notarization ticket/);
+  assert.equal(verify(signatures.developer).gatekeeper, 'accepted');
 });

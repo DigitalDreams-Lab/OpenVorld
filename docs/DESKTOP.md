@@ -18,19 +18,19 @@ npm run desktop:pack       # unpacked app for this computer
 npm run desktop:dist       # installers for this platform
 ```
 
-Artifacts are written to `release/`. On macOS the app is in `release/mac-arm64/OpenVorld.app` (Apple Silicon) or `release/mac/OpenVorld.app` (Intel). Builds produce DMG/ZIP on macOS, an NSIS installer on Windows, and AppImage on Linux. The desktop-build workflow builds each on its own operating system. Windows and Linux builds still need platform-specific end-to-end validation.
+Artifacts are written to `release/`. On macOS the app is in `release/mac-arm64/OpenVorld.app` (Apple Silicon) or `release/mac/OpenVorld.app` (Intel). Builds produce ZIP on macOS, an NSIS installer on Windows, and AppImage on Linux. The desktop-build workflow builds each on its own operating system.
 
 ### Releases
 
-The **Desktop builds** workflow (Actions tab → *Run workflow*, or pushing a version tag) builds Apple Silicon and Intel macOS apps, Windows x64 and Linux x64. It stages all installers, update manifests, blockmaps, `SHA256SUMS.txt`, and the matching changelog entry in a draft release before publishing it as `v<version>`. Published releases are immutable: bump the version for a new build. A pushed tag must match `package.json`. Untick *Publish the builds as a GitHub release* to only build.
+The **Desktop builds** workflow (Actions tab → *Run workflow*, or pushing a version tag) builds Apple Silicon and Intel macOS apps, Windows x64 and Linux x64. Each release contains exactly four desktop downloads plus the matching changelog entry. Update manifests stay in CI artifacts and the separate `updates` branch. Published binaries are immutable; a retry can finish publishing the feed only when the downloaded release files match the verified build artifacts. A pushed tag must match `package.json`. Untick *Publish the builds as a GitHub release* to only build.
 
-The default Mac build uses an ad-hoc signature. Apple Developer ID signing and notarization are needed for normal public Mac distribution and in-app installation; unsigned builds use the installer fallback. Windows releases should also be signed. Signing credentials are not included in the repository.
+Local development builds use an ad-hoc signature. Public Mac releases require Developer ID Application signing, Hardened Runtime and Apple notarization. The build verifies the signature, version, architecture, stapled ticket and Gatekeeper acceptance before uploading artifacts. Missing signing credentials fail the public build rather than publishing an ad-hoc app. Windows releases should also be signed. Signing credentials are not included in the repository.
 
-The workflow accepts repository secrets `MAC_CERTIFICATE` (base64 P12), `MAC_CERTIFICATE_PASSWORD`, `MAC_SIGNING_IDENTITY` (Developer ID Application identity), `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` to sign and notarize both Mac builds. Supplying a certificate without the other required Mac secrets fails the build. Optional `WIN_CERTIFICATE` and `WIN_CERTIFICATE_PASSWORD` sign Windows installers. Without these secrets, builds keep the unsigned/ad-hoc distribution behavior.
+The workflow requires repository secrets `MAC_CERTIFICATE` (base64 P12), `MAC_CERTIFICATE_PASSWORD`, `MAC_SIGNING_IDENTITY` (Developer ID Application identity), `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` to sign and notarize both Mac builds. Optional `WIN_CERTIFICATE` and `WIN_CERTIFICATE_PASSWORD` sign Windows installers. For local distribution builds, `npm run desktop:release` also accepts an existing signing identity and `APPLE_KEYCHAIN_PROFILE` for notarization credentials stored in Keychain.
 
 ## Install a release
 
-- **macOS:** download the DMG for Apple Silicon or Intel, open it, and drag OpenVorld into Applications. ZIP builds are also available. Unsigned downloads may be blocked by Gatekeeper; a signed, notarized build is the supported way to avoid that prompt.
+- **macOS:** download the ZIP for Apple Silicon or Intel, double-click to extract it, and drag OpenVorld into Applications. A signed, notarized build is required for normal Gatekeeper acceptance.
 - **Windows:** open the x64 EXE and follow the installer. Installation is per-user and does not require Node.js.
 - **Linux:** download the x64 AppImage to a writable folder, enable “Allow executing file as program” in file properties, and open it. Some distributions need FUSE support. Keep the AppImage in that writable folder for in-app updates.
 
@@ -42,7 +42,7 @@ Windows installers and Linux AppImages download stable updates in the background
 
 Developer ID signed Mac builds use the same flow. Ad-hoc Mac apps, unpacked Linux builds, and unsupported architectures show the release notes and open GitHub for an installer instead. An existing version without the updater needs one manual upgrade before it can check for future updates. **Help → What’s New** also works offline using the installed version's bundled changelog.
 
-Update channels include the CPU architecture (`latest-arm64` / `latest-x64`), so the two Mac manifests cannot overwrite one another. The desktop workflow uploads the generated platform-specific YAML files and blockmaps with the installers. Publishing only an installer without those manifests does not enable automatic installation.
+Update channels include the CPU architecture (`latest-arm64` / `latest-x64`), so the two Mac manifests cannot overwrite one another. Starting with 0.11.0, the generic feed at `https://raw.githubusercontent.com/DigitalDreams-Lab/OpenVorld/updates` points to complete desktop downloads on GitHub. Full downloads avoid exposing blockmaps as release assets. The release workflow checks installer hashes, publishes all four binaries, then atomically advances the feed. Feed publication rejects version rollback. Versions before 0.11.0 need one manual upgrade to adopt the separate feed.
 
 ## Install on your Mac
 

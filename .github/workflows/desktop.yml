@@ -10,6 +10,9 @@ on:
     tags: ['v*']
 permissions:
   contents: read
+concurrency:
+  group: desktop-release-${{ github.ref }}
+  cancel-in-progress: false
 jobs:
   build:
     strategy:
@@ -31,33 +34,27 @@ jobs:
       - run: node node_modules/electron/install.js
       - run: npm run typecheck
       - run: npm run validate
-      - name: Include the version's changelog in update metadata
-        shell: bash
-        run: node tools/release-notes.mjs > release-notes.md
+      - run: npm test
+        if: runner.os == 'Linux'
       - name: Build installers and update manifests
         shell: bash
         run: |
-          SIGNING=()
-          # An empty CSC_LINK is interpreted as the working directory, not as unsigned distribution.
-          if [ -z "$CSC_LINK" ]; then unset CSC_LINK CSC_KEY_PASSWORD; fi
-          if [ "$RUNNER_OS" = 'macOS' ] && [ -n "$CSC_LINK" ]; then
-            if [ -z "$CSC_NAME" ] || [ -z "$APPLE_ID" ] || [ -z "$APPLE_APP_SPECIFIC_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; then
-              echo '::error::Mac signing needs MAC_SIGNING_IDENTITY, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID.'
-              exit 1
-            fi
-            SIGNING+=("--config.mac.identity=$CSC_NAME" '--config.mac.hardenedRuntime=true' '--config.mac.notarize=true' '--config.forceCodeSigning=true')
-          fi
-          npm run desktop:dist -- --${{ matrix.arch }} --publish never --config.publish.channel=latest-${{ matrix.arch }} --config.releaseInfo.releaseNotesFile=release-notes.md "${SIGNING[@]}"
+          node tools/desktop-build.mjs --arch ${{ matrix.arch }}
         env:
+          OPENVORLD_DISTRIBUTION: '${{ github.event_name != ''workflow_dispatch'' || inputs.release }}'
           CSC_IDENTITY_AUTO_DISCOVERY: 'false'
           CSC_LINK: '${{ runner.os == ''macOS'' && secrets.MAC_CERTIFICATE || runner.os == ''Windows'' && secrets.WIN_CERTIFICATE || '''' }}'
           CSC_KEY_PASSWORD: '${{ runner.os == ''macOS'' && secrets.MAC_CERTIFICATE_PASSWORD || runner.os == ''Windows'' && secrets.WIN_CERTIFICATE_PASSWORD || '''' }}'
-          CSC_NAME: '${{ secrets.MAC_SIGNING_IDENTITY }}'
-          APPLE_ID: '${{ secrets.APPLE_ID }}'
-          APPLE_APP_SPECIFIC_PASSWORD: '${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}'
-          APPLE_TEAM_ID: '${{ secrets.APPLE_TEAM_ID }}'
+          CSC_NAME: '${{ runner.os == ''macOS'' && secrets.MAC_SIGNING_IDENTITY || '''' }}'
+          APPLE_ID: '${{ runner.os == ''macOS'' && secrets.APPLE_ID || '''' }}'
+          APPLE_APP_SPECIFIC_PASSWORD: '${{ runner.os == ''macOS'' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '''' }}'
+          APPLE_TEAM_ID: '${{ runner.os == ''macOS'' && secrets.APPLE_TEAM_ID || '''' }}'
       - name: Verify installer hashes and changelog in update manifests
         run: node tools/verify-updates.mjs
+      - name: Smoke test the packaged Mac app
+        if: runner.os == 'macOS'
+        timeout-minutes: 3
+        run: node desktop/smoke.mjs release/${{ matrix.arch == 'arm64' && 'mac-arm64' || 'mac' }}/OpenVorld.app
       - name: Verify packaged Windows sprites and portraits
         if: runner.os == 'Windows'
         timeout-minutes: 3
@@ -71,14 +68,12 @@ jobs:
           name: 'OpenVorld-${{ steps.version.outputs.version }}-${{ matrix.os }}-${{ matrix.arch }}'
           if-no-files-found: error
           path: |
-            release/*.dmg
             release/*.zip
             release/*.exe
             release/*.AppImage
             release/latest-*.yml
-            release/*.blockmap
 
-  # Stage all installers and update manifests in a draft before making the release visible to installed apps.
+  # Publish verified desktop downloads first, then advance the separate update feed atomically.
   release:
     needs: build
     if: github.event_name != 'workflow_dispatch' || inputs.release
@@ -87,6 +82,11 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci --ignore-scripts
       - id: version
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
       - name: A tag must name the version it builds
@@ -101,23 +101,34 @@ jobs:
           pattern: 'OpenVorld-${{ steps.version.outputs.version }}-*'
           merge-multiple: true
           path: dist
+      - name: Verify all four downloads and update manifests
+        run: |
+          node tools/verify-updates.mjs dist
+          node --input-type=module -e "import {updateFeedFiles} from './tools/publish-update-feed.mjs'; updateFeedFiles('dist', JSON.parse((await import('node:fs')).readFileSync('package.json')).version)"
       - name: Publish the release
         env:
           GH_TOKEN: '${{ github.token }}'
           VERSION: '${{ steps.version.outputs.version }}'
         run: |
           TAG="v${VERSION}"
-          ls -l dist
-          (cd dist && shasum -a 256 * > SHA256SUMS.txt)
+          ARTIFACTS=("dist/OpenVorld-${VERSION}-mac-arm64.zip" "dist/OpenVorld-${VERSION}-mac-x64.zip" "dist/OpenVorld-${VERSION}-win-x64.exe" "dist/OpenVorld-${VERSION}-linux-x86_64.AppImage")
           node tools/release-notes.mjs "${VERSION}" > notes.md
           if gh release view "${TAG}" --json isDraft --jq '.isDraft' > draft.txt 2>/dev/null; then
             if [ "$(cat draft.txt)" != 'true' ]; then
-              echo '::error::Published versions are immutable. Bump the version before releasing again.'
-              exit 1
+              # A feed upload can be retried, but published desktop binaries must never change.
+              gh release download "${TAG}" --dir published
+              test "$(find published -type f | wc -l)" -eq 4
+              for file in "${ARTIFACTS[@]}"; do cmp "$file" "published/$(basename "$file")"; done
+              exit 0
             fi
-            gh release upload "${TAG}" dist/* --clobber
+            gh release upload "${TAG}" "${ARTIFACTS[@]}" --clobber
             gh release edit "${TAG}" --notes-file notes.md
           else
-            gh release create "${TAG}" dist/* --draft --target "${GITHUB_SHA}" --title "OpenVorld ${VERSION}" --notes-file notes.md
+            gh release create "${TAG}" "${ARTIFACTS[@]}" --draft --target "${GITHUB_SHA}" --title "OpenVorld ${VERSION}" --notes-file notes.md
           fi
+          test "$(gh release view "${TAG}" --json assets --jq '.assets | length')" -eq 4
           gh release edit "${TAG}" --draft=false --latest
+      - name: Publish the update feed
+        env:
+          GH_TOKEN: '${{ github.token }}'
+        run: node tools/publish-update-feed.mjs dist
