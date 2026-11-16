@@ -38,6 +38,8 @@ jobs:
         shell: bash
         run: |
           SIGNING=()
+          # An empty CSC_LINK is interpreted as the working directory, not as unsigned distribution.
+          if [ -z "$CSC_LINK" ]; then unset CSC_LINK CSC_KEY_PASSWORD; fi
           if [ "$RUNNER_OS" = 'macOS' ] && [ -n "$CSC_LINK" ]; then
             if [ -z "$CSC_NAME" ] || [ -z "$APPLE_ID" ] || [ -z "$APPLE_APP_SPECIFIC_PASSWORD" ] || [ -z "$APPLE_TEAM_ID" ]; then
               echo '::error::Mac signing needs MAC_SIGNING_IDENTITY, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, and APPLE_TEAM_ID.'

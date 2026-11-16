@@ -6,6 +6,7 @@ import YAML from 'yaml';
 import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { releaseNotes } from '../tools/release-notes.mjs';
 import { verifyUpdates } from '../tools/verify-updates.mjs';
 
@@ -51,4 +52,17 @@ test('the desktop workflow builds three systems, then publishes one versioned re
   assert.match(text, /--draft --target/); assert.match(text, /--draft=false --latest/);
   assert.ok('release' in wf.on.workflow_dispatch.inputs && wf.on.push.tags.includes('v*'));
   assert.match(fs.readFileSync(new URL('../electron-builder.yml', import.meta.url), 'utf8'), /artifactName: .*\$\{version\}.*\$\{os\}.*\$\{arch\}/, 'files carry the version');
+});
+
+test('the build command handles absent signing credentials and rejects an incomplete Mac identity', () => {
+  const workflow = YAML.parse(fs.readFileSync(new URL('../.github/workflows/desktop.yml', import.meta.url), 'utf8'));
+  const command = workflow.jobs.build.steps.find(step => step.name === 'Build installers and update manifests').run.replaceAll('${{ matrix.arch }}', 'x64');
+  // Substitute only npm: exercise the real CI shell logic without building or using real certificates.
+  const stub = 'npm() { test -z "${CSC_LINK+x}" && test -z "${CSC_KEY_PASSWORD+x}"; };\n';
+  const env = { ...process.env, RUNNER_OS: 'macOS', CSC_LINK: '', CSC_KEY_PASSWORD: '', CSC_NAME: '', APPLE_ID: '', APPLE_APP_SPECIFIC_PASSWORD: '', APPLE_TEAM_ID: '' };
+  const unsigned = spawnSync('bash', ['-e', '-c', stub + command], { env, encoding: 'utf8' });
+  assert.equal(unsigned.status, 0, unsigned.stderr || unsigned.stdout);
+  const incomplete = spawnSync('bash', ['-e', '-c', stub + command], { env: { ...env, CSC_LINK: 'dummy-certificate' }, encoding: 'utf8' });
+  assert.equal(incomplete.status, 1);
+  assert.match(incomplete.stdout, /Mac signing needs/);
 });
