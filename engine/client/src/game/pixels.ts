@@ -43,15 +43,16 @@ export async function loadGenerated(data: any, getImage: (name: string) => Promi
   const load = ++genLoad;
   if (!data?.sheets?.length) { GEN = null; genRevision = null; canvasCache.clear(); listeners.forEach((f) => f()); return; }
   if (genRevision === data.revision && GEN) return;
-  const map = new Map<string, GenFrame>();
+  const map = new Map<string, GenFrame>(), failed: string[] = [];
   for (const sheet of data.sheets) {
     try {
       const blob = await getImage(sheet.image), url = URL.createObjectURL(blob), img = new Image();
       try { img.src = url; await img.decode(); } finally { URL.revokeObjectURL(url); }
       for (const [name, f] of Object.entries<any>(sheet.frames)) map.set(name, { img, ...f });
-    } catch { /* a missing sheet leaves its frames out */ }
+    } catch { failed.push(sheet.image); }
   }
   if (load !== genLoad) return;
+  if (failed.length) throw new Error(`Could not load game artwork: ${failed.join(', ')}. Reload OpenVorld to retry.`);
   GEN = map.size ? map : null; genRevision = data.revision; canvasCache.clear(); iconCache.clear();
   listeners.forEach((f) => f());
 }

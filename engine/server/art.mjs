@@ -5,6 +5,50 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { pngSize } from '../../tools/lib/png.mjs';
+import { decodePng, encodePng } from '../../tools/lib/pngcodec.mjs';
+
+const PAGE_EDGE = 2048;
+const pageCache = new Map();
+
+/** Keep whole character cells together on small images, avoiding a giant decoded browser surface. */
+function characterPage(file, characters, size) {
+  if (!file || !characters || Math.max(size.width, size.height) <= PAGE_EDGE) return null;
+  const cells = characters.dirs.length * characters.frames + (characters.portrait ? 1 : 0);
+  const cell = size.width / cells, edge = Math.floor(PAGE_EDGE / cell) * cell;
+  if (!Number.isInteger(cell) || !edge) return null;
+  // Custom PNG formats the small codec does not handle keep their original browser decoding path.
+  const header = Buffer.alloc(29), fd = fs.openSync(file, 'r');
+  try { fs.readSync(fd, header, 0, header.length, 0); } finally { fs.closeSync(fd); }
+  return header[24] === 8 && [2, 6].includes(header[25]) && header[28] === 0 ? { edge, ...size } : null;
+}
+
+/** Original sheets remain available; paged character images are generated without changing the artwork. */
+export function sheetImage(packs, name) {
+  const files = sheetFiles(packs), page = /^characters-page-(\d+)-(\d+)$/.exec(name);
+  if (!page) return files[name]?.file ? fs.readFileSync(files[name].file) : null;
+  const file = files.characters?.file;
+  if (!file) return null;
+  const raw = fs.readFileSync(file), layout = characterPage(file, packs.byKind.default_art?.default_art?.characters, pngSize(raw));
+  if (!layout) return null;
+  const x = Number(page[1]) * layout.edge, y = Number(page[2]) * layout.edge;
+  if (x >= layout.width || y >= layout.height) return null;
+  const stat = fs.statSync(file), revision = `${stat.mtimeMs}:${stat.size}:${layout.edge}`;
+  let cache = pageCache.get(file);
+  if (!cache || cache.revision !== revision) {
+    if (pageCache.size >= 4) pageCache.delete(pageCache.keys().next().value);
+    cache = { revision, pages: new Map() }; pageCache.set(file, cache);
+  }
+  const key = `${Number(page[1])}:${Number(page[2])}`;
+  if (cache.pages.has(key)) return cache.pages.get(key);
+  const source = decodePng(raw), width = Math.min(layout.edge, source.width - x), height = Math.min(layout.edge, source.height - y);
+  const data = Buffer.alloc(width * height * 4);
+  for (let row = 0; row < height; row++) {
+    const start = ((y + row) * source.width + x) * 4;
+    source.data.copy(data, row * width * 4, start, start + width * 4);
+  }
+  const png = encodePng({ width, height, data }); cache.pages.set(key, png);
+  return png;
+}
 
 const keyOf = (id) => String(id).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'x';
 
@@ -48,7 +92,7 @@ export function atlasFor(ctx) {
     return agentRows.length ? agentRows[k % agentRows.length] : 0;
   };
   const people = [{ id: 'founder', role: 'founder' }, ...ctx.crew];
-  const sig = [];
+  const sig = ['character-pages-v1'];
   const size = sizeOf('characters');
   if (ch && size) {
     const cells = ch.dirs.length * ch.frames, cols = cells + (ch.portrait ? 1 : 0), cell = size.width / cols, frames = {};
@@ -59,7 +103,17 @@ export function atlasFor(ctx) {
       for (const [d, src] of Object.entries(ch.mirror ?? {})) for (let f = 0; f < ch.frames; f++) if (frames[`${key}_${src}_${f}`]) frames[`${key}_${d}_${f}`] = { ...frames[`${key}_${src}_${f}`], flip: true };
       if (ch.portrait) frames[`${key}_portrait`] = { x: cells * cell, y, w: cell, h: cell, kind: 'sprite' };
     }
-    sheets.push({ group: 'characters', image: 'characters', frames });
+    const layout = characterPage(files.characters?.file, ch, size);
+    if (!layout) sheets.push({ group: 'characters', image: 'characters', frames });
+    else {
+      const pages = new Map();
+      for (const [name, frame] of Object.entries(frames)) {
+        const col = Math.floor(frame.x / layout.edge), row = Math.floor(frame.y / layout.edge), image = `characters-page-${col}-${row}`;
+        if (!pages.has(image)) pages.set(image, { group: 'characters', image, frames: {} });
+        pages.get(image).frames[name] = { ...frame, x: frame.x - col * layout.edge, y: frame.y - row * layout.edge };
+      }
+      sheets.push(...pages.values());
+    }
   }
   for (const [id, g] of Object.entries(cfg.sheets ?? {})) {
     const s = sizeOf(id);

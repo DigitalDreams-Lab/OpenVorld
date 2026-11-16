@@ -2,6 +2,11 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.8.1 - 2026-11-16
+
+- Serve large character sheets as small lossless pages and load portraits independently to avoid invisible characters on Windows
+- Report artwork loading failures, verify packaged Windows portraits in the release workflow, and fix the development browser favicon path
+
 ## 0.8.0 - 2026-11-16
 
 - Use the existing OpenVorld icon consistently across startup, Settings, About and the favicon, retaining the original native desktop icon

@@ -1,6 +1,6 @@
 // Panel avatars come from the portrait sheet; without one, the head and shoulders of the idle frame.
 import { useEffect, useRef, useState } from 'react';
-import { generatedCanvas, generatedCharacter, onAtlas } from '../game/pixels';
+import { artKey, generatedCanvas, generatedCharacter, onAtlas } from '../game/pixels';
 
 export function Portrait({ role, avatar, size = 64, mood, kind }: { vorld?: any; role?: string; avatar?: string; size?: number; mood?: string; look?: any; kind?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -20,6 +20,8 @@ export function Portrait({ role, avatar, size = 64, mood, kind }: { vorld?: any;
       if (img) { ctx.drawImage(img, 0, 0, size, size); return; }
     }
     if (role) {
+      const portrait = generatedCanvas(`c_${artKey(role)}_portrait`);
+      if (portrait) { ctx.drawImage(portrait, 0, 0, size, size); return; }
       const gen = generatedCharacter(role);
       if (!gen) return;
       if (gen.portrait) { ctx.drawImage(gen.portrait, 0, 0, size, size); return; }

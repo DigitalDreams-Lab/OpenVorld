@@ -9,8 +9,9 @@ import { _electron } from 'playwright-core';
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'openvorld-desktop-smoke-'));
 const activityCheck = process.argv.includes('--activity');
 const profileCheck = process.argv.includes('--profile');
+const spriteCheck = process.argv.includes('--sprites');
 const executableArgument = process.argv.slice(2).find(argument => !argument.startsWith('--'));
-const executable = executableArgument || (await import('electron')).default;
+const executable = executableArgument ? path.resolve(executableArgument) : (await import('electron')).default;
 const env = { ...process.env, OPENVORLD_HOME: path.join(temporary, 'data'), OV_DESKTOP_USER_DATA: path.join(temporary, 'preferences') };
 delete env.ELECTRON_RUN_AS_NODE; delete env.NODE_OPTIONS; delete env.NODE_PATH;
 let desktop;
@@ -53,6 +54,23 @@ try {
     throw new Error('The scripted agent did not reply.');
   });
   assert.equal(state.home, env.OPENVORLD_HOME); assert.ok(state.replied);
+  if (spriteCheck) {
+    await page.waitForFunction(() => [...document.querySelectorAll('canvas.portrait')].length > 1 && [...document.querySelectorAll('canvas.portrait')].every(canvas => {
+      const pixels = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+      return pixels.some((byte, index) => index % 4 === 3 && byte > 0);
+    }), null, { timeout: 30000 });
+    const pages = await page.evaluate(async () => {
+      const token = document.querySelector('meta[name="ov-token"]').content, headers = { 'x-ov-token': token };
+      const boot = await (await fetch('/api/boot', { headers })).json();
+      const world = await (await fetch(`/api/vorlds/${boot.vorlds[0].id}/vorld`, { headers })).json();
+      return Promise.all(world.art.atlas.sheets.filter(sheet => sheet.group === 'characters').map(async sheet => {
+        const response = await fetch('/api/art/' + sheet.image, { headers });
+        const image = await createImageBitmap(await response.blob());
+        const result = { width: image.width, height: image.height }; image.close(); return result;
+      }));
+    });
+    assert.ok(pages.length > 1 && pages.every(page => page.width <= 2048 && page.height <= 2048), 'walking sprites use small decoded image pages');
+  }
   if (profileCheck) {
     await page.getByRole('button', { name: 'Edit your profile', exact: true }).click();
     await page.getByLabel('Your name', { exact: true }).fill('Ada Brook');
@@ -99,7 +117,7 @@ try {
   await page.screenshot({ path: screenshot });
   await desktop.close(); desktop = null;
   await assert.rejects(fetch(origin + '/api/boot'), 'quitting also stops the engine');
-  console.log(JSON.stringify({ result: 'passed', executable, crew: state.crew, scriptedReply: state.replied, profileChecked: profileCheck, engineStopped: true, screenshot }));
+  console.log(JSON.stringify({ result: 'passed', executable, crew: state.crew, scriptedReply: state.replied, profileChecked: profileCheck, spritesChecked: spriteCheck, engineStopped: true, screenshot }));
 } finally {
   if (desktop) await desktop.close();
   fs.rmSync(temporary, { recursive: true, force: true });

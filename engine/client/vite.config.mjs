@@ -4,11 +4,15 @@ import { fileURLToPath } from 'node:url';
 import fs from 'node:fs';
 
 const SERVER = `http://127.0.0.1:${process.env.OV_PORT ?? 4317}`;
+const iconFile = fileURLToPath(new URL('../../desktop/assets/icon.svg', import.meta.url)).replaceAll('\\', '/');
 // Dev only: inject the per-launch token the same way the server does for the built client.
 const token = () => ({
   name: 'ov-token',
   apply: 'serve',                  // a build must not carry an empty token tag (the server injects the real one)
-  transformIndexHtml: (html) => html.replace('</head>', `<meta name="ov-token" content="${process.env.OV_TOKEN ?? ''}"></head>`),
+  transformIndexHtml: (html) => html
+    // Outside-root HTML asset paths are rewritten by the production build, but not by Vite's dev server.
+    .replace('href="../../desktop/assets/icon.svg"', `href="/@fs/${iconFile.replace(/^\//, '')}"`)
+    .replace('</head>', `<meta name="ov-token" content="${process.env.OV_TOKEN ?? ''}"></head>`),
 });
 
 export default defineConfig({

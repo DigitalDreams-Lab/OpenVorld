@@ -60,6 +60,8 @@ vorlds/<id>/
 
 ## Client (`engine/client/src`)
 
+Large character sheets are served as lossless PNG pages of at most 2048 pixels per side, aligned to whole sprite cells. The source artwork and pack layout stay unchanged. The atlas names each page and gives coordinates within it; the authenticated art route generates and caches the pages. Portraits load independently of walking frames, and failed atlas downloads are reported instead of caching an incomplete atlas and showing invisible characters.
+
 The founder's optional name and about-me description live in `<home>/profile.json`, shared across vorlds without a data migration. Settings edits the profile through authenticated `/api/profile` routes, the HUD displays the name alongside the unchanged level/title, and the current profile is supplied as background to agents on each turn (also refreshed in resumed CLI sessions). The avatar in the HUD opens profile settings.
 
 Messages support isolated HTML/SVG previews (from fenced blocks, complete markup, and linked files), images, browser-native PDF/audio/video, Markdown, formatted JSON, CSV/TSV tables, and plain source/text files. `previews.ts` classifies formats and prepares static HTML; `ui/MessagePreview.tsx` owns preview dialogs and rendering. Local HTML assets are fetched through the existing conversation-scoped file route and embedded as data URLs. HTML runs in a scriptless opaque-origin sandbox with network, nested frames, forms, and parent access blocked. Preview reads are bounded; downloads retain their existing behavior.

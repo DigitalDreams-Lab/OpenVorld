@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import { WebSocketServer } from 'ws';
 import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMember, detected, migrateVorlds } from './vorld.mjs';
-import { atlasFor, sheetFiles } from './art.mjs';
+import { atlasFor, sheetImage } from './art.mjs';
 import { gameFor } from './game.mjs';
 import { listThreads, createThread, getThread, updateThread, readEvents, appendEvent } from './threads.mjs';
 import { runTurn, stopTurn, stopAllTurns, activeTurnCount, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
@@ -103,10 +103,10 @@ route('PUT', '/api/profile', async ({ req }) => {
   return profile;
 });
 route('GET', '/api/art/:sheet', ({ p, res }) => {
-  const s = sheetFiles(allPacks())[String(p.sheet).replace(/\.png$/, '')];
-  if (!s?.file) fail('unknown sheet', 404);
+  const image = sheetImage(allPacks(), String(p.sheet).replace(/\.png$/, ''));
+  if (!image) fail('unknown sheet', 404);
   res.writeHead(200, { 'content-type': 'image/png', 'cache-control': 'no-cache', 'x-content-type-options': 'nosniff' });
-  res.end(fs.readFileSync(s.file));
+  res.end(image);
 });
 
 // vorlds
