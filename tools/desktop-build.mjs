@@ -16,7 +16,8 @@ export function desktopBuildOptions({ platform, arch, distribution = false, env 
     const notarization = Boolean(clean.APPLE_KEYCHAIN_PROFILE || (clean.APPLE_ID && clean.APPLE_APP_SPECIFIC_PASSWORD && clean.APPLE_TEAM_ID) || (clean.APPLE_API_KEY && clean.APPLE_API_KEY_ID && clean.APPLE_API_ISSUER));
     if (distribution && (!identity?.startsWith('Developer ID Application:') || !notarization)) throw new Error('Public Mac releases require a Developer ID Application identity and notarization credentials. Configure MAC_CERTIFICATE, MAC_SIGNING_IDENTITY and Apple notarization before publishing.');
     if (clean.CSC_LINK && !identity) throw new Error('MAC_SIGNING_IDENTITY must name the Developer ID Application certificate.');
-    if (identity) args.push(`--config.mac.identity=${identity}`, '--config.mac.hardenedRuntime=true', `--config.mac.notarize=${notarization}`, '--config.forceCodeSigning=true');
+    // electron-builder selects the Developer ID type itself and rejects that prefix in its qualifier.
+    if (identity) args.push(`--config.mac.identity=${identity.replace(/^Developer ID Application:\s*/, '')}`, '--config.mac.hardenedRuntime=true', `--config.mac.notarize=${notarization}`, '--config.forceCodeSigning=true');
   }
   return { args, env: clean };
 }

@@ -2,6 +2,12 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.11.3 - 2026-11-16
+
+- Sign and notarize the Mac desktop releases with the correct Developer ID identity selector.
+- Keep four desktop downloads, with changelog and full-installer updates served through a separate feed; versions before 0.11 need one manual upgrade.
+- Include the Canvas fallback for Macs without WebGL and the fix for agent CLIs that close their input early.
+
 ## 0.11.2 - 2026-11-16
 
 - Handle agent CLIs that close their input pipe early, preserving their JSON responses and authentication errors instead of crashing with EPIPE.

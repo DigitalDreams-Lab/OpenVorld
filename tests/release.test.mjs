@@ -69,6 +69,7 @@ test('the build command handles absent signing credentials and rejects an incomp
   assert.throws(() => build({ CSC_NAME: 'Apple Development: Test', APPLE_KEYCHAIN_PROFILE: 'notary' }), /Public Mac releases require/);
   assert.throws(() => build({ CSC_NAME: 'Developer ID Application: Test' }), /notarization credentials/);
   const signed = build({ CSC_NAME: 'Developer ID Application: Test', APPLE_KEYCHAIN_PROFILE: 'notary' });
+  assert.ok(signed.args.includes('--config.mac.identity=Test'), 'electron-builder requires the holder name without the certificate-type prefix');
   assert.ok(signed.args.includes('--config.mac.notarize=true'));
   assert.ok(signed.args.includes('--config.forceCodeSigning=true'));
   assert.equal(desktopBuildOptions({ platform: 'win32', arch: 'x64', distribution: true }).args.includes('--config.forceCodeSigning=true'), false);
