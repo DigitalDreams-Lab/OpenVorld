@@ -2,6 +2,11 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.10.0 - 2026-11-16
+
+- Add desktop update checks, background downloads, release notes, and safe restart-to-install with installer fallback for unsigned Macs
+- Publish Apple Silicon and Intel Mac installers, Windows and Linux builds, and architecture-specific update metadata together
+
 ## 0.9.2 - 2026-11-16
 
 - Demo attract mode (play/?embed&attract) for the website's hero: the story plays itself silently on a loop, and tells the page when it is on screen and when it has finished

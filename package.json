@@ -1,6 +1,6 @@
 {
   "name": "openvorld",
-  "version": "0.9.2",
+  "version": "0.10.0",
   "description": "Every project is a vorld: a shared project folder, a crew of AI agents with their own workspaces, and the quests they run together. Shown as a pixel-art world.",
   "license": "MIT",
   "type": "module",
@@ -28,6 +28,7 @@
     "@fontsource/jetbrains-mono": "5.3.0",
     "@fontsource/lexend": "5.3.0",
     "@fontsource/tiny5": "5.3.0",
+    "electron-updater": "6.8.11",
     "phaser": "4.2.1",
     "playwright-core": "1.65.1",
     "react": "^19.3.1",

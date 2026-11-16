@@ -3,8 +3,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fork } from 'node:child_process';
+import { spawnSync } from 'node:child_process';
+import electronUpdater from 'electron-updater';
 import { fileURLToPath } from 'node:url';
 import { dataHome, desktopPath, engineEnvironment, isAppUrl, isExternalUrl, readSettings, writeSettings } from './runtime.mjs';
+import { createUpdates, updateCapability, RELEASES } from './updates.mjs';
+import { releaseNotes } from '../tools/release-notes.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 app.setName('OpenVorld');
@@ -13,6 +17,7 @@ app.setAppUserModelId('org.openvorld.desktop');
 if (process.env.OV_DESKTOP_USER_DATA) app.setPath('userData', path.resolve(process.env.OV_DESKTOP_USER_DATA));
 const settingsFile = path.join(app.getPath('userData'), 'desktop.json');
 let engine, window, origin, home, settings, log, quitting = false, shutdown = false;
+let updates, updateState = 'idle', updateTimer;
 
 if (!app.requestSingleInstanceLock()) app.quit();
 else {
@@ -57,8 +62,31 @@ async function start() {
     engine.on('message', messageHandler); engine.once('error', errorHandler); engine.once('exit', exitHandler);
   });
   origin = `http://127.0.0.1:${ready.port}`;
+  configureUpdates();
   installMenu();
   createWindow();
+}
+
+function configureUpdates() {
+  let macSigned = false;
+  if (app.isPackaged && process.platform === 'darwin') {
+    const signature = spawnSync('/usr/bin/codesign', ['-dv', '--verbose=4', path.resolve(path.dirname(process.execPath), '../..')], { encoding: 'utf8', timeout: 5000 });
+    macSigned = signature.status === 0 && /Authority=Developer ID Application:/.test(signature.stderr ?? '');
+  }
+  const { autoUpdater } = electronUpdater;
+  autoUpdater.channel = `latest-${process.arch}`;
+  autoUpdater.logger = { info() {}, warn: text => log?.write(`Update: ${text}\n`), error: text => log?.write(`Update: ${text}\n`), debug() {} };
+  updates = createUpdates({ updater: autoUpdater, version: app.getVersion(), packaged: app.isPackaged,
+    automaticInstall: updateCapability({ platform: process.platform, arch: process.arch, macSigned, appImage: process.env.APPIMAGE }),
+    show: options => dialog.showMessageBox(options), openExternal: url => shell.openExternal(url),
+    install: finish => quit(false, finish), log: text => log?.write(`${text}\n`),
+    changed: state => { updateState = state; installMenu(); },
+  });
+  if (app.isPackaged) {
+    const check = () => { if (settings.autoUpdates !== false && !quitting) void updates.check(); };
+    setTimeout(check, 30000).unref();
+    updateTimer = setInterval(check, 6 * 60 * 60 * 1000); updateTimer.unref();
+  }
 }
 
 function createWindow() {
@@ -114,7 +142,12 @@ function installMenu() {
     { role: 'editMenu' },
     { label: 'View', submenu: [{ role: 'reload' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen' }, ...(!app.isPackaged ? [{ role: 'toggleDevTools' }] : [])] },
     { role: 'windowMenu' },
-    { label: 'Help', submenu: [...(process.platform !== 'darwin' ? [{ label: 'About OpenVorld', click: () => app.showAboutPanel() }, { type: 'separator' }] : []), { label: 'Open Logs Folder', click: () => shell.openPath(app.getPath('logs')) }] },
+    { label: 'Help', submenu: [...(process.platform !== 'darwin' ? [{ label: 'About OpenVorld', click: () => app.showAboutPanel() }, { type: 'separator' }] : []),
+      { label: updateState === 'ready' ? 'Restart to Update…' : 'Check for Updates…', click: () => updates.check(true) },
+      { label: 'Check for Updates Automatically', type: 'checkbox', checked: settings.autoUpdates !== false, click: item => { settings = { ...settings, autoUpdates: item.checked }; writeSettings(settingsFile, settings); } },
+      { label: 'What’s New', click: () => dialog.showMessageBox({ title: `OpenVorld ${app.getVersion()}`, message: `What’s new in ${app.getVersion()}`, detail: releaseNotes(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'), app.getVersion()) }) },
+      { label: 'Releases', click: () => shell.openExternal(RELEASES) },
+      { type: 'separator' }, { label: 'Open Logs Folder', click: () => shell.openPath(app.getPath('logs')) }] },
   ]));
 }
 
@@ -128,7 +161,8 @@ async function engineStatus() {
   });
 }
 
-async function quit(confirmed = false) {
+async function quit(confirmed = false, finish = () => app.quit()) {
+  if (quitting) return;
   quitting = true;
   if (!confirmed && await engineStatus()) {
     const result = await dialog.showMessageBox({ type: 'question', message: 'Stop active agents and quit?', detail: 'Saved worlds and conversations will be kept.', buttons: ['Keep Working', 'Stop and Quit'], cancelId: 0, defaultId: 0 });
@@ -141,7 +175,7 @@ async function quit(confirmed = false) {
       if (engine.connected) engine.send({ type: 'desktop:shutdown' }, () => {}); else engine.kill();
     });
   }
-  shutdown = true; log?.end(); app.quit();
+  shutdown = true; clearInterval(updateTimer); log?.end(); finish();
 }
 
 function fatal(error) {

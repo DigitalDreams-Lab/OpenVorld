@@ -22,9 +22,27 @@ Artifacts are written to `release/`. On macOS the app is in `release/mac-arm64/O
 
 ### Releases
 
-The **Desktop builds** workflow (Actions tab → *Run workflow*, or pushing a tag like `v0.6.0`) builds macOS, Windows and Linux and then publishes one GitHub release named after the version in `package.json`: tag `v<version>`, the files named `OpenVorld-<version>-<os>-<arch>.<ext>`, a `SHA256SUMS.txt`, and the matching `CHANGELOG.md` entry as the notes. Running it again for the same version replaces the files. A pushed tag must match the version (`v0.6.0` for `0.6.0`), or the run stops with a message. When running it by hand, untick *Publish the builds as a GitHub release* to only build.
+The **Desktop builds** workflow (Actions tab → *Run workflow*, or pushing a version tag) builds Apple Silicon and Intel macOS apps, Windows x64 and Linux x64. It stages all installers, update manifests, blockmaps, `SHA256SUMS.txt`, and the matching changelog entry in a draft release before publishing it as `v<version>`. Published releases are immutable: bump the version for a new build. A pushed tag must match `package.json`. Untick *Publish the builds as a GitHub release* to only build.
 
-The default Mac build uses an ad-hoc signature for local use. Public distribution needs an Apple Developer ID signature and notarization; Windows releases should also be signed. Signing and automatic updates are not configured by this local setup.
+The default Mac build uses an ad-hoc signature. Apple Developer ID signing and notarization are needed for normal public Mac distribution and in-app installation; unsigned builds use the installer fallback. Windows releases should also be signed. Signing credentials are not included in the repository.
+
+The workflow accepts repository secrets `MAC_CERTIFICATE` (base64 P12), `MAC_CERTIFICATE_PASSWORD`, `MAC_SIGNING_IDENTITY` (Developer ID Application identity), `APPLE_ID`, `APPLE_APP_SPECIFIC_PASSWORD`, and `APPLE_TEAM_ID` to sign and notarize both Mac builds. Supplying a certificate without the other required Mac secrets fails the build. Optional `WIN_CERTIFICATE` and `WIN_CERTIFICATE_PASSWORD` sign Windows installers. Without these secrets, builds keep the unsigned/ad-hoc distribution behavior.
+
+## Install a release
+
+- **macOS:** download the DMG for Apple Silicon or Intel, open it, and drag OpenVorld into Applications. ZIP builds are also available. Unsigned downloads may be blocked by Gatekeeper; a signed, notarized build is the supported way to avoid that prompt.
+- **Windows:** open the x64 EXE and follow the installer. Installation is per-user and does not require Node.js.
+- **Linux:** download the x64 AppImage to a writable folder, enable “Allow executing file as program” in file properties, and open it. Some distributions need FUSE support. Keep the AppImage in that writable folder for in-app updates.
+
+## Updates and changelog
+
+Installed releases check GitHub after startup and every six hours. **Help → Check for Updates…** checks immediately; **Help → Check for Updates Automatically** disables periodic checks and downloads. Requests contain normal network metadata, with no worlds, conversations, provider keys, or telemetry sent. Source launches never check automatically.
+
+Windows installers and Linux AppImages download stable updates in the background, validate the release manifest's SHA-512 checksum, and show the version's changelog before offering **Restart and Install**. Choosing **Later** leaves the update ready in the Help menu; ordinary quitting does not install it. Restart uses the existing engine shutdown flow, including confirmation before stopping active agents. Worlds and settings stay outside the installed app.
+
+Developer ID signed Mac builds use the same flow. Ad-hoc Mac apps, unpacked Linux builds, and unsupported architectures show the release notes and open GitHub for an installer instead. An existing version without the updater needs one manual upgrade before it can check for future updates. **Help → What’s New** also works offline using the installed version's bundled changelog.
+
+Update channels include the CPU architecture (`latest-arm64` / `latest-x64`), so the two Mac manifests cannot overwrite one another. The desktop workflow uploads the generated platform-specific YAML files and blockmaps with the installers. Publishing only an installer without those manifests does not enable automatic installation.
 
 ## Install on your Mac
 

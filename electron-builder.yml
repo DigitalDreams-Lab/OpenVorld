@@ -6,16 +6,24 @@ directories:
 files:
   - desktop/main.mjs
   - desktop/runtime.mjs
+  - desktop/updates.mjs
   - desktop/assets/icon.png
   - engine/server/**
   - engine/client/dist/**
   - tools/lib/**
+  - tools/release-notes.mjs
   - packs/**
   - package.json
   - LICENSE
+  - CHANGELOG.md
   - '!**/*-guide.png'
   - '!**/node_modules/playwright-core/.local-browsers/**'
 npmRebuild: false
+publish:
+  provider: github
+  owner: DigitalDreams-Lab
+  repo: OpenVorld
+  releaseType: release
 mac:
   category: public.app-category.productivity
   icon: desktop/assets/icon.icns
