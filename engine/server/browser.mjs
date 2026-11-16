@@ -26,11 +26,13 @@ import crypto from 'node:crypto';
 import { grantsOf } from './gate.mjs';
 import { BROWSER_TOOLS, isBrowserTool } from './browser-tools.mjs';
 import { vaultDir } from './house.mjs';
+import { captureSignInStorage } from './signin-storage.mjs';
 
 const sessions = new Map();     // `${vorld}:${role}:${kind}` -> session
 const current = new Map();      // `${vorld}:${role}` -> the kind the member last opened a page in
 let shared = null;              // the one headless Chrome process every session's context lives in
 const signins = new Map();      // `${vorld}:${role}` -> the open sign-in window
+const openingSignins = new Map(); // concurrent requests share one launch
 
 const DEFAULTS = {
   enabled: true, viewport: { width: 1024, height: 640 }, text_chars: 12000, max_elements: 60,
@@ -110,7 +112,7 @@ export const signInState = (ctx, role, site = '') => ({ role, available: browser
 
 /**
  * Open a real, visible Chrome window for the founder to sign in to sites AS this member. Whatever they sign in to is
- * saved to the member's vault (cookies and local storage, on this computer only) when they close the window; the
+ * saved periodically to the member's vault (cookies, local storage and IndexedDB, on this computer only); the
  * member uses it only through writs. Resolves once the window is up. `emit` hears { type: 'signin', role, open, sites }.
  */
 export async function openSignIn(ctx, role, { url = '', emit = null } = {}) {
@@ -121,30 +123,49 @@ export async function openSignIn(ctx, role, { url = '', emit = null } = {}) {
     start = u.href;
   }
   const wkey = `${ctx.id}:${role}`;
+  if (openingSignins.has(wkey)) { await openingSignins.get(wkey); return signInState(ctx, role); }
   if (signins.has(wkey)) { await signins.get(wkey).page.bringToFront().catch(() => {}); return signInState(ctx, role); }
+  const opening = launchSignIn(ctx, role, wkey, start, emit);
+  openingSignins.set(wkey, opening);
+  try { await opening; } finally { if (openingSignins.get(wkey) === opening) openingSignins.delete(wkey); }
+  return signInState(ctx, role);
+}
+
+async function launchSignIn(ctx, role, wkey, start, emit) {
   const exe = findChrome();
   if (!exe) fail('Signing in needs Google Chrome or Microsoft Edge installed on this computer.');
   const { chromium } = await import('playwright-core');
   // not flagged as automated: this is the founder's own window, and some sign-in pages refuse automated browsers
   const browser = await chromium.launch({ executablePath: exe, headless: process.env.OV_SIGNIN_HEADLESS === '1', ignoreDefaultArgs: ['--enable-automation'], args: ['--no-first-run', '--no-default-browser-check'] });
-  const context = await browser.newContext({ viewport: null, storageState: loadSession(ctx, role) });
-  const w = { browser, context, page: await context.newPage(), timer: null, debounce: null };
+  let previous = loadSession(ctx, role) ?? { cookies: [], origins: [] };
+  let context, page;
+  try { context = await browser.newContext({ viewport: null, storageState: previous }); page = await context.newPage(); }
+  catch (e) { await browser.close().catch(() => {}); throw e; }
+  const w = { browser, context, page, timer: null, debounce: null };
   signins.set(wkey, w);
-  const save = async () => { const st = await context.storageState({ indexedDB: true }).catch(() => null); if (st) saveSession(ctx, role, st); };
+  let saving = null, closed = false;
+  const save = () => {
+    if (closed) return Promise.resolve();
+    if (saving) return saving;
+    saving = captureSignInStorage(context, previous).then((st) => {
+      if (!closed) { saveSession(ctx, role, st); previous = st; }
+    }).catch(() => {}).finally(() => { saving = null; });
+    return saving;
+  };
   w.save = save;
   w.timer = setInterval(save, 3000); w.timer.unref?.();
   const later = () => { clearTimeout(w.debounce); w.debounce = setTimeout(save, 600); };
   context.on('page', (p) => p.on('framenavigated', later));
   w.page.on('framenavigated', later);
   browser.on('disconnected', async () => {
+    closed = true;
     clearInterval(w.timer); clearTimeout(w.debounce);
-    signins.delete(wkey);
+    if (signins.get(wkey) === w) signins.delete(wkey);
     await closeKind(ctx, 'signed', role);          // the member picks up the new sign-ins the next time it opens a page
     emit?.({ type: 'signin', ...signInState(ctx, role) });
   });
   if (start) await w.page.goto(start, { timeout: 20000, waitUntil: 'domcontentloaded' }).catch(() => {});
   emit?.({ type: 'signin', ...signInState(ctx, role) });
-  return signInState(ctx, role);
 }
 /** For tests: the member's open sign-in window ({ context, page, save, browser }), or null. */
 export const signInWindow = (ctx, role) => signins.get(`${ctx.id}:${role}`) ?? null;
@@ -210,8 +231,9 @@ async function closeSession(s) {
 async function closeKind(ctx, kind, role = null) { for (const s of [...sessions.values()]) if (s.ctx.id === ctx.id && s.kind === kind && (!role || s.role === role)) await closeSession(s); }
 export async function close(ctx, role) { for (const s of [...sessions.values()]) if (s.ctx.id === ctx.id && s.role === role) await closeSession(s); }
 export async function closeAll() {
+  await Promise.allSettled([...openingSignins.values()]);
   for (const s of [...sessions.values()]) await closeSession(s);
-  for (const w of [...signins.values()]) { clearInterval(w.timer); await w.browser.close().catch(() => {}); }
+  for (const w of [...signins.values()]) { clearInterval(w.timer); clearTimeout(w.debounce); await w.save(); await w.browser.close().catch(() => {}); }
   signins.clear();
 }
 
@@ -360,6 +382,21 @@ const IMPL = {
     await s.page.goBack({ timeout: 8000 }).catch(() => fail('there is no earlier page'));
     await settled(s);
     return snapshot(s);
+  },
+  async browser_screenshot(s, { post = true, caption = '' } = {}, o) {
+    if (!s.page || s.page.isClosed()) fail('no page is open to screenshot');
+    const buf = await s.page.screenshot({ type: 'jpeg', quality: s.cfg.jpeg_quality ?? 85, timeout: 5000 });
+    const url = s.page.url(), title = await s.page.title().catch(() => '');
+    const b64 = buf.toString('base64');
+    const desc = caption ? ` "${caption}"` : '';
+    const note = `Screenshot of ${url}${title ? ` ("${title}")` : ''}${desc} (${buf.length} bytes)`;
+    return {
+      output: note,
+      images: [{ data: b64, type: 'image/jpeg', name: 'screenshot.jpg' }],
+      image: { data: b64, type: 'image/jpeg' },
+      post: post !== false,
+      caption: caption || undefined,
+    };
   },
 };
 

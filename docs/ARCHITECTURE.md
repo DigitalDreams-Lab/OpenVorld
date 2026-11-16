@@ -60,6 +60,8 @@ vorlds/<id>/
 
 ## Client (`engine/client/src`)
 
+Pending approvals open a focused request dialog with the original thread ID, so requests from party rooms never divert into an agent's private chat. Member and party panels keep pending-request buttons above their conversations, including requests in older chats. Answers use the existing approval API and resume the originating party; closing the dialog leaves the request pending.
+
 Large character sheets are served as lossless PNG pages of at most 2048 pixels per side, aligned to whole sprite cells. The source artwork and pack layout stay unchanged. The atlas names each page and gives coordinates within it; the authenticated art route generates and caches the pages. Portraits load independently of walking frames, and failed atlas downloads are reported instead of caching an incomplete atlas and showing invisible characters.
 
 The founder's optional name and about-me description live in `<home>/profile.json`, shared across vorlds without a data migration. Settings edits the profile through authenticated `/api/profile` routes, the HUD displays the name alongside the unchanged level/title, and the current profile is supplied as background to agents on each turn (also refreshed in resumed CLI sessions). The avatar in the HUD opens profile settings.

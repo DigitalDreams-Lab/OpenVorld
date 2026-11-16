@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { play } from '../audio/sfx';
-import { on, setState, str, toast, useStore } from '../store';
+import { on, setOpenWrits, setState, str, toast, useStore } from '../store';
 import { FolderPicker, useFolderDialog } from './FolderPicker';
 
 export type WritEvent = { id: string; role: string; capability: string; scope: string; why?: string; risk?: string; signin?: boolean };
@@ -36,6 +36,7 @@ export function WritCard({ ask, answered, wid, thread, who }: { ask: WritEvent; 
       if (id !== 'deny' && needs.value) body.value = needs.value;
       const r = await api(`/vorlds/${wid}/threads/${thread}/writs/${ask.id}`, { body });
       setDone({ answer: id, scope: r.scope });
+      setOpenWrits(list => list.filter(request => request.id !== ask.id));
       setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));
     } catch (e: any) { toast({ kind: 'error', title: e.message }); play('ui.error'); } finally { setBusy(false); }
   };

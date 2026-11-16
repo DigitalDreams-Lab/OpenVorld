@@ -7,6 +7,7 @@ import { IconButton } from './IconButton';
 import { play } from '../audio/sfx';
 import { Portrait } from './Portrait';
 import { ThreadView } from './Thread';
+import { PendingRequests } from './Requests';
 
 export function PartyPanel({ id }: { id: string }) {
   const wid = useStore((s) => s.vorldId)!;
@@ -44,6 +45,7 @@ export function PartyPanel({ id }: { id: string }) {
           <IconButton icon="close" title="Close" onClick={() => setState({ partyId: null })} />
         </div>
       </header>
+      <PendingRequests threads={(chats ?? []).map(chat => chat.id)} />
       <div className="thread-tabs">
         <button className="btn small primary" onClick={newChat}>+ New chat</button>
         <div className="thread-list">

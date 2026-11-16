@@ -17,6 +17,7 @@ import { PartyHall } from '../ui/PartyHall';
 import { PartyPanel } from '../ui/PartyPanel';
 import { Deeds } from '../ui/Deeds';
 import { Settings } from '../ui/Settings';
+import { RequestDialog } from '../ui/Requests';
 import { Toasts } from '../ui/Toasts';
 import { AgentBalloons } from '../ui/AgentBalloons';
 import { lastActivityLine } from '../activity';
@@ -37,7 +38,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
         const w = await api(`/vorlds/${wid}/vorld`);
         if (dead) return;
         await loadGenerated(w.art.atlas, (name) => artImage(name));
-        setState({ vorldId: wid, vorld: w, talkingTo: null, modal: null, partyId: null, partyEdit: null, live: {}, browsers: {}, activityNotes: {}, openWrits: [] });
+        setState({ vorldId: wid, vorld: w, talkingTo: null, modal: null, partyId: null, partyEdit: null, live: {}, browsers: {}, activityNotes: {}, openWrits: [], request: null });
         void loadOpenWrits(wid);                    // requests for access that were waiting before this window opened
         // what each member's browser last showed (a window opened after they stopped browsing)
         for (const c of w.crew) api(`/vorlds/${wid}/browser/${c.id}`).then((f) => { if (!dead && f?.image) handleBrowser({ ...f, role: c.id, active: false }); }).catch(() => {});
@@ -101,6 +102,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
       {vorld && modal === 'parties' && <PartyHall />}
       {vorld && modal === 'deeds' && <Deeds />}
       {vorld && modal === 'settings' && <Settings />}
+      {vorld && modal === 'request' && <RequestDialog />}
       {vorld && modal === 'member' && talkingTo && <MemberSettings key={`settings:${talkingTo}`} id={talkingTo} />}
       <Toasts />
       {vorld && !talkingTo && !partyId && !modal && <div className="hint">WASD or click to walk · E to talk · the Party Hall stands in the plaza</div>}
@@ -125,8 +127,23 @@ function handleBrowser(m: any) {
 
 const nameOf = (role?: string) => getState().vorld?.crew?.find((c: any) => c.id === role)?.name ?? 'Someone';
 function handleThreadEvent(m: any) {
-  const { thread, role, ev } = m;
-  const put = (patch: any) => setState((s) => ({ live: { ...s.live, [thread]: { ...(s.live[thread] ?? { steps: [], working: false }), role, updatedAt: Date.now(), ...patch } } }));
+  const { thread, role, ev, kind, party } = m;
+  const threadKind = kind ?? ev.thread?.kind;
+  const partyId = party ?? ev.thread?.party;
+  const put = (patch: any) => setState((s) => ({
+    live: {
+      ...s.live,
+      [thread]: {
+        ...(s.live[thread] ?? { steps: [], working: false }),
+        role,
+        thread,
+        ...(threadKind ? { kind: threadKind } : {}),
+        ...(partyId ? { party: partyId } : {}),
+        updatedAt: Date.now(),
+        ...patch
+      }
+    }
+  }));
   const steps = () => [...(getState().live[thread]?.steps ?? [])];
   // steps grow in place: text and thinking append to the last step of their kind, tools update by id
   const grow = (type: 'text' | 'thinking', text: string) => {
@@ -152,14 +169,20 @@ function handleThreadEvent(m: any) {
     case 'writ.answered': setOpenWrits((list) => list.filter((w) => w.id !== ev.id)); setState((s) => ({ threadsVersion: s.threadsVersion + 1 })); break;
     case 'turn.done':
       put({ working: false, steps: [] });
-      if (role) setState(s => ({ activityNotes: { ...s.activityNotes, [role]: { text: lastActivityLine(ev.text) || ev.meta?.balloon || '', at: Date.now() } } }));
+      if (role) {
+        const pId = partyId ?? getState().live[thread]?.party;
+        setState(s => ({ activityNotes: { ...s.activityNotes, [role]: { text: lastActivityLine(ev.text) || ev.meta?.balloon || '', at: Date.now(), party: pId, thread } } }));
+      }
       emit('working', { role, working: false });
       setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));
       notify({ kind: 'done', title: `${nameOf(role)} is done`, body: lastActivityLine(ev.text), role });
       break;
     case 'turn.error':
       put({ working: false, error: ev.message });
-      if (role) setState(s => ({ activityNotes: { ...s.activityNotes, [role]: { text: ev.message || 'Something went wrong.', at: Date.now(), error: true } } }));
+      if (role) {
+        const pId = partyId ?? getState().live[thread]?.party;
+        setState(s => ({ activityNotes: { ...s.activityNotes, [role]: { text: ev.message || 'Something went wrong.', at: Date.now(), error: true, party: pId, thread } } }));
+      }
       emit('working', { role, working: false }); react(ev.reaction ?? { anim: 'faint' });
       notify({ kind: 'error', title: `${nameOf(role)} hit a problem`, body: ev.message, role });
       setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));

@@ -126,6 +126,10 @@ test('the browser itself: pages, redirects, passwords and the live view (needs C
   assert.match(await use('browser_click', { id: 1 }), /Page: Two/);
   assert.match(await use('browser_back', {}), /Page: Tea shop/);
 
+  const shot = await use('browser_screenshot', { caption: 'tea page' });
+  assert.ok(shot.output.includes('Screenshot of'));
+  assert.ok(shot.images?.[0]?.data?.length > 100);
+
   // a granted site that redirects somewhere else may not take the browser there
   asks.length = 0;
   await assert.rejects(use('browser_click', { id: 2 }), /no writ for localhost[\s\S]*still on the previous page/);
@@ -259,4 +263,61 @@ test('the sign-in window saves what the founder signs in to, and can forget it (
   assert.equal(hub.signInState(ctx, 'ada').open, false);
   assert.equal(hub.sessionSites(ctx, 'ada').length, 2, 'closing the window keeps the sign-ins');
   assert.deepEqual((await hub.forgetSignIns(ctx, 'ada')).sites, []);
+});
+
+test('sign-in autosave leaves the window alone across origins and concurrent open requests', { skip: !hub.findChrome() && 'no Chrome or Edge on this computer' }, async (t) => {
+  process.env.OV_SIGNIN_HEADLESS = '1';
+  const server = http.createServer((req, res) => { res.setHeader('content-type', 'text/html'); res.end('<title>Sign in</title><input placeholder="Email">'); });
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));
+  t.after(async () => { delete process.env.OV_SIGNIN_HEADLESS; await hub.closeAll(); server.close(); });
+  const ctx = crew(), heard = [];
+  const home = `http://127.0.0.1:${server.address().port}`;
+  await Promise.all(Array.from({ length: 4 }, () => hub.openSignIn(ctx, 'ada', { url: home, emit: (e) => heard.push(e) })));
+  assert.equal(heard.filter((e) => e.open).length, 1, 'concurrent clicks open one browser');
+  const w = hub.signInWindow(ctx, 'ada');
+  const cdp = await w.browser.newBrowserCDPSession();
+  const targets = [];
+  await cdp.send('Target.setDiscoverTargets', { discover: true });
+  cdp.on('Target.targetCreated', (e) => { if (e.targetInfo.type === 'page') targets.push(e.targetInfo); });
+  await w.page.evaluate(async () => {
+    localStorage.setItem('account', 'first');
+    await new Promise((resolve, reject) => {
+      const r = indexedDB.open('auth', 1);
+      r.onupgradeneeded = () => r.result.createObjectStore('tokens');
+      r.onerror = () => reject(r.error);
+      r.onsuccess = () => {
+        const db = r.result, tx = db.transaction('tokens', 'readwrite');
+        const value = { token: 'test-token', expires: new Date('2030-01-01'), bytes: new Uint8Array([1, 2, 3]), roles: new Set(['reader']) };
+        value.self = value;
+        tx.objectStore('tokens').put(value, 'session');
+        tx.oncomplete = () => { db.close(); resolve(); };
+        tx.onerror = () => reject(tx.error);
+      };
+    });
+  });
+  await w.save();
+  await w.page.goto(`http://localhost:${server.address().port}`);
+  await w.page.evaluate(() => localStorage.setItem('account', 'second'));
+  await w.page.getByPlaceholder('Email').fill('still-typing');
+  await Promise.all(Array.from({ length: 4 }, () => w.save()));
+  await new Promise((r) => setTimeout(r, 3500)); // also exercise the navigation debounce and background interval
+  assert.equal(targets.length, 0, 'autosave creates no temporary browser pages, even for an earlier origin');
+  assert.equal(w.context.pages().length, 1);
+  assert.equal(await w.page.getByPlaceholder('Email').inputValue(), 'still-typing');
+  assert.equal(w.page.url(), `http://localhost:${server.address().port}/`);
+  await hub.closeAll();
+  // Reopening must restore both origins, including non-JSON IndexedDB authentication values.
+  await hub.openSignIn(ctx, 'ada', { url: home });
+  const restored = hub.signInWindow(ctx, 'ada');
+  assert.equal(await restored.page.evaluate(() => localStorage.getItem('account')), 'first');
+  const record = await restored.page.evaluate(async () => {
+    const db = await new Promise((resolve) => { const r = indexedDB.open('auth'); r.onsuccess = () => resolve(r.result); });
+    try {
+      const value = await new Promise((resolve) => { const r = db.transaction('tokens').objectStore('tokens').get('session'); r.onsuccess = () => resolve(r.result); });
+      return { token: value.token, expires: value.expires.toISOString(), bytes: [...value.bytes], roles: [...value.roles], cycle: value.self === value };
+    } finally { db.close(); }
+  });
+  assert.deepEqual(record, { token: 'test-token', expires: '2030-01-01T00:00:00.000Z', bytes: [1, 2, 3], roles: ['reader'], cycle: true });
+  await restored.page.goto(`http://localhost:${server.address().port}`);
+  assert.equal(await restored.page.evaluate(() => localStorage.getItem('account')), 'second');
 });

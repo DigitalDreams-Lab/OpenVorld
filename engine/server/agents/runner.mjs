@@ -86,7 +86,7 @@ export async function runTurn(ctx, threadId, text, emit, attachments = [], { fro
     if (!speakerRole) { patch.session_id = r.sessionId ?? thread.session_id; if (r.sessionProvider) patch.session_provider = r.sessionProvider; }
     if (!thread.title && !speakerRole) patch.title = r.meta?.title || text.slice(0, 48) || attachments[0]?.name || 'Chat';
     const t = updateThread(ctx, threadId, patch);
-    if (r.ok) emit({ type: 'thread.event', thread: threadId, role, ev: { type: 'turn.done', text: r.shown, meta: r.meta, thread: t } });
+    if (r.ok) emit({ type: 'thread.event', thread: threadId, role, kind: thread.kind, party: thread.party, ev: { type: 'turn.done', text: r.shown, meta: r.meta, thread: t } });
     return r;
   } finally {
     active.delete(threadId);
@@ -122,7 +122,7 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
   const threadId = thread.id;
   const brain = brainOf(ctx, role);
   const reactions = ctx.interactions.reactions ?? {};
-  const send = (ev) => emit({ type: 'thread.event', thread: threadId, role, ev });
+  const send = (ev) => emit({ type: 'thread.event', thread: threadId, role, kind: thread.kind, party: thread.party, ev });
   send({ type: 'turn.start', brain: brain.label, speaker: role, reaction: reactions['turn.start'] });
 
   // writs -> tool access

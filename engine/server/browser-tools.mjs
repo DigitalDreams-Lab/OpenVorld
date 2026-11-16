@@ -14,6 +14,8 @@ export const BROWSER_TOOLS = [
   { name: 'browser_type', description: 'Type text into a numbered field from the last page reading, optionally pressing Enter. Never for passwords or payment details.',
     properties: { id: { type: 'integer' }, text: { type: 'string' }, submit: { type: 'boolean', description: 'Press Enter afterwards' } }, required: ['id', 'text'] },
   { name: 'browser_back', description: 'Go back one page.', properties: {}, required: [] },
+  { name: 'browser_screenshot', description: 'Take a screenshot of the current browser page. Returns the image and automatically posts it to the chat so you and the founder can inspect it.',
+    properties: { post: { type: 'boolean', description: 'Whether to post the screenshot to the chat (default true)' }, caption: { type: 'string', description: 'Optional short caption explaining what this screenshot shows' } }, required: [] },
 ];
 
 // Asking the founder for a secret: not a browser tool, but it travels over the same bridge.

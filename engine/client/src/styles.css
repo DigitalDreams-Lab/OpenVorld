@@ -158,6 +158,10 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 /* modals */
 .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; z-index: 20; }
 .modal { width: min(940px, 94vw); max-height: 88vh; overflow: auto; overscroll-behavior: contain; padding: 16px 18px; }
+.modal.request-dialog { width: min(640px, 94vw); color: var(--ink); }
+.request-dialog::backdrop { background: #11191cba; }
+.request-dialog .writ-card { margin-bottom: 0; }
+.pending-requests { display: flex; flex-wrap: wrap; flex: none; gap: 6px; padding: 8px 12px; border-bottom: 1px dashed var(--ink); }
 .modal h2 { margin: 0; } .modal h2 small { font-size: 14px; opacity: .7; } .modal h3 { margin: 18px 0 6px; }
 .deed-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; margin-top: 10px; }
 .deed { border: 2px solid var(--ink); background: #fffaf0; padding: 10px 8px; display: grid; justify-items: center; text-align: center; gap: 4px; opacity: .55; filter: grayscale(.8); } .deed-name { font-weight: 600; font-size: calc(14px * var(--display-scale)); } .deed-desc { font-size: 13px; } .deed-meta { font-size: 12px; opacity: .7; }
@@ -430,7 +434,12 @@ select.field.small { padding-right: 26px; }
 .agent-balloon:hover, .agent-balloon:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .ab-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 11px; }
 .ab-heading strong { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ab-heading-right { display: flex; align-items: center; gap: 5px; flex: none; }
 .ab-state { flex: none; opacity: .7; font-size: 10px; }
+.ab-state-dismiss { cursor: pointer; transition: opacity .15s ease; }
+.ab-state-dismiss:hover { opacity: 1; text-decoration: underline; }
+.ab-dismiss { font-size: 10px; opacity: .6; cursor: pointer; padding: 1px 4px; line-height: 1; border-radius: 3px; display: inline-flex; align-items: center; justify-content: center; }
+.ab-dismiss:hover { opacity: 1; background: color-mix(in srgb, var(--ink) 12%, transparent); }
 .agent-balloon.work .ab-state::before, .agent-balloon.browser .ab-state::before { content: ''; display: inline-block; width: 5px; height: 5px; margin-right: 4px; border-radius: 50%; background: #278765; animation: blink 1.2s steps(1) infinite; }
 .agent-balloon.error { border-color: #a43737; }
 .ab-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; }

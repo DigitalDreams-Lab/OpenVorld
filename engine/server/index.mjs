@@ -13,7 +13,7 @@ import { listThreads, createThread, getThread, updateThread, readEvents, appendE
 import { runTurn, stopTurn, stopAllTurns, activeTurnCount, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
 import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, stopAllParties, partyBusy } from './parties.mjs';
 import { adoptLegacyKeys, cleanProviders, hasKey, keyFor, looksLikeEnvName } from './keys.mjs';
-import { saveAttachmentStream, getAttachment, resolveAttachments, replyFile, allowReplyFile, addReferences } from './attachments.mjs';
+import { saveAttachmentStream, saveAttachment, publicFiles, getAttachment, resolveAttachments, replyFile, allowReplyFile, addReferences } from './attachments.mjs';
 import { listGrants, grant, revoke, checkFolder, checkScope, deny, holds } from './gate.mjs';
 import { browseFolder, pickNative, nativeDialog, browseConfig } from './browse.mjs';
 import { benchesOf, benchOf, benchBase, checkBench, newBenchId, projectOf, checkProject, MAX_BENCHES } from './benches.mjs';
@@ -77,7 +77,7 @@ const vorldChanged = (id) => emitTo(id)({ type: 'vorld' });
 async function turn(ctx, tid, text, files = []) {
   const emit = emitTo(ctx.id), thread = getThread(ctx, tid);
   try { await runTurn(ctx, tid, text, emit, files); }
-  catch (e) { emit({ type: 'thread.event', thread: tid, role: thread.role, ev: { type: 'turn.error', message: e.message } }); }
+  catch (e) { emit({ type: 'thread.event', thread: tid, role: thread.role, kind: thread.kind, party: thread.party, ev: { type: 'turn.error', message: e.message } }); }
 }
 
 // ---------- routes ----------
@@ -285,7 +285,7 @@ route('POST', '/api/vorlds/:id/threads/:tid/messages', async ({ p, req }) => {
   const msg = String(text ?? '').trim(), files = resolveAttachments(ctx, p.tid, attachments);
   if (!msg && !files.length) fail('empty message');
   if (msg.length > 20000) fail('message too long', 413);
-  if (thread.kind === 'party') void runParty(ctx, p.tid, msg, files, emitTo(p.id)).catch((e) => emitTo(p.id)({ type: 'thread.event', thread: p.tid, role: thread.speaker, ev: { type: 'turn.error', message: e.message } }));
+  if (thread.kind === 'party') void runParty(ctx, p.tid, msg, files, emitTo(p.id)).catch((e) => emitTo(p.id)({ type: 'thread.event', thread: p.tid, role: thread.speaker, kind: thread.kind, party: thread.party, ev: { type: 'turn.error', message: e.message } }));
   else void turn(ctx, p.tid, msg, files);
   return { ok: true };
 });
@@ -331,11 +331,11 @@ route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
     game.event('writ.granted').xp('writ_granted', notes);
   }
   const ev = appendEvent(ctx, p.tid, { type: 'writ.answered', id: p.wid, role: ask.role, answer: b.answer, scope });
-  emit({ type: 'thread.event', thread: p.tid, role: ask.role, ev });
+  const thread = getThread(ctx, p.tid);
+  emit({ type: 'thread.event', thread: p.tid, role: ask.role, kind: thread.kind, party: thread.party, ev });
   const n = game.check(notes); if (n.length) emit({ type: 'game', notes: n, state: game.snapshot() });
   // pick the work back up once the member is idle (the founder may answer while their last turn is still ending) and no
   // other request of theirs is waiting: a party room carries on, a chat continues on request
-  const thread = getThread(ctx, p.tid);
   const resume = thread.kind === 'party' ? b.continue !== false : b.answer !== 'deny' && b.continue !== false;
   if (resume) void (async () => {
     for (let i = 0; i < 600 && (isWorking(p.tid) || partyBusy(p.tid)); i++) await new Promise((r) => setTimeout(r, 500));
@@ -375,9 +375,25 @@ route('POST', '/api/vorlds/:id/browser/:role/:tool', async ({ p, q, req }) => {
   if (!ctx.member(p.role)) fail('unknown crew member', 404);
   const thread = q.get('thread') ? (() => { try { return getThread(ctx, q.get('thread')); } catch { return null; } })() : null;
   // a site without a writ becomes a writ card in the member's thread right away (the brain is waiting on this call)
-  const onRequest = (a) => { if (thread) requestAccess(ctx, thread, p.role, [a], (ev) => emit({ type: 'thread.event', thread: thread.id, role: p.role, ev })); };
+  const onRequest = (a) => { if (thread) requestAccess(ctx, thread, p.role, [a], (ev) => emit({ type: 'thread.event', thread: thread.id, role: p.role, kind: thread.kind, party: thread.party, ev })); };
   if (p.tool === 'secret_ask') { try { return { ok: true, output: askSecret(ctx, p.role, await body(req), onRequest) }; } catch (e) { return { ok: false, output: `error: ${e.message}` }; } }
-  try { return { ok: true, output: redactSecrets(ctx, p.role, await browse.callTool(ctx, p.role, p.tool, await body(req), { emit, onRequest })) }; }
+  try {
+    const res = await browse.callTool(ctx, p.role, p.tool, await body(req), { emit, onRequest });
+    const output = typeof res === 'object' && res !== null && 'output' in res ? res.output : res;
+    const images = typeof res === 'object' && res !== null ? (res.images ?? (res.image ? [res.image] : undefined)) : undefined;
+    if (thread && res?.post && images?.length) {
+      for (const img of images) {
+        if (img.data) {
+          try {
+            const data = Buffer.from(img.data, 'base64');
+            const att = saveAttachment(ctx, thread.id, `screenshot-${Date.now()}.jpg`, data);
+            emit({ type: 'thread.event', thread: thread.id, role: p.role, kind: thread.kind, party: thread.party, ev: { type: 'tool_result', name: p.tool, ok: true, output, attachments: publicFiles([att]) } });
+          } catch {}
+        }
+      }
+    }
+    return { ok: true, output: redactSecrets(ctx, p.role, output), ...(images ? { images, image: images[0] } : {}) };
+  }
   catch (e) { return { ok: false, output: `error: ${e.message}` }; }
 });
 

@@ -476,10 +476,10 @@ export class VorldScene extends Phaser.Scene {
   placeFor(role: string, to: any, from: Pt): (Pt & { look?: Pt }) | null {
     const slot = this.slotOf(role);
     switch (to?.kind) {
-      case 'plaza': return this.ringSpot(this.terminal, 30, slot);
-      case 'founder': return this.ringSpot({ x: this.player.x, y: this.player.y }, 22, slot);
-      case 'home': { if (role === this.companionId) return this.ringSpot({ x: this.player.x, y: this.player.y }, 22, 0); const n = this.npcs.get(role); return n ? this.wanderTarget(n) : null; }
-      case 'member': { const o = this.npcs.get(to.id); return o ? this.ringSpot({ x: o.home.x, y: o.home.y }, 16, slot) : null; }
+      case 'plaza': return this.ringSpot(this.terminal, 46, slot);
+      case 'founder': return this.ringSpot({ x: this.player.x, y: this.player.y }, 36, slot);
+      case 'home': { if (role === this.companionId) return this.ringSpot({ x: this.player.x, y: this.player.y }, 36, 0); const n = this.npcs.get(role); return n ? this.wanderTarget(n) : null; }
+      case 'member': { const o = this.npcs.get(to.id); return o ? this.ringSpot({ x: o.home.x, y: o.home.y }, 20, slot) : null; }
       case 'prop': { const s = this.propSpot(String(to.ref), from); return s ? { ...s.stand, look: s.prop } : null; }
     }
     return null;
@@ -543,13 +543,13 @@ export class VorldScene extends Phaser.Scene {
   /** A free spot around the founder (summoned) or the terminal (gather), one per caller so nobody overlaps. */
   spotFor(n: Npc) {
     const gather = n.mode === 'gather', c = gather ? this.terminal : { x: this.player.x, y: this.player.y };
-    const ring = [0.8, 0.2, 1.2, 1.8, 0.5, 1.5, 1.0, 0.0], r = (gather ? 34 : 22) + Math.floor(n.slot / ring.length) * 14;
+    const ring = [0.8, 0.2, 1.2, 1.8, 0.5, 1.5, 1.0, 0.0], r = (gather ? 48 : 36) + Math.floor(n.slot / ring.length) * 16;
     for (let k = 0; k < ring.length; k++) {
       const a = Math.PI * ring[(n.slot + k) % ring.length];
-      const x = c.x + Math.cos(a) * r, y = c.y + Math.sin(a) * r * 0.65 + (gather ? 8 : 0);
+      const x = c.x + Math.cos(a) * r, y = c.y + Math.sin(a) * r * 0.7 + (gather ? 8 : 0);
       if (this.walkable(x, y)) return { x, y };
     }
-    return { x: c.x + (n.slot % 2 ? 1 : -1) * (14 + 10 * Math.floor(n.slot / 2)), y: c.y + 6 };
+    return { x: c.x + (n.slot % 2 ? 1 : -1) * (18 + 14 * Math.floor(n.slot / 2)), y: c.y + 8 };
   }
 
   /** A home appears block by block: walls from the ground up, then the roof rows, then the details. */
@@ -588,7 +588,7 @@ export class VorldScene extends Phaser.Scene {
 
   /** Soft collision: members never stand inside each other, the founder or a walking companion. */
   separate() {
-    const MIN = 13, SQUASH = 1.8;               // feet are wide and flat: y distances count more
+    const MIN = 20, MIN_FIXED = 32, SQUASH = 1.8;               // feet are wide and flat: y distances count more
     const movers = [...this.npcs.values()].filter((n) => n.sprite.visible !== false);
     const fixed: { x: number; y: number }[] = [{ x: this.player.x, y: this.player.y }];
     if (this.companionForm !== 'creature') fixed.push({ x: this.bee.x, y: this.bee.y });
@@ -609,9 +609,9 @@ export class VorldScene extends Phaser.Scene {
       }
       for (const f of fixed) {
         let dx = a.sprite.x - f.x, dy = (a.sprite.y - f.y) * SQUASH, d = Math.hypot(dx, dy);
-        if (d >= MIN) continue;
+        if (d >= MIN_FIXED) continue;
         if (d < 0.01) { dx = 1; dy = 0; d = 1; }
-        const k = (MIN - d) / d;
+        const k = (MIN_FIXED - d) / d;
         push(a, dx * k, (dy * k) / SQUASH);
       }
     }

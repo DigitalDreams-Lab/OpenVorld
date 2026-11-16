@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { agentActivity } from '../activity';
 import { api } from '../api';
 import { play } from '../audio/sfx';
-import { emit, on, setOpenWrits, setState, str, toast, useStore, type OpenWrit } from '../store';
+import { emit, on, openRequest, setOpenWrits, setState, str, toast, useStore, type OpenWrit } from '../store';
 
 type Anchors = { width: number; height: number; positions: Record<string, { x: number; y: number; feet: number }> };
 export function AgentBalloons() {
@@ -109,8 +109,44 @@ export function AgentBalloons() {
       return <button key={member.id} type="button" className={`agent-balloon ${activity.kind}`} data-agent={member.id}
         ref={element => { if (element) elements.current.set(member.id, element); else elements.current.delete(member.id); }}
         style={{ visibility: 'hidden' } as CSSProperties} aria-label={`${member.name}: ${label}. ${activity.text}`}
-        title={`Open ${member.name}'s conversation`} onClick={event => { event.stopPropagation(); emit('talk', member.id); }} onPointerDown={event => event.stopPropagation()}>
-        <span className="ab-heading"><strong>{member.name}</strong><span className="ab-state">{label}</span></span>
+        title={activity.party ? `Open party conversation` : `Open ${member.name}'s conversation`}
+        onClick={event => {
+          event.stopPropagation();
+          if (activity.party) {
+            play('ui.open');
+            setState({ partyId: activity.party, talkingTo: null });
+          } else {
+            emit('talk', member.id);
+          }
+        }} onPointerDown={event => event.stopPropagation()}>
+        <span className="ab-heading">
+          <strong>{member.name}</strong>
+          <span className="ab-heading-right">
+            <span
+              className={`ab-state ${activity.kind === 'done' ? 'ab-state-dismiss' : ''}`}
+              title={activity.kind === 'done' ? 'Dismiss' : undefined}
+              onClick={(e) => {
+                if (activity.kind === 'done') {
+                  e.stopPropagation();
+                  setState(s => ({ activityNotes: { ...s.activityNotes, [member.id]: { text: '', at: 0 } } }));
+                }
+              }}
+            >{label}</span>
+            {(activity.kind === 'done' || activity.kind === 'error') && (
+              <span
+                role="button"
+                tabIndex={0}
+                className="ab-dismiss"
+                title="Dismiss"
+                aria-label="Dismiss notification"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setState(s => ({ activityNotes: { ...s.activityNotes, [member.id]: { text: '', at: 0 } } }));
+                }}
+              >✕</span>
+            )}
+          </span>
+        </span>
         <span className="ab-text">{activity.text}</span>
         {activity.image && <img className="ab-browser" src={`data:image/jpeg;base64,${activity.image}`} alt={`${member.name}'s live browser preview`} onLoad={place} />}
         {activity.kind === 'browser' && activity.site && <span className="ab-site">{activity.signed ? '🔒 ' : '🌐 '}{activity.site}<span>View only</span></span>}
@@ -146,9 +182,9 @@ function AskBalloon({ member, ask, more, register }: { member: any; ask: OpenWri
     {ask.why && <span className="ab-why">“{ask.why}”</span>}
     <span className="ab-actions">
       {needsCard
-        ? <button type="button" className="btn small primary" onClick={() => emit('talk', member.id)}>Open the request</button>
+        ? <button type="button" className="btn small primary" onClick={() => openRequest(ask)}>Open the request</button>
         : <>{answers.map((a: any) => <button key={a.id} type="button" className={`btn small ${a.id === 'once' ? 'primary' : ''}`} disabled={busy} title={a.hint} onClick={() => void answer(a.id)}>{label(a)}</button>)}
-          <button type="button" className="link" onClick={() => emit('talk', member.id)}>Details</button></>}
+          <button type="button" className="link" onClick={() => openRequest(ask)}>Details</button></>}
     </span>
   </div>;
 }

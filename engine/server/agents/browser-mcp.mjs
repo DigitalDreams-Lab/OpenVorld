@@ -16,7 +16,7 @@ async function call(name, args) {
     });
     const data = await r.json().catch(() => ({ error: `HTTP ${r.status}` }));
     if (!r.ok) return { text: `error: ${data.error ?? r.status}`, isError: true };
-    return { text: String(data.output ?? ''), isError: !data.ok };
+    return { text: String(data.output ?? ''), isError: !data.ok, image: data.image ?? data.images?.[0] };
   } catch (e) { return { text: `error: cannot reach the OpenVorld server (${e.message})`, isError: true }; }
 }
 
@@ -28,7 +28,9 @@ readline.createInterface({ input: process.stdin }).on('line', async (line) => {
   if (m.method === 'tools/list') return reply({ tools: BRIDGE_TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: { type: 'object', properties: t.properties, required: t.required } })) });
   if (m.method === 'tools/call') {
     const r = await call(m.params?.name, m.params?.arguments);
-    return reply({ content: [{ type: 'text', text: r.text }], isError: r.isError });
+    const content = [{ type: 'text', text: r.text }];
+    if (r.image?.data) content.push({ type: 'image', data: r.image.data, mimeType: r.image.type ?? 'image/jpeg' });
+    return reply({ content, isError: r.isError });
   }
   if (m.id !== undefined) send({ id: m.id, error: { code: -32601, message: `unknown method ${m.method}` } });
 });

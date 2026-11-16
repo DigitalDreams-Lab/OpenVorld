@@ -28,10 +28,14 @@ export function agentActivity(role: string, turns: Record<string, Live>, browser
   let site = '';
   try { site = new URL(browser?.url ?? '').hostname; } catch { /* No page yet. */ }
   const text = turn?.working ? liveActivityLine(turn) : recent ? lastActivityLine(note?.text) : '';
+  const party = turn?.working ? turn.party : note?.party;
+  const thread = turn?.working ? turn.thread : note?.thread;
   return {
     text: text || lastActivityLine(browser?.title) || (site ? `Browsing ${site}` : 'Browsing…'),
     kind: recent && note?.error && !turn?.working && !browser?.active ? 'error' : browser?.active ? 'browser' : turn?.working ? 'work' : 'done',
     image: browser?.active ? browser.image : undefined,
     site, signed: !!browser?.signed,
+    party,
+    thread,
   };
 }

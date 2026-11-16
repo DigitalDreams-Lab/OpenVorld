@@ -6,6 +6,7 @@ import { IconButton } from './IconButton';
 import { play } from '../audio/sfx';
 import { Portrait } from './Portrait';
 import { ThreadView } from './Thread';
+import { PendingRequests } from './Requests';
 
 export function MemberPanel({ id }: { id: string }) {
   const wid = useStore((s) => s.vorldId)!;
@@ -48,6 +49,7 @@ export function MemberPanel({ id }: { id: string }) {
           <IconButton icon="close" title="Close" onClick={() => setState({ talkingTo: null })} />
         </div>
       </header>
+      <PendingRequests role={id} />
       {!m.brain_label && <p className="no-brain">{m.name} has no brain yet. <button className="link" onClick={() => setState({ modal: 'member' })}>Pick one</button> (Claude Code, Codex, Antigravity, OpenCode or an API model).</p>}
       <div className="thread-tabs">
         <button className="btn small primary" onClick={newChat}>+ {str('ui.new_chat', {}, 'New chat')}</button>
