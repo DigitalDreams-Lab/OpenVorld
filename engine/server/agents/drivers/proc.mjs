@@ -29,6 +29,14 @@ export function runJsonLines({ cmd, args, cwd, stdin, env, signal, onLine, onStd
       }
     });
     child.stderr.on('data', (d) => { err += d; onStderr?.(String(d)); });
+    // A CLI may close input immediately (for example on an authentication error).
+    // Keep reading its output and exit status instead of throwing an unhandled pipe error.
+    child.stdin.on('error', error => {
+      if (error.code !== 'EPIPE' && error.code !== 'ERR_STREAM_DESTROYED') {
+        child.kill('SIGTERM');
+        reject(new Error(`${cmd}: ${error.message}`));
+      }
+    });
     child.on('error', (e) => reject(new Error(`${cmd}: ${e.message}`)));
     child.on('close', (code) => {
       signal?.removeEventListener('abort', kill);

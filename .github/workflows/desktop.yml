@@ -54,7 +54,7 @@ jobs:
       - name: Smoke test the packaged Mac app
         if: runner.os == 'macOS'
         timeout-minutes: 3
-        run: node desktop/smoke.mjs release/${{ matrix.arch == 'arm64' && 'mac-arm64' || 'mac' }}/OpenVorld.app
+        run: node desktop/smoke.mjs release/${{ matrix.arch == 'arm64' && 'mac-arm64' || 'mac' }}/OpenVorld.app ${{ matrix.arch == 'x64' && '--no-webgl' || '' }}
       - name: Verify packaged Windows sprites and portraits
         if: runner.os == 'Windows'
         timeout-minutes: 3

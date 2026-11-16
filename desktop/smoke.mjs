@@ -10,6 +10,7 @@ const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'openvorld-desktop-smoke
 const activityCheck = process.argv.includes('--activity');
 const profileCheck = process.argv.includes('--profile');
 const spriteCheck = process.argv.includes('--sprites');
+const canvasFallback = process.argv.includes('--no-webgl');
 const executableArgument = process.argv.slice(2).find(argument => !argument.startsWith('--'));
 const executable = executableArgument ? path.resolve(executableArgument, ...(executableArgument.endsWith('.app') ? ['Contents', 'MacOS', 'OpenVorld'] : [])) : (await import('electron')).default;
 const env = { ...process.env, OPENVORLD_HOME: path.join(temporary, 'data'), OV_DESKTOP_USER_DATA: path.join(temporary, 'preferences') };
@@ -17,10 +18,23 @@ delete env.ELECTRON_RUN_AS_NODE; delete env.NODE_OPTIONS; delete env.NODE_PATH;
 let desktop, page;
 const errors = [], consoleMessages = [];
 try {
-  desktop = await _electron.launch({ executablePath: executable, args: executableArgument ? [] : [fileURLToPath(new URL('..', import.meta.url))], env, timeout: 30000 });
+  const args = executableArgument ? [] : [fileURLToPath(new URL('..', import.meta.url))];
+  desktop = await _electron.launch({ executablePath: executable, args, env, timeout: 30000 });
   page = await desktop.firstWindow();
   page.on('pageerror', error => errors.push(error.message));
   page.on('console', message => { if (['warning', 'error'].includes(message.type())) consoleMessages.push(message.text().slice(0, 2000)); });
+  if (canvasFallback) {
+    await page.getByRole('button', { name: 'New vorld', exact: true }).waitFor();
+    // Simulate missing WebGL before Phaser detects renderer support, including on developer Macs with a GPU.
+    await page.addInitScript(() => {
+      const context = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (kind, ...args) {
+        if (['webgl', 'webgl2', 'experimental-webgl'].includes(kind)) return null;
+        return context.call(this, kind, ...args);
+      };
+    });
+    await page.reload({ waitUntil: 'domcontentloaded' });
+  }
   let gameSocket;
   if (activityCheck) await page.routeWebSocket(/\/ws\?/, socket => {
     gameSocket = socket;
@@ -29,6 +43,7 @@ try {
     socket.onMessage(message => server.send(message));
   });
   await page.getByRole('button', { name: 'New vorld', exact: true }).waitFor();
+  if (canvasFallback) assert.equal(await page.evaluate(() => Boolean(document.createElement('canvas').getContext('webgl'))), false);
   const origin = new URL(page.url()).origin;
   const preferences = await (await desktop.browserWindow(page)).evaluate(window => window.webContents.getLastWebPreferences());
   assert.equal(preferences.nodeIntegration, false); assert.equal(preferences.contextIsolation, true); assert.equal(preferences.sandbox, true);
@@ -36,7 +51,8 @@ try {
   await page.getByLabel('Name', { exact: true }).first().fill('Desktop smoke world');
   await page.getByLabel('None for now').check();
   await page.getByRole('button', { name: 'Create the vorld', exact: true }).click();
-  await page.locator('canvas').first().waitFor({ timeout: process.env.CI ? 90000 : 30000 });
+  await page.locator('.phaser-host canvas').waitFor({ timeout: process.env.CI ? 90000 : 30000 });
+  if (canvasFallback) assert.ok(await page.locator('.phaser-host canvas').evaluate(canvas => Boolean(canvas.getContext('2d'))), 'The world uses the Canvas renderer when WebGL is unavailable');
   const state = await page.evaluate(async () => {
     const token = document.querySelector('meta[name="ov-token"]').content;
     const api = async (url, body) => {
@@ -119,7 +135,7 @@ try {
   await page.screenshot({ path: screenshot });
   await desktop.close(); desktop = null;
   await assert.rejects(fetch(origin + '/api/boot'), 'quitting also stops the engine');
-  console.log(JSON.stringify({ result: 'passed', executable, crew: state.crew, scriptedReply: state.replied, profileChecked: profileCheck, spritesChecked: spriteCheck, engineStopped: true, screenshot }));
+  console.log(JSON.stringify({ result: 'passed', executable, crew: state.crew, scriptedReply: state.replied, profileChecked: profileCheck, spritesChecked: spriteCheck, canvasFallback, engineStopped: true, screenshot }));
 } catch (error) {
   const directory = process.env.CI ? path.resolve('release/smoke') : temporary;
   fs.mkdirSync(directory, { recursive: true });

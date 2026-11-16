@@ -45,7 +45,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
         await Promise.all(['400', '600', '700'].map((weight) => document.fonts.load(`${weight} 8px "${BODY_FONT}"`)));
         if (dead) return;
         game = new Phaser.Game({
-          type: Phaser.WEBGL, parent: host.current!, backgroundColor: w.theme.palette?.ink ?? '#111',
+          type: Phaser.AUTO, parent: host.current!, backgroundColor: w.theme.palette?.ink ?? '#111',
           scale: { mode: Phaser.Scale.RESIZE, width: '100%', height: '100%' },
           render: { antialias: true, pixelArt: false, roundPixels: false },
           physics: { default: 'arcade', arcade: { debug: false } }, scene: [],

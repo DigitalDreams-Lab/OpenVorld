@@ -2,6 +2,11 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.11.2 - 2026-11-16
+
+- Handle agent CLIs that close their input pipe early, preserving their JSON responses and authentication errors instead of crashing with EPIPE.
+- Fall back to Canvas rendering on Macs without WebGL, and verify that path in the Intel Mac release smoke test.
+
 ## 0.11.1 - 2026-11-16
 
 - Allow slower CI Macs time to render the first world and retain smoke-test screenshots, renderer errors and GPU diagnostics when a packaged app fails.
