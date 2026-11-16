@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.8.2 - 2026-11-16
+
+- The Send a test message explains the usual reason a banner does not show: macOS holds banners while the display is asleep (they wait in Notification Center) or a Focus mode mutes them
+
 ## 0.8.1 - 2026-11-16
 
 - Serve large character sheets as small lossless pages and load portraits independently to avoid invisible characters on Windows

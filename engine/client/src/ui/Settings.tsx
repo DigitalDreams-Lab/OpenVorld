@@ -173,7 +173,7 @@ function NotifySettings() {
   const sendTest = async () => {
     const r = await notify({ kind: 'attention', title: 'OpenVorld', body: 'This is how a notification looks.' }, { force: true });
     const chime = r.sound ? 'The chime played.' : 'The chime is switched off.';
-    const banner = { sent: mac ? 'A desktop notification was sent to macOS. No banner? Open System Settings → Notifications → OpenVorld and allow banners and sounds, and check that no Focus mode is on.' : 'A desktop notification was sent.', blocked: 'Desktop notifications are blocked here. Allow them for OpenVorld in your system or browser settings.', unsupported: 'This window cannot show desktop notifications.', off: 'Desktop notifications are switched off above.', 'not-needed': '' }[r.desktop];
+    const banner = { sent: mac ? 'A desktop notification was sent to macOS. No banner? macOS holds banners while the display is asleep (they wait in Notification Center) and a Focus mode mutes them; also check System Settings → Notifications → OpenVorld allows banners and sounds.' : 'A desktop notification was sent.', blocked: 'Desktop notifications are blocked here. Allow them for OpenVorld in your system or browser settings.', unsupported: 'This window cannot show desktop notifications.', off: 'Desktop notifications are switched off above.', 'not-needed': '' }[r.desktop];
     toast({ kind: r.desktop === 'blocked' || r.desktop === 'unsupported' ? 'error' : 'info', title: 'Test sent', body: `${chime} ${banner}`.trim() }, 9000);
   };
   return (
