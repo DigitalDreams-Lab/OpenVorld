@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.11.4 - 2026-11-16
+
+- Describe OpenVorld as an open-source harness for AI agents in the README and package description
+
 ## 0.11.3 - 2026-11-16
 
 - Sign and notarize the Mac desktop releases with the correct Developer ID identity selector.

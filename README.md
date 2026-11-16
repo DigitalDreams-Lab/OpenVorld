@@ -6,7 +6,7 @@
 
 <p align="center">
   <strong>Every project is a vorld.</strong><br />
-  A living RPG world for your projects, your AI crew, and the work you do together.
+  An open-source harness for your AI agents, shown as a living RPG world: your projects, your crew, and the work you do together.
 </p>
 
 <p align="center">
