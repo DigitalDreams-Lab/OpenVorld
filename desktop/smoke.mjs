@@ -14,11 +14,13 @@ const executableArgument = process.argv.slice(2).find(argument => !argument.star
 const executable = executableArgument ? path.resolve(executableArgument, ...(executableArgument.endsWith('.app') ? ['Contents', 'MacOS', 'OpenVorld'] : [])) : (await import('electron')).default;
 const env = { ...process.env, OPENVORLD_HOME: path.join(temporary, 'data'), OV_DESKTOP_USER_DATA: path.join(temporary, 'preferences') };
 delete env.ELECTRON_RUN_AS_NODE; delete env.NODE_OPTIONS; delete env.NODE_PATH;
-let desktop;
+let desktop, page;
+const errors = [], consoleMessages = [];
 try {
   desktop = await _electron.launch({ executablePath: executable, args: executableArgument ? [] : [fileURLToPath(new URL('..', import.meta.url))], env, timeout: 30000 });
-  const page = await desktop.firstWindow(), errors = [];
+  page = await desktop.firstWindow();
   page.on('pageerror', error => errors.push(error.message));
+  page.on('console', message => { if (['warning', 'error'].includes(message.type())) consoleMessages.push(message.text().slice(0, 2000)); });
   let gameSocket;
   if (activityCheck) await page.routeWebSocket(/\/ws\?/, socket => {
     gameSocket = socket;
@@ -34,7 +36,7 @@ try {
   await page.getByLabel('Name', { exact: true }).first().fill('Desktop smoke world');
   await page.getByLabel('None for now').check();
   await page.getByRole('button', { name: 'Create the vorld', exact: true }).click();
-  await page.locator('canvas').first().waitFor({ timeout: 30000 });
+  await page.locator('canvas').first().waitFor({ timeout: process.env.CI ? 90000 : 30000 });
   const state = await page.evaluate(async () => {
     const token = document.querySelector('meta[name="ov-token"]').content;
     const api = async (url, body) => {
@@ -118,6 +120,18 @@ try {
   await desktop.close(); desktop = null;
   await assert.rejects(fetch(origin + '/api/boot'), 'quitting also stops the engine');
   console.log(JSON.stringify({ result: 'passed', executable, crew: state.crew, scriptedReply: state.replied, profileChecked: profileCheck, spritesChecked: spriteCheck, engineStopped: true, screenshot }));
+} catch (error) {
+  const directory = process.env.CI ? path.resolve('release/smoke') : temporary;
+  fs.mkdirSync(directory, { recursive: true });
+  const diagnostics = { error: error.message, rendererErrors: errors, consoleMessages: consoleMessages.slice(-20) };
+  try {
+    diagnostics.page = await page.evaluate(() => ({ title: document.title, text: document.body.innerText.slice(0, 3000), canvases: document.querySelectorAll('canvas').length, webgl: Boolean(document.createElement('canvas').getContext('webgl2')) }));
+    diagnostics.gpu = await desktop.evaluate(({ app }) => app.getGPUFeatureStatus());
+    await page.screenshot({ path: path.join(directory, 'failure.png') });
+  } catch (captureError) { diagnostics.captureError = captureError.message; }
+  fs.writeFileSync(path.join(directory, 'failure.json'), JSON.stringify(diagnostics, null, 2));
+  console.error('Desktop smoke diagnostics:', JSON.stringify(diagnostics));
+  throw error;
 } finally {
   if (desktop) await desktop.close();
   fs.rmSync(temporary, { recursive: true, force: true });

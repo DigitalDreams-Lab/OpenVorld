@@ -59,6 +59,13 @@ jobs:
         if: runner.os == 'Windows'
         timeout-minutes: 3
         run: node desktop/smoke.mjs release/win-unpacked/OpenVorld.exe --sprites --profile
+      - name: Save smoke test failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: 'smoke-${{ matrix.os }}-${{ matrix.arch }}'
+          if-no-files-found: ignore
+          path: release/smoke
       - id: version
         shell: bash
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"

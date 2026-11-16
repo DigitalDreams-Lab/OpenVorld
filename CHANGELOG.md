@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.11.1 - 2026-11-16
+
+- Allow slower CI Macs time to render the first world and retain smoke-test screenshots, renderer errors and GPU diagnostics when a packaged app fails.
+
 ## 0.11.0 - 2026-11-16
 
 - Require Developer ID signing, notarization and Gatekeeper acceptance before publishing Mac apps.
