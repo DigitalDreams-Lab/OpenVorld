@@ -67,6 +67,8 @@ export function setPhase(p: Phase) { phase = p; phaseSubs.forEach((f) => f()); }
 
 /** Shown inside the website's hero (play/?embed): a small window, so the map leads and the chat opens only on request. */
 export const EMBED = new URLSearchParams(location.search).has('embed');
+/** Behind the hero's play button (play/?embed&attract): the story plays itself, silently, on a loop, and nobody can click. */
+export const ATTRACT = new URLSearchParams(location.search).has('attract');
 
 export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 export const DEMO_ONLY = 'This is a demo vorld, so this part stays as it is. Download OpenVorld to make it yours.';

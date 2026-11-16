@@ -33,3 +33,6 @@
 .demo-embed .demo-card h2 { font-size: 25px; }
 /* in the small window the crew's balloons (and Jules's Allow buttons) must never hide under the menus or the tip */
 .demo-embed .agent-balloons { z-index: 45; }
+/* Attract mode (behind the hero's play button): only the living map, its balloons and the celebration toasts. */
+.demo-attract .hud, .demo-attract .crew-bar, .demo-attract .hint { display: none; }
+.demo-attract, .demo-attract * { cursor: default !important; }

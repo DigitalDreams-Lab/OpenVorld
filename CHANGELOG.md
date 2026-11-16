@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.9.2 - 2026-11-16
+
+- Demo attract mode (play/?embed&attract) for the website's hero: the story plays itself silently on a loop, and tells the page when it is on screen and when it has finished
+
 ## 0.9.1 - 2026-11-16
 
 - Demo embed mode (play/?embed) for the website's hero: smaller menus, the map leads, the chat opens on request, and balloons stay above the tips
