@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.11.10 - 2026-11-17
+
+- Drop the removed quests from the package description
+
 ## 0.11.9 - 2026-11-17
 
 - Keep About and Changelog open for clicks inside the dialog; dismiss only for clicks starting and ending on the backdrop
