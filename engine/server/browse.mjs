@@ -69,7 +69,9 @@ export function pickNative(prompt = 'Choose a folder', start) {
     }
   }
   const escapedFrom = from.replace(/["\\]/g, '');
-  const osaScript = `try\nset loc to (POSIX file "${escapedFrom}" as alias)\nPOSIX path of (choose folder with prompt "${clean}" default location loc)\non error\nPOSIX path of (choose folder with prompt "${clean}")\nend try`;
+  // Only resolving the initial location may fall back. Catching choose-folder errors here also catches
+  // Cancel (-128), which used to open the picker a second time instead of letting the caller cancel.
+  const osaScript = `set loc to (path to home folder)\ntry\nset loc to (POSIX file "${escapedFrom}" as alias)\nend try\nPOSIX path of (choose folder with prompt "${clean}" default location loc)`;
   const run = {
     osascript: ['osascript', ['-e', osaScript]],
     powershell: ['powershell', ['-NoProfile', '-STA', '-Command', `Add-Type -AssemblyName System.Windows.Forms; $d = New-Object System.Windows.Forms.FolderBrowserDialog; $d.Description = '${clean.replace(/'/g, "''")}'; $d.SelectedPath = '${from.replace(/'/g, "''")}'; if ($d.ShowDialog() -eq 'OK') { $d.SelectedPath }`]],

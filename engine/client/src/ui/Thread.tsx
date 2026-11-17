@@ -34,6 +34,8 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
   const party = thread?.kind === 'party';
   const speakerName = (role?: string | null) => memberOf(role)?.name ?? role ?? '';
   const crew = useStore((s) => s.vorld?.crew);
+  const members = useStore((s) => s.vorld?.parties?.find((p: any) => p.id === thread?.party)?.members);
+  const mentionMembers = (crew ?? []).filter((c: any) => !party || members?.includes(c.id));
   const names = useMemo<string[]>(() => (party ? (crew ?? []).map((c: any) => c.name) : []), [party, crew]);
   const draft = useChatDraft({ wid, thread: tid, working, onEvents: setEvents });
   useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [events.length, live?.steps]);
@@ -60,7 +62,7 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
       {canSend && !working && lastAgent?.meta?.options?.length > 0 && (
         <div className="options">{lastAgent.meta.options.map((o: string) => <button key={o} className="option" disabled={draft.busy} onClick={() => draft.send(o, true)}>▸ {o}</button>)}</div>
       )}
-      {canSend && <ChatComposer draft={draft} placeholder={placeholder ?? (party ? 'Message the party… (@Name picks who answers first)' : `Message ${m?.name ?? ''}…`)} working={working} onStop={() => { void api(`/vorlds/${wid}/threads/${tid}/stop`, { body: {} }).catch((e) => toast({ kind: 'error', title: e.message })); }} {...(!party && thread?.bench ? { hint: <BenchLine wid={wid} thread={thread} begun={events.some((e: any) => e.type === 'founder.message')} /> } : {})} />}
+      {canSend && <ChatComposer draft={draft} mentionMembers={mentionMembers} placeholder={placeholder ?? (party ? 'Message the party… (@Name picks who answers first)' : `Message ${m?.name ?? ''}…`)} working={working} onStop={() => { void api(`/vorlds/${wid}/threads/${tid}/stop`, { body: {} }).catch((e) => toast({ kind: 'error', title: e.message })); }} {...(!party && thread?.bench ? { hint: <BenchLine wid={wid} thread={thread} begun={events.some((e: any) => e.type === 'founder.message')} /> } : {})} />}
     </div>
   );
 }

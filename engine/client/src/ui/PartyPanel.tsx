@@ -1,5 +1,5 @@
 // A party's room: its chats (newest first) and the open conversation. One shared transcript where every member answers
-// under their own name; the party gathers at the Party Hall on the map while a job runs.
+// under their own name; the party joins the founder on the map while a job runs.
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { memberOf, setState, toast, useStore } from '../store';

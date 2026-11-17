@@ -2,6 +2,23 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.11.9 - 2026-11-17
+
+- Keep About and Changelog open for clicks inside the dialog; dismiss only for clicks starting and ending on the backdrop
+
+## 0.11.8 - 2026-11-17
+
+- Add a Changelog tab to About, with current and previous release notes in the desktop menu and Settings.
+- Keep the companion visible in a nearby clear spot, preferring the space above the founder.
+
+## 0.11.7 - 2026-11-17
+
+- Restore close-range interactions and original collisions; add a small stopped-following gap and prevent obstacle route searches from blocking animation
+
+## 0.11.6 - 2026-11-17
+
+- Fix folder picker cancellation, party gathering, mention suggestions, follower spacing, party navigation and update menu placement
+
 ## 0.11.5 - 2026-11-16
 
 - Route party balloons to group room, add dismiss button, increase gathering spacing, and add browser screenshots

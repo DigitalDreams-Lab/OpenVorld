@@ -1,6 +1,7 @@
-import { useEffect, useRef, useState, type ReactNode, type DragEvent } from 'react';
+import { useEffect, useId, useRef, useState, type ReactNode, type DragEvent } from 'react';
 import { api, uploadFile } from '../api';
 import { fileSize, type Attachment } from './MessageFiles';
+import { activeMention, mentionSuggestions, type MentionMember } from './mentions';
 
 type Pending = {id:string;name:string;size:number;file?:File;preview?:string;uploaded?:Attachment};
 export function useChatDraft({wid,thread,working,onEvents}:{wid:string;thread:string;working:boolean;onEvents:(update:any)=>void}) {
@@ -47,14 +48,44 @@ export function useChatDraft({wid,thread,working,onEvents}:{wid:string;thread:st
   return {text,setText,files,addFiles,remove,send,busy,error,dragging,dropHandlers};
 }
 type Draft=ReturnType<typeof useChatDraft>;
-export function ChatComposer({draft,placeholder,working,onStop,extra,children,hint}:{draft:Draft;placeholder:string;working:boolean;onStop:()=>void;extra?:ReactNode;children?:ReactNode;hint?:ReactNode}) {
+export function ChatComposer({draft,placeholder,working,onStop,extra,children,hint,mentionMembers=[]}:{draft:Draft;placeholder:string;working:boolean;onStop:()=>void;extra?:ReactNode;children?:ReactNode;hint?:ReactNode;mentionMembers?:MentionMember[]}) {
   const input=useRef<HTMLInputElement>(null);
+  const textarea=useRef<HTMLTextAreaElement>(null), listId=useId();
+  const [caret,setCaret]=useState(0),[selected,setSelected]=useState(0),[dismissed,setDismissed]=useState(false);
+  const mention=activeMention(draft.text,caret);
+  const suggestions=mention&&!dismissed?mentionSuggestions(mentionMembers,mention.query):[];
+  const active=Math.min(selected,Math.max(0,suggestions.length-1));
+  const insert=(member:MentionMember)=>{
+    if(!mention)return;
+    const suffix=draft.text.slice(mention.end), space=/^\s/.test(suffix)?'':' ';
+    const prefix=draft.text.slice(0,mention.start)+`@${member.name}`+space;
+    draft.setText(prefix+suffix);setDismissed(true);setCaret(prefix.length);
+    requestAnimationFrame(()=>{textarea.current?.focus();textarea.current?.setSelectionRange(prefix.length,prefix.length);});
+  };
   return <div className="composer">
     {draft.files.length>0&&<div className="pending-files" aria-label="Files to send">{draft.files.map(f=><div className="pending-file" key={f.id}>
       {f.preview&&<img src={f.preview} alt={f.name}/>}<span><b>{f.name}</b><small>{fileSize(f.size)}{f.uploaded?' · Ready':''}</small></span><button className="x" disabled={draft.busy} aria-label={`Remove ${f.name}`} onClick={()=>draft.remove(f.id)}>✕</button>
     </div>)}</div>}
     {draft.error&&<div className="composer-error" role="alert">{draft.error} Your draft is kept; you can retry.</div>}
-    <textarea aria-label={placeholder} value={draft.text} placeholder={placeholder} rows={2} disabled={draft.busy} onChange={e=>draft.setText(e.target.value)} onPaste={e=>{if(e.clipboardData.files.length){e.preventDefault();draft.addFiles(e.clipboardData.files);}}} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey&&!e.nativeEvent.isComposing){e.preventDefault();void draft.send();}}}/>
+    <div className="composer-input">
+      {suggestions.length>0&&<div id={listId} className="mention-suggestions" role="listbox" aria-label="Mention crew members">
+        {suggestions.map((m,i)=><button type="button" id={`${listId}-${i}`} key={m.id} role="option" aria-selected={i===active} className={i===active?'selected':''} onPointerDown={e=>e.preventDefault()} onClick={()=>insert(m)}><strong>@{m.name}</strong>{m.job&&<small>{m.job}</small>}</button>)}
+      </div>}
+      <textarea ref={textarea} aria-label={placeholder} aria-autocomplete="list" aria-controls={suggestions.length?listId:undefined} aria-expanded={suggestions.length>0} aria-activedescendant={suggestions.length?`${listId}-${active}`:undefined} value={draft.text} placeholder={placeholder} rows={2} disabled={draft.busy}
+        onChange={e=>{draft.setText(e.target.value);setCaret(e.target.selectionStart);setSelected(0);setDismissed(false);}}
+        onSelect={e=>setCaret(e.currentTarget.selectionStart)}
+        onBlur={()=>setDismissed(true)} onFocus={()=>setDismissed(false)}
+        onPaste={e=>{if(e.clipboardData.files.length){e.preventDefault();draft.addFiles(e.clipboardData.files);}}}
+        onKeyDown={e=>{
+          if(e.nativeEvent.isComposing)return;
+          if(suggestions.length){
+            if(e.key==='ArrowDown'||e.key==='ArrowUp'){e.preventDefault();setSelected((active+(e.key==='ArrowDown'?1:-1)+suggestions.length)%suggestions.length);return;}
+            if(e.key==='Escape'){e.preventDefault();e.stopPropagation();setDismissed(true);return;}
+            if((e.key==='Enter'&&!e.shiftKey)||e.key==='Tab'){e.preventDefault();insert(suggestions[active]);return;}
+          }
+          if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void draft.send();}
+        }}/>
+    </div>
     <div className="composer-actions">
       <input ref={input} type="file" multiple hidden onChange={e=>{if(e.target.files)draft.addFiles(e.target.files);e.target.value='';}}/>
       <button className="btn small" title="Attach files" aria-label="Attach files" disabled={draft.busy} onClick={()=>input.current?.click()}>＋ File</button>

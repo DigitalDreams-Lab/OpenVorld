@@ -30,15 +30,17 @@ export function PartyHall() {
           ? <PartyForm key={editing.id ?? 'new'} party={editing} onDone={(id) => { setState({ partyEdit: null }); if (id) open(id); }} />
           : (
             <>
-              <p className="muted">A party is a group of crew members with a goal, working together in one shared chat. Write in the chat and they gather, answer and hand work to each other until the job is done.</p>
+              <p className="muted">A party is a group of crew members with a goal, working together in one shared chat. Write in the chat and they join you, answer and hand work to each other until the job is done.</p>
               <div className="party-list">
                 {parties.length === 0 && <p className="empty">No parties yet. Form one: give it a name, a goal and the members.</p>}
                 {parties.map((p) => (
                   <div key={p.id} className="party-item">
-                    <div><div className="party-title">{p.name}</div></div>
-                    <div className="party-crew">{p.members.map((m: string, i: number) => <span key={m} className={i === 0 ? 'lead' : ''} title={i === 0 ? 'leader' : ''}><Portrait role={m} size={28} /></span>)}</div>
-                    {p.goal && <p className="party-goal muted">{p.goal}</p>}
-                    <div className="row"><button className="btn small primary" onClick={() => open(p.id)}>Open chat</button><button className="btn small" onClick={() => setState({ partyEdit: p.id })}>Edit</button></div>
+                    <button type="button" className="party-open" aria-label={`Open ${p.name} chat`} onClick={() => open(p.id)}>
+                      <span className="party-title">{p.name}</span>
+                      <span className="party-crew">{p.members.map((m: string, i: number) => <span key={m} className={i === 0 ? 'lead' : ''} title={i === 0 ? 'leader' : ''}><Portrait role={m} size={28} /></span>)}</span>
+                      {p.goal && <span className="party-goal muted">{p.goal}</span>}
+                    </button>
+                    <div className="row party-item-actions"><button className="btn small primary" onClick={() => open(p.id)}>Open chat</button><button className="btn small" onClick={() => setState({ partyEdit: p.id })}>Edit</button></div>
                   </div>
                 ))}
               </div>

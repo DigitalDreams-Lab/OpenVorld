@@ -1,9 +1,7 @@
 import { play } from '../audio/sfx';
-import { useState } from 'react';
-import { About, BrandIcon } from '../ui/Brand';
+import { openAbout, BrandIcon } from '../ui/Brand';
 
 export function Title({ vorlds, version, onOpen, onNew }: { vorlds: any[]; version: string; onOpen: (id: string) => void; onNew: () => void }) {
-  const [about, setAbout] = useState(false);
   return (
     <div className="title-screen">
       <div className="title-card panel">
@@ -21,9 +19,8 @@ export function Title({ vorlds, version, onOpen, onNew }: { vorlds: any[]; versi
           {!vorlds.length && <p className="muted">No vorlds yet. Create your first one.</p>}
         </div>
         <button className="btn primary big" onClick={() => { play('ui.click'); onNew(); }}>New vorld</button>
-        <footer className="title-footer"><span>Local first · Open source</span><button className="link" onClick={() => setAbout(true)}>About OpenVorld <span className="muted">v{version}</span></button></footer>
+        <footer className="title-footer"><span>Local first · Open source</span><button className="link" onClick={openAbout}>About OpenVorld <span className="muted">v{version}</span></button></footer>
       </div>
-      {about && <About onClose={() => setAbout(false)} />}
     </div>
   );
 }

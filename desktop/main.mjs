@@ -8,7 +8,6 @@ import electronUpdater from 'electron-updater';
 import { fileURLToPath } from 'node:url';
 import { dataHome, desktopPath, engineEnvironment, isAppUrl, isExternalUrl, readSettings, writeSettings } from './runtime.mjs';
 import { createUpdates, updateCapability, RELEASES } from './updates.mjs';
-import { releaseNotes } from '../tools/release-notes.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 app.setName('OpenVorld');
@@ -121,10 +120,22 @@ function createWindow() {
   window.loadURL(origin).catch(fatal);
 }
 
+function showAbout(changelog = false) {
+  if (!window) createWindow();
+  window.show(); window.focus();
+  const contents = window.webContents;
+  const open = () => contents.executeJavaScript(`window.dispatchEvent(new CustomEvent('openvorld:about', { detail: { changelog: ${changelog === true} } }))`).catch(() => {});
+  if (contents.isLoadingMainFrame()) contents.once('did-finish-load', open); else void open();
+}
+
 function installMenu() {
   const showData = () => shell.openPath(home);
+  const updateItems = [
+    { label: updateState === 'ready' ? 'Restart to Update…' : 'Check for Updates…', click: () => updates.check(true) },
+    { label: 'Check for Updates Automatically', type: 'checkbox', checked: settings.autoUpdates !== false, click: item => { settings = { ...settings, autoUpdates: item.checked }; writeSettings(settingsFile, settings); } },
+  ];
   Menu.setApplicationMenu(Menu.buildFromTemplate([
-    ...(process.platform === 'darwin' ? [{ label: 'OpenVorld', submenu: [{ role: 'about' }, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }] }] : []),
+    ...(process.platform === 'darwin' ? [{ label: 'OpenVorld', submenu: [{ label: 'About OpenVorld', click: () => showAbout() }, ...updateItems, { type: 'separator' }, { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' }, { type: 'separator' }, { role: 'quit' }] }] : []),
     { label: 'File', submenu: [
       { label: 'Open Data Folder', click: showData },
       { label: 'Choose Data Folder…', click: async () => {
@@ -142,10 +153,8 @@ function installMenu() {
     { role: 'editMenu' },
     { label: 'View', submenu: [{ role: 'reload' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen' }, ...(!app.isPackaged ? [{ role: 'toggleDevTools' }] : [])] },
     { role: 'windowMenu' },
-    { label: 'Help', submenu: [...(process.platform !== 'darwin' ? [{ label: 'About OpenVorld', click: () => app.showAboutPanel() }, { type: 'separator' }] : []),
-      { label: updateState === 'ready' ? 'Restart to Update…' : 'Check for Updates…', click: () => updates.check(true) },
-      { label: 'Check for Updates Automatically', type: 'checkbox', checked: settings.autoUpdates !== false, click: item => { settings = { ...settings, autoUpdates: item.checked }; writeSettings(settingsFile, settings); } },
-      { label: 'What’s New', click: () => dialog.showMessageBox({ title: `OpenVorld ${app.getVersion()}`, message: `What’s new in ${app.getVersion()}`, detail: releaseNotes(fs.readFileSync(path.join(root, 'CHANGELOG.md'), 'utf8'), app.getVersion()) }) },
+    { label: 'Help', submenu: [...(process.platform !== 'darwin' ? [{ label: 'About OpenVorld', click: () => showAbout() }, ...updateItems, { type: 'separator' }] : []),
+      { label: 'What’s New', click: () => showAbout(true) },
       { label: 'Releases', click: () => shell.openExternal(RELEASES) },
       { type: 'separator' }, { label: 'Open Logs Folder', click: () => shell.openPath(app.getPath('logs')) }] },
   ]));

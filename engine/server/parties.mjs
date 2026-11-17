@@ -5,7 +5,7 @@
 //   1. the leader answers (or the member the founder @mentions);
 //   2. a member who needs a teammate writes @Name in the reply, and that teammate takes the next turn;
 //   3. a reply that @mentions nobody ends the job. A cap on turns per message keeps a chat from running away.
-// While a job runs the party gathers at the Party Hall (the plaza terminal) and goes home when it is over. A member who
+// The party joins the founder for a conversation and stays nearby between messages. A member who
 // asks for a writ pauses the room; the founder's answer picks it up again.
 //
 // Files: <vorld>/parties/<id>.json. Chats: threads/<tid>.jsonl like any other thread.
@@ -126,9 +126,6 @@ export function roomPrompt(ctx, party, tid, role) {
   ].filter(Boolean).join('\n\n');
 }
 
-const go = (emit, ids, command) => ids.forEach((id) => emit({ type: 'command', role: id, commands: [command] }));
-const gather = (emit, ids) => go(emit, ids, { do: 'walk_to', to: { kind: 'plaza' }, label: 'gathers at the Party Hall' });
-const home = (emit, ids) => go(emit, ids, { do: 'go_home', label: 'goes home' });
 
 /**
  * The founder writes in a party chat: the room takes turns until the job is done (or someone needs the founder).
@@ -164,7 +161,9 @@ async function chain(ctx, tid, party, members, first, files, emit) {
   const { max_turns: cap } = cfg(ctx);
   const spoke = new Set();
   let speaker = first, turns = 0, paused = false, limit = false, ok = true;
-  gather(emit, members);
+  // A conversation brings the party to the founder. Keep them there between replies instead of
+  // replacing each member's movement queue with a trip to the hall and another trip home.
+  emit({ type: 'party.gather', thread: tid, party: party.id, members });
   try {
     while (speaker && !stopped.has(tid)) {
       if (turns >= cap) { limit = true; break; }
@@ -184,7 +183,6 @@ async function chain(ctx, tid, party, members, first, files, emit) {
     const wasStopped = stopped.delete(tid);
     try { updateThread(ctx, tid, { speaker: null, state: 'waiting' }); } catch { /* the chat was deleted */ }
     if (limit) appendEvent(ctx, tid, { type: 'party.paused', turns, text: `The party paused after ${turns} turns. Say "continue" to let it carry on.` });
-    if (!paused) home(emit, members);
     if (ok && !paused && !limit && !wasStopped && spoke.size) {
       const game = gameFor(ctx), notes = [];
       game.event('party.job_done').xp('party_done', notes);

@@ -4,11 +4,15 @@ import { setState } from './store';
 import { Title } from './screens/Title';
 import { Onboarding } from './screens/Onboarding';
 import { Game } from './screens/Game';
-import { BrandIcon } from './ui/Brand';
+import { AboutLauncher, BrandIcon } from './ui/Brand';
 
 type Screen = { name: 'title' } | { name: 'onboarding' } | { name: 'game'; vorld: string };
 
 export function App() {
+  return <><AppScreen /><AboutLauncher /></>;
+}
+
+function AppScreen() {
   const [screen, setScreen] = useState<Screen>({ name: 'title' });
   const [boot, setBoot] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);

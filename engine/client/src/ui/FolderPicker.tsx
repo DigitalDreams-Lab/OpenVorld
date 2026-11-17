@@ -1,6 +1,6 @@
 // Choosing a folder for a writ: the computer's own folder dialog (Finder, Explorer, the Linux file manager).
 // Only when the computer has none do we fall back to a typed path and a small folder list (names only).
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 import { str, useStore } from '../store';
 
@@ -11,23 +11,28 @@ const cache = new Map<string, string | null>();
 export function useFolderDialog(capability = 'fs.write') {
   const wid = useStore((s) => s.vorldId);
   const [native, setNative] = useState<string | null | undefined>(wid ? cache.get(wid) : null);
+  const pending = useRef<Promise<string | null> | null>(null);
+  const [choosing, setChoosing] = useState(false);
   useEffect(() => {
     if (!wid || cache.has(wid)) return;
     api(`/vorlds/${wid}/fs/native`).then((r) => { cache.set(wid, r.native ?? null); setNative(r.native ?? null); }).catch(() => setNative(null));
   }, [wid]);
   /** Opens the dialog; resolves the chosen folder, or null when cancelled. Rejects with a readable error. */
-  const choose = async (start?: string): Promise<string | null> => {
-    const r = await api(`/vorlds/${wid}/fs/pick`, { body: { capability, start: start || undefined, prompt: str('folder.prompt', {}, 'Choose a folder') } });
-    return r.path ?? null;
+  const choose = (start?: string): Promise<string | null> => {
+    if (pending.current) return pending.current;
+    setChoosing(true);
+    pending.current = api(`/vorlds/${wid}/fs/pick`, { body: { capability, start: start || undefined, prompt: str('folder.prompt', {}, 'Choose a folder') } })
+      .then(r => r.path ?? null).finally(() => { pending.current = null; setChoosing(false); });
+    return pending.current;
   };
-  return { native, choose };
+  return { native, choose, choosing };
 }
 
 const shorten = (p: string) => { const parts = p.split('/').filter(Boolean); return parts.length > 3 ? `…/${parts.slice(-3).join('/')}` : p; };
 
 export function FolderPicker({ value, onChange, capability = 'fs.write', placeholder, disabled, label }: { value: string; onChange: (path: string) => void; capability?: string; placeholder?: string; disabled?: boolean; label?: string }) {
   const wid = useStore((s) => s.vorldId);
-  const { native, choose } = useFolderDialog(capability);
+  const { native, choose, choosing } = useFolderDialog(capability);
   const [open, setOpen] = useState(false);
   const [list, setList] = useState<Listing | null>(null);
   const [error, setError] = useState('');
@@ -49,7 +54,7 @@ export function FolderPicker({ value, onChange, capability = 'fs.write', placeho
       <div className="row">
         <input className="field" aria-label={label ?? 'Folder'} placeholder={placeholder ?? '/path/to/your/project'} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} />
         {native
-          ? <button type="button" className="btn small" disabled={disabled} onClick={system}>{str('folder.system', { app: native }, `Choose in ${native}…`)}</button>
+          ? <button type="button" className="btn small" disabled={disabled || choosing} onClick={system}>{str('folder.system', { app: native }, `Choose in ${native}…`)}</button>
           : native === null && <button type="button" className="btn small" disabled={disabled} onClick={() => setOpen(!open)}>{open ? str('folder.close', {}, 'Close') : str('folder.browse', {}, 'Browse…')}</button>}
       </div>
       {error && <p className="error" role="alert">{error}</p>}

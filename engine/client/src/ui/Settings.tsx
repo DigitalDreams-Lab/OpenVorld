@@ -7,7 +7,7 @@ import { emit, setState, toast, useStore } from '../store';
 import { play, setSfxVolume } from '../audio/sfx';
 import { notify, notifyPrefs, setNotifyPrefs } from '../notify';
 import { FolderPicker, useFolderDialog } from './FolderPicker';
-import { About, APP_VERSION, BrandIcon } from './Brand';
+import { openAbout, APP_VERSION, BrandIcon } from './Brand';
 
 /** The same test as the server's: a variable name is SHOUTED; anything else in the key box is a key (and is masked). */
 const looksLikeEnvName = (s: string) => /^[A-Z_][A-Z0-9_]{1,63}$/.test(String(s).trim());
@@ -22,7 +22,6 @@ export function Settings() {
   const [w, setW] = useState({ name: vorld.vorld.name, about: vorld.vorld.about });
   const [profile, setProfile] = useState({ name: vorld.profile?.name ?? '', about: vorld.profile?.about ?? '' });
   const [saving, setSaving] = useState(false);
-  const [about, setAbout] = useState(false);
   useEffect(() => { api(`/vorlds/${wid}/settings`).then(setS).catch((e) => toast({ kind: 'error', title: e.message })); }, [wid]);
   if (!s) return null;
   const endpoints: any[] = s.providers.filter((p: any) => p.id === 'openai-compatible');
@@ -84,10 +83,9 @@ export function Settings() {
         <label className="form-row"><span>Effects</span><input type="range" min={0} max={1} step={0.05} defaultValue={0.8} onChange={(e) => { setSfxVolume(Number(e.target.value)); play('ui.click'); }} /></label>
         <h3>Notifications</h3>
         <NotifySettings />
-        <div className="settings-about"><p className="muted small">Saved on this computer in <code>{s.storage.vorld}</code></p><button className="link" onClick={() => setAbout(true)}>About OpenVorld</button></div>
+        <div className="settings-about"><p className="muted small">Saved on this computer in <code>{s.storage.vorld}</code></p><button className="link" onClick={openAbout}>About OpenVorld</button></div>
         <div className="row end"><button className="btn" onClick={close}>Cancel</button><button className="btn primary" disabled={saving} onClick={save}>{saving ? 'Saving…' : 'Save'}</button></div>
       </div>
-      {about && <About onClose={() => setAbout(false)} />}
     </div>
   );
 }

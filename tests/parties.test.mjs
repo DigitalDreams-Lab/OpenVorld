@@ -1,5 +1,5 @@
 // Parties: a name, a goal and members; one shared room where the members take turns, hand work to each other with
-// @mentions, gather at the Party Hall and go home when the job is done (mocked HTTP, no network).
+// @mentions, join the founder and stay nearby when the job is done (mocked HTTP, no network).
 import test from 'node:test';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -81,9 +81,8 @@ test('the room: the leader answers, hands over with @Name, the teammate answers,
   assert.ok(prompts[1][1].includes('Outline ready.'), 'the teammate sees what was said before');
   assert.ok(prompts[1][1].includes('Founder: Write a launch post'));
 
-  const walks = events.filter((e) => e.type === 'command').map((e) => [e.role, e.commands[0].do]);
-  assert.deepEqual(walks.filter((w) => w[1] === 'walk_to').map((w) => w[0]).sort(), [ada, bo, cy].sort(), 'everyone gathers at the Party Hall');
-  assert.deepEqual(walks.filter((w) => w[1] === 'go_home').map((w) => w[0]).sort(), [ada, bo, cy].sort(), 'and goes home when the job is over');
+  assert.deepEqual(events.filter(e => e.type === 'party.gather').map(e => e.members), [[ada, bo, cy]], 'the party joins the founder once for the whole conversation');
+  assert.ok(!events.some(e => e.type === 'command' && e.commands.some(c => c.do === 'go_home' || c.to?.kind === 'plaza')), 'sending a message never forces the party away to the hall or home');
   assert.ok(events.some((e) => e.type === 'party.idle'));
   const th = getThread(ctx, chat.id);
   assert.equal(th.state, 'waiting');

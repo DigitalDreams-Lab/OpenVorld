@@ -9,7 +9,8 @@ import { TEX, CHAR_TEX, BEE_SCALE } from './pixels';
 import { makeBuilding, makeMember, makePillar, makeWorldArt } from './sprites';
 import { companionOf, generatedRevision, movementDirection, walkFrame, IDLE_FRAME, type Direction } from './pixels';
 import { homeGeometry, propGeometry } from './geometry';
-import { clearWalk, walkingPath } from './navigation';
+import { clearWalk, NavigationGrid, type RouteSearch } from './navigation';
+import { companionPosition } from './companion-position';
 import { BODY_FONT } from '../theme';
 const bodyFont = () => BODY_FONT;
 
@@ -30,7 +31,11 @@ export class VorldScene extends Phaser.Scene {
   plan: any;
   keys!: Record<string, Phaser.Input.Keyboard.Key>;
   npcs = new Map<string, Npc>();
-  routes = new Map<string, { target: Pt; points: Pt[] }>();
+  routes = new Map<string, { target: Pt; points: Pt[]; at: number }>();
+  navigation?: NavigationGrid;
+  routeJobs = new Map<string, { member: Npc; target: Pt; search: RouteSearch }>();
+  failedRoutes = new Map<string, { target: Pt; from: Pt; until: number }>();
+  planningInFrame = false;
   rotationReactions = new Map<string, { target: Phaser.GameObjects.Sprite; tween: Phaser.Tweens.Tween }>();
   solids!: Phaser.Physics.Arcade.StaticGroup;
   prompt!: Phaser.GameObjects.Text;
@@ -42,6 +47,8 @@ export class VorldScene extends Phaser.Scene {
   walkTo: { x: number; y: number } | null = null;
   /** What the companion is doing on a command (it leaves the founder's side for it), and whether it is hurrying back. */
   beeTask: { queue: any[]; target: Pt | null; wait: number } | null = null; beeReturn = false;
+  founderMoving = false;
+  companionOffset?: Pt;
   playerDir: Direction = 'down';
   terminal = { x: 0, y: 0 };
   homeRects: Array<{ x: number; y: number; w: number; h: number }> = [];
@@ -57,6 +64,8 @@ export class VorldScene extends Phaser.Scene {
 
   create() {
     this.npcs.clear(); this.routes.clear(); this.unsub = []; this.near = null; this.walkTo = null; this.homeRects = []; this.beeTask = null; this.beeReturn = false;
+    this.navigation = undefined; this.routeJobs.clear(); this.failedRoutes.clear(); this.founderMoving = false;
+    this.companionOffset = undefined;
     this.playerDir = this.companionDir = 'down';
     this.atlasRev = generatedRevision();
     const pal = this.vorld.theme.palette ?? {};
@@ -83,7 +92,8 @@ export class VorldScene extends Phaser.Scene {
     pillar.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; play('ui.open'); emit('parties'); });
     this.terminal = { x: pillar.x, y: pillar.y + 6 };
     this.solids.add(this.add.zone(pillar.x, pillar.y - 4, Math.min(28, pillarSize.w - 4), 8));
-    this.add.text(pillar.x, pillar.y - pillarSize.h - 6, this.vorld.theme.buildings?.party_hall ?? 'Party Hall', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999);
+    this.add.text(pillar.x, pillar.y - pillarSize.h - 6, this.vorld.theme.buildings?.party_hall ?? 'Party Hall', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999).setInteractive({ cursor: 'pointer' })
+      .on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; play('ui.open'); emit('parties'); });
 
     // homes take the plan's plots in crew order (a crew larger than the map's plots has no house for the rest)
     const homes = this.vorld.crew.filter((c: any) => c.id !== this.companionId);
@@ -109,7 +119,7 @@ export class VorldScene extends Phaser.Scene {
     cam.centerOn(this.player.x, this.player.y);   // start on the founder, not panning in from the map corner
     cam.setBackgroundColor(pal.ink ?? '#111');
 
-    this.prompt = this.add.text(0, 0, '', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(10000).setVisible(false);
+    this.prompt = this.add.text(0, 0, '', this.labelStyle(pal, 5)).setOrigin(0.5).setDepth(10000).setVisible(false);
 
     const kb = this.input.keyboard!;
     this.keys = kb.addKeys('W,A,S,D,UP,DOWN,LEFT,RIGHT,E,SPACE', false) as any;
@@ -403,14 +413,28 @@ export class VorldScene extends Phaser.Scene {
   }
   /** Walk each route segment rather than taking a straight line through a house. */
   moveMember(n: Npc, distance: number) {
-    if (!n.target) { this.routes.delete(n.id); return; }
+    if (!n.target) { this.routes.delete(n.id); this.routeJobs.delete(n.id); return; }
     const walkable = (x: number, y: number) => this.walkable(x, y);
     let route = this.routes.get(n.id);
-    if (!route || route.target.x !== n.target.x || route.target.y !== n.target.y || (route.points[0] && !clearWalk(n.sprite, route.points[0], walkable))) {
-      const points = walkingPath(n.sprite, n.target, walkable, this.plan.w * T, this.plan.h * T);
-      if (!points) { n.target = null; this.routes.delete(n.id); return; }
-      route = { target: { ...n.target }, points }; this.routes.set(n.id, route);
+    if (route?.points[0] && !clearWalk(n.sprite, route.points[0], walkable)) { this.routes.delete(n.id); route = undefined; }
+    const now = performance.now();
+    const drift = route ? Math.hypot(route.target.x - n.target.x, route.target.y - n.target.y) : Infinity;
+    const job = this.routeJobs.get(n.id);
+    if (job && Math.hypot(job.target.x - n.target.x, job.target.y - n.target.y) > 32) this.routeJobs.delete(n.id);
+    if ((!route || (drift > 1 && (drift > 32 || now - route.at >= 120))) && !this.routeJobs.has(n.id)) {
+      const failed = this.failedRoutes.get(n.id);
+      if (failed && failed.until > now && Math.hypot(failed.target.x - n.target.x, failed.target.y - n.target.y) < 8 && Math.hypot(failed.from.x - n.sprite.x, failed.from.y - n.sprite.y) < 8) {
+        if (!route) n.target = null;
+      } else {
+        this.navigation ??= new NavigationGrid(walkable, this.plan.w * T, this.plan.h * T);
+        const target = { ...n.target };
+        this.routeJobs.set(n.id, { member: n, target, search: this.navigation.search({ x: n.sprite.x, y: n.sprite.y }, target) });
+      }
     }
+    // Unit/command callers can finish immediately. During update(), all crew share one bounded planning budget.
+    if (!this.planningInFrame) this.planRoutes(Infinity, Infinity);
+    route = this.routes.get(n.id);
+    if (!route) return;
     while (route.points.length) {
       const at = route.points[0], dx = at.x - n.sprite.x, dy = at.y - n.sprite.y, d = Math.hypot(dx, dy);
       if (d > distance) {
@@ -419,7 +443,31 @@ export class VorldScene extends Phaser.Scene {
       }
       n.sprite.setPosition(at.x, at.y); distance -= d; route.points.shift();
     }
-    n.target = null; this.routes.delete(n.id);
+    if (n.target && Math.hypot(n.target.x - route.target.x, n.target.y - route.target.y) <= 1) n.target = null;
+    this.routes.delete(n.id);
+  }
+  /** Round-robin searches keep a crowded following crew from blocking animation or starving one member. */
+  planRoutes(nodes = 1024, milliseconds = 2) {
+    const deadline = performance.now() + milliseconds;
+    while (nodes-- > 0 && this.routeJobs.size && performance.now() < deadline) {
+      const [id, job] = this.routeJobs.entries().next().value!;
+      this.routeJobs.delete(id);
+      if (!job.member.target) continue;
+      const result = job.search.next();
+      if (!result.done) { this.routeJobs.set(id, job); continue; }
+      const { member: n, target } = job;
+      if (Math.hypot(n.target!.x - target.x, n.target!.y - target.y) > 32) continue;
+      const points = result.value;
+      if (!points) {
+        this.failedRoutes.set(id, { target, from: { x: n.sprite.x, y: n.sprite.y }, until: performance.now() + 500 });
+        if (!this.routes.has(id)) n.target = null;
+        continue;
+      }
+      const walkable = (x: number, y: number) => this.walkable(x, y);
+      while (points.length > 1 && clearWalk(n.sprite, points[1], walkable)) points.shift();
+      if (!points[0] || !clearWalk(n.sprite, points[0], walkable)) continue;
+      this.routes.set(id, { target, points, at: performance.now() }); this.failedRoutes.delete(id);
+    }
   }
   /** A random spot in front of the member's home, so they potter about instead of standing still. */
   wanderTarget(n: Npc) {
@@ -435,11 +483,13 @@ export class VorldScene extends Phaser.Scene {
       const n = this.npcs.get(id);
       if (!n) continue;
       // the lowest slot nobody else in this mode holds, so members called one by one never share a spot
-      const taken = new Set([...this.npcs.values()].filter((o) => o !== n && o.mode === mode).map((o) => o.slot));
+      const taken = new Set([...this.npcs.values()].filter((o) => o !== n && (o.mode === mode || o.base === mode)).map((o) => o.slot));
       let slot = 0; while (taken.has(slot)) slot++;
-      n.mode = mode; n.slot = slot; n.target = this.spotFor(n);
+      n.mode = mode; n.slot = slot; n.queue = []; n.base = undefined; n.wait = 0; n.homing = false; n.autoHome = false;
       this.balloon(id, mode === 'gather' ? '…' : '!', 900);
     }
+    // Refresh called members after assigning their slots.
+    for (const n of this.npcs.values()) if (n.mode === mode) n.target = this.spotFor(n);
   }
   /** Members go back to their homes (the town terminal's "send home", and the companion's send_home command). */
   sendHome(ids?: string[]) {
@@ -476,10 +526,10 @@ export class VorldScene extends Phaser.Scene {
   placeFor(role: string, to: any, from: Pt): (Pt & { look?: Pt }) | null {
     const slot = this.slotOf(role);
     switch (to?.kind) {
-      case 'plaza': return this.ringSpot(this.terminal, 46, slot);
-      case 'founder': return this.ringSpot({ x: this.player.x, y: this.player.y }, 36, slot);
-      case 'home': { if (role === this.companionId) return this.ringSpot({ x: this.player.x, y: this.player.y }, 36, 0); const n = this.npcs.get(role); return n ? this.wanderTarget(n) : null; }
-      case 'member': { const o = this.npcs.get(to.id); return o ? this.ringSpot({ x: o.home.x, y: o.home.y }, 20, slot) : null; }
+      case 'plaza': return this.ringSpot(this.terminal, 30, slot);
+      case 'founder': return this.ringSpot({ x: this.player.x, y: this.player.y }, 22, slot);
+      case 'home': { if (role === this.companionId) return this.ringSpot({ x: this.player.x, y: this.player.y }, 22, 0); const n = this.npcs.get(role); return n ? this.wanderTarget(n) : null; }
+      case 'member': { const o = this.npcs.get(to.id); return o ? this.ringSpot({ x: o.home.x, y: o.home.y }, 16, slot) : null; }
       case 'prop': { const s = this.propSpot(String(to.ref), from); return s ? { ...s.stand, look: s.prop } : null; }
     }
     return null;
@@ -543,13 +593,13 @@ export class VorldScene extends Phaser.Scene {
   /** A free spot around the founder (summoned) or the terminal (gather), one per caller so nobody overlaps. */
   spotFor(n: Npc) {
     const gather = n.mode === 'gather', c = gather ? this.terminal : { x: this.player.x, y: this.player.y };
-    const ring = [0.8, 0.2, 1.2, 1.8, 0.5, 1.5, 1.0, 0.0], r = (gather ? 48 : 36) + Math.floor(n.slot / ring.length) * 16;
+    const ring = [0.8, 0.2, 1.2, 1.8, 0.5, 1.5, 1.0, 0.0], r = (gather ? 34 : this.founderMoving ? 22 : 25) + Math.floor(n.slot / ring.length) * 14;
     for (let k = 0; k < ring.length; k++) {
       const a = Math.PI * ring[(n.slot + k) % ring.length];
-      const x = c.x + Math.cos(a) * r, y = c.y + Math.sin(a) * r * 0.7 + (gather ? 8 : 0);
+      const x = c.x + Math.cos(a) * r, y = c.y + Math.sin(a) * r * 0.65 + (gather ? 8 : 0);
       if (this.walkable(x, y)) return { x, y };
     }
-    return { x: c.x + (n.slot % 2 ? 1 : -1) * (18 + 14 * Math.floor(n.slot / 2)), y: c.y + 8 };
+    return { x: c.x + (n.slot % 2 ? 1 : -1) * (14 + 10 * Math.floor(n.slot / 2)), y: c.y + 6 };
   }
 
   /** A home appears block by block: walls from the ground up, then the roof rows, then the details. */
@@ -588,7 +638,7 @@ export class VorldScene extends Phaser.Scene {
 
   /** Soft collision: members never stand inside each other, the founder or a walking companion. */
   separate() {
-    const MIN = 20, MIN_FIXED = 32, SQUASH = 1.8;               // feet are wide and flat: y distances count more
+    const MIN = 13, SQUASH = 1.8;               // feet are wide and flat: y distances count more
     const movers = [...this.npcs.values()].filter((n) => n.sprite.visible !== false);
     const fixed: { x: number; y: number }[] = [{ x: this.player.x, y: this.player.y }];
     if (this.companionForm !== 'creature') fixed.push({ x: this.bee.x, y: this.bee.y });
@@ -609,9 +659,9 @@ export class VorldScene extends Phaser.Scene {
       }
       for (const f of fixed) {
         let dx = a.sprite.x - f.x, dy = (a.sprite.y - f.y) * SQUASH, d = Math.hypot(dx, dy);
-        if (d >= MIN_FIXED) continue;
+        if (d >= MIN) continue;
         if (d < 0.01) { dx = 1; dy = 0; d = 1; }
-        const k = (MIN_FIXED - d) / d;
+        const k = (MIN - d) / d;
         push(a, dx * k, (dy * k) / SQUASH);
       }
     }
@@ -619,6 +669,7 @@ export class VorldScene extends Phaser.Scene {
 
   update(_t: number, dt: number) {
     if (!this.player) return;
+    this.planningInFrame = true;
     const typing = document.activeElement && /INPUT|TEXTAREA|SELECT/.test(document.activeElement.tagName);
     const k = this.keys;
     let vx = typing ? 0 : (k.A.isDown || k.LEFT.isDown ? -1 : 0) + (k.D.isDown || k.RIGHT.isDown ? 1 : 0);
@@ -635,6 +686,8 @@ export class VorldScene extends Phaser.Scene {
     this.playerDir = movementDirection(vx, vy, this.playerDir);
     this.walkT += dt;
     const moving = vx || vy;
+    const justStopped = this.founderMoving && !moving;
+    this.founderMoving = !!moving;
     this.player.setTexture(`founder-${this.playerDir}-${moving ? walkFrame(this.walkT, 120) : IDLE_FRAME}`);
     this.player.setDepth(this.player.y);
 
@@ -642,7 +695,14 @@ export class VorldScene extends Phaser.Scene {
     const floating = this.companionForm === 'creature';
     if (this.beeTask) this.tickBee(dt);
     const errand = this.beeTask?.target ?? null;                          // somewhere a command sent the companion
-    let tx = this.player.x + (this.playerDir === 'left' ? 18 : -18), ty = this.player.y + (floating ? -20 : 10);
+    const gap = moving ? 18 : 22;
+    let tx = this.player.x + (this.playerDir === 'left' ? gap : -gap), ty = this.player.y - (floating ? 20 : moving ? 14 : 16);
+    if (!this.beeTask) {
+      const size = (sprite: Phaser.GameObjects.Sprite, scale = 1) => ({ width: sprite.displayWidth || 16 * this.charScale * scale, height: sprite.displayHeight || 16 * this.charScale * scale });
+      const occupied = [this.player, ...[...this.npcs.values()].map(n => n.sprite)].filter(s => s.visible !== false).map(s => ({ x: s.x, y: s.y, ...size(s) }));
+      const at = companionPosition({ x: tx, y: ty }, this.player, size(this.bee, floating ? BEE_SCALE : 1), occupied, (x, y) => this.walkable(x, y), this.companionOffset);
+      tx = at.x; ty = at.y; this.companionOffset = { x: tx - this.player.x, y: ty - this.player.y };
+    }
     if (errand) { tx = errand.x; ty = errand.y; } else if (this.beeTask) { tx = this.bee.x; ty = this.bee.y; }      // busy where it stands
     const dx = tx - this.bee.x, dy = ty - this.bee.y, dist = Math.hypot(dx, dy), following = dist > 1;
     if (following) {
@@ -659,7 +719,7 @@ export class VorldScene extends Phaser.Scene {
       const dp = Phaser.Math.Distance.Between(this.player.x, this.player.y, n.sprite.x, n.sprite.y);
       const busy = n.working || (n.mode === 'home' && dp < 30 && !n.homing);   // standing by the founder, unless sent home
       if (n.queue?.length || n.mode === 'task') this.tickTask(n, dt);
-      if (n.mode === 'summoned' && dp > 40) n.target = this.spotFor(n);       // keep up with the founder
+      if (n.mode === 'summoned' && (dp > 40 || justStopped)) n.target = this.spotFor(n);
       if (!n.target && n.mode === 'home' && !busy) { n.rest -= dt; if (n.rest <= 0) { n.target = this.wanderTarget(n); n.rest = 2500 + Math.random() * 4500; } }
       if (n.target && !(busy && n.mode === 'home')) {
         const speed = (n.mode === 'home' ? 26 : 62) * dt / 1000;
@@ -680,7 +740,11 @@ export class VorldScene extends Phaser.Scene {
       if (n.mark) n.mark.setX(n.sprite.x);
       if (dp < bestD) { bestD = dp; best = n.id; }
     }
+    this.planRoutes(); this.planningInFrame = false;
     this.separate();
+    // Separation changes final positions: keep labels and draw order on those positions, not the previous frame's.
+    for (const n of this.npcs.values()) { n.sprite.setDepth(n.sprite.y); n.label.setPosition(n.sprite.x, n.sprite.y + 2); n.lastX = n.sprite.x; n.lastY = n.sprite.y; }
+    this.bee.setDepth(this.bee.y);
     const followers = [...this.npcs.values()].filter((n) => n.mode === 'summoned' || (n.mode === 'task' && n.base === 'summoned')).map((n) => n.id).join(',');
     if (followers !== this.followersKey) { this.followersKey = followers; emit('following', followers ? followers.split(',') : []); }
     if (best !== this.near) {
@@ -689,7 +753,7 @@ export class VorldScene extends Phaser.Scene {
     }
     if (best) {
       const n = this.npcs.get(best)!;
-      this.prompt.setVisible(true).setPosition(n.sprite.x, n.sprite.y - n.sprite.displayHeight - 4).setText(`E · ${n.data.name}${n.data.job ? ` (${n.data.job})` : ''}`);
+      this.prompt.setVisible(true).setPosition(n.sprite.x, n.sprite.y - n.sprite.displayHeight - 4).setText(`E · ${n.data.name}`);
     } else this.prompt.setVisible(false);
   }
 }

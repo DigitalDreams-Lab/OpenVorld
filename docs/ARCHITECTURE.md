@@ -36,7 +36,7 @@ vorlds/<id>/
 | --- | --- |
 | `index.mjs` | HTTP routes and the WebSocket. Binds to 127.0.0.1, requires the per-launch token on every call, and checks Host. |
 | `vorld.mjs` | Loads packs, lists and creates vorlds, and builds the vorld context (`ctx`) every other module receives. |
-| `parties.mjs` | Parties and their shared room: save a party, run a room (the leader answers, `@Name` hands over, no mention ends the job), pause on a writ, gather at the Party Hall and go home. |
+| `parties.mjs` | Parties and their shared room: save a party, run a room (the leader answers, `@Name` hands over, no mention ends the job), pause on a writ, join the founder and stay nearby between messages. |
 | `threads.mjs` | Conversations as JSONL event logs. |
 | `agents/runner.mjs` | One turn for one member: builds the system prompt, picks the driver and stores the reply as ordered steps. |
 | `agents/drivers/` | `claude.mjs`, `codex.mjs` (headless CLIs), `openai.mjs` (HTTP plus an engine-run tool loop) and `scripted.mjs` (no brain yet). |
@@ -56,7 +56,7 @@ vorlds/<id>/
 2. Each speaker gets one turn through `runTurn` with `role` set to them and a prompt made of the party's goal, its members and the latest room messages. Room turns keep no CLI session of their own; the transcript is the memory.
 3. When the reply arrives, the next speaker is the first teammate `@mentioned` in it (never yourself, never inside code). No mention ends the job. `party.max_turns` (default 12) stops a ping-pong; the room says it paused and a "continue" resumes it.
 4. A member who asks for access pauses the room at a writ card. Answering it calls `resumeParty` for that member.
-5. While the room runs, every member gets a `walk_to` plaza command (the Party Hall) and, when it ends, `go_home`. A finished job earns `party.job_done` and XP.
+5. When the room starts, a `party.gather` event brings its members to the founder. They stay nearby between replies until dismissed, rather than walking away to the hall or home. A finished job earns `party.job_done` and XP.
 
 ## Client (`engine/client/src`)
 

@@ -4,8 +4,10 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
+import childProcess from 'node:child_process';
+import { syncBuiltinESMExports } from 'node:module';
 import { loadPacks, packRoots } from '../tools/lib/packs.mjs';
-import { browseFolder } from '../engine/server/browse.mjs';
+import { browseFolder, pickNative } from '../engine/server/browse.mjs';
 
 const tree = (t) => {
   const dir = fs.realpathSync(fs.mkdtempSync(path.join(os.tmpdir(), 'sf-browse-')));
@@ -35,4 +37,31 @@ test('folders a writ can never cover are marked, and broad ones are not selectab
   assert.equal(browseFolder(ctx, { dir }).entries.find((e) => e.name === 'app').ok, true);
   assert.equal(browseFolder(ctx, { dir: '/', capability: 'fs.write' }).ok, false);
   assert.equal(browseFolder(ctx, { dir: os.homedir() }).ok, false);
+});
+
+test('cancelling the Mac folder picker runs the chooser once, including when the initial location fails', { skip: process.platform !== 'darwin' }, async t => {
+  const { dir } = tree(t);
+  let source;
+  const mock = t.mock.method(childProcess, 'execFile', (_cmd, args, _options, callback) => {
+    source = args[1]; callback(Object.assign(new Error('User canceled (-128)'), { code: 1 }), '', 'User canceled (-128)');
+  });
+  syncBuiltinESMExports();
+  try { assert.equal(await pickNative('Choose a folder', dir), null); }
+  finally { mock.mock.restore(); syncBuiltinESMExports(); }
+  // Evaluate the actual AppleScript control flow with a non-UI chooser that cancels on its first call.
+  // The former broad error handler would call it again and return the home folder on the second call.
+  const evaluate = script => Number(childProcess.execFileSync('osascript', ['-e', `
+property attempts : 0
+on simulatedChooser()
+  set attempts to attempts + 1
+  if attempts is 1 then error number -128
+  return path to home folder
+end simulatedChooser
+try
+${script.replace(/choose folder with prompt "[^"]*"(?: default location loc)?/g, 'my simulatedChooser()')}
+on error
+end try
+return attempts`], { encoding: 'utf8' }).trim());
+  assert.equal(evaluate(source), 1);
+  assert.equal(evaluate(source.replace(`POSIX file "${dir}"`, 'POSIX file "/this/path/does/not/exist"')), 1);
 });
