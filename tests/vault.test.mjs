@@ -134,7 +134,10 @@ test('sign-in card: allowing needs the sign-in first, and an old writ does not s
   const early = await call('POST', url, { answer: 'session', continue: false });
   assert.equal(early.status, 400);
   assert.match(early.data.error, /sign in to www\.example\.com first/);
-  assert.equal((await call('GET', `${root}/crew/${me}/signin?site=www.example.com`)).data.signed, false);
+  const state = (await call('GET', `${root}/crew/${me}/signin?site=www.example.com`)).data;
+  assert.equal(state.signed, false);
+  assert.equal(typeof state.browser, 'string', 'the card is told which browser opens');
+  assert.equal(!!state.browser, state.available);
 
   saveSession(ctx, me, { cookies: [{ name: 'SID', value: 'x', domain: '.example.com', path: '/', expires: -1, httpOnly: false, secure: true, sameSite: 'Lax' }], origins: [] });
   assert.equal((await call('GET', `${root}/crew/${me}/signin?site=www.example.com`)).data.signed, true);

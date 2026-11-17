@@ -22,6 +22,7 @@ strings:
     allow_session: Allow for this session
     allow_always: Always allow
     deny: Refuse
+    signin_browser: "This opens {browser} with a private profile for {name}; your own browser's logins are not touched."   # {browser} is the one the server found
   scripted:
     companion: "Hi, I am {name}. I have no mind yet, so I can only say this: pick a brain for me in my settings (Claude Code, Codex or any OpenAI-compatible model) and I can really help. Meanwhile, open the Party Hall and form a party."
     agent: "{name} waves but stays quiet. Pick a brain for {name} in their settings."
