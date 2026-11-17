@@ -48,11 +48,11 @@ const CHROME_PATHS = {
   linux: ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/microsoft-edge', '/snap/bin/chromium'],
   win32: ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'],
 };
-// The founder's default browser goes first when it is one of these (macOS only for now). Only browsers already in
-// CHROME_PATHS are listed: Playwright starts them with its own flags (--remote-debugging-pipe, a temporary
-// --user-data-dir), and other Chromium-based browsers (Dia, Arc, ...) are not known to honour those.
+// The founder's default browser goes first when it is one of these (macOS only for now). Only browsers seen to work are
+// listed: Playwright starts them with its own flags (--remote-debugging-pipe, a temporary --user-data-dir), and not every
+// Chromium-based browser honours those. Dia does (headless and the sign-in window, Dia 157); Arc is untried.
 const DEFAULT_IDS = {
-  darwin: { 'com.google.chrome': 'Google Chrome', 'com.microsoft.edgemac': 'Microsoft Edge', 'org.chromium.chromium': 'Chromium', 'com.brave.browser': 'Brave Browser' },
+  darwin: { 'com.google.chrome': 'Google Chrome', 'com.microsoft.edgemac': 'Microsoft Edge', 'org.chromium.chromium': 'Chromium', 'com.brave.browser': 'Brave Browser', 'company.thebrowser.dia': 'Dia' },
 };
 /** The bundle id that opens https links, read from the output of `defaults read ... LSHandlers`, or ''. */
 export function defaultBrowserId(text) {
@@ -63,7 +63,7 @@ export function defaultBrowserId(text) {
 /** Which browser to use: OV_CHROME, then the founder's default browser if it is a known one, then the fixed list. */
 export function pickChrome({ override = '', defaultId = '', platform = process.platform, exists = fs.existsSync } = {}) {
   const paths = CHROME_PATHS[platform] ?? [], app = DEFAULT_IDS[platform]?.[String(defaultId).toLowerCase()];
-  return [override, app && paths.find((p) => p.includes(`/${app}.app/`)), ...paths].filter(Boolean).find((p) => exists(p)) ?? null;
+  return [override, app && `/Applications/${app}.app/Contents/MacOS/${app}`, ...paths].filter(Boolean).find((p) => exists(p)) ?? null;
 }
 /** A short name for a browser path, for the sign-in card: "Chrome", "Edge", ... or the file's own name. */
 export function browserName(exe) {

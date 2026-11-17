@@ -36,6 +36,8 @@ test('which browser opens: OV_CHROME, then a known default browser, then the fix
   assert.equal(pick('com.brave.browser', [mac('Google Chrome')]), mac('Google Chrome'), 'a default that is not installed there is skipped');
   for (const id of ['company.thebrowser.dia', 'company.thebrowser.Browser', 'com.apple.Safari', 'org.mozilla.firefox', 'constructor']) assert.equal(pick(id, all), mac('Google Chrome'), `${id} is not on the list`);
   assert.equal(pick('com.brave.browser', [...all, '/opt/dia']), mac('Brave Browser'));
+  assert.equal(pick('company.thebrowser.dia', [...all, mac('Dia')]), mac('Dia'), 'Dia is used when it is the default');
+  assert.equal(pick('', [...all, mac('Dia')]), mac('Google Chrome'), 'and never as a fallback');
   assert.equal(pick('com.brave.browser', [...all, '/opt/dia'], { override: '/opt/dia' }), '/opt/dia', 'OV_CHROME wins');
   assert.equal(pick('com.brave.browser', all, { override: '/missing' }), mac('Brave Browser'));
   assert.equal(pick('com.brave.browser', []), null);
