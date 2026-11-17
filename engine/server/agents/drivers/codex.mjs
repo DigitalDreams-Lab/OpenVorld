@@ -30,6 +30,12 @@ export function generatedImages(sessionId, since, env = null, max = 4) {
     }).sort((a, b) => a.at - b.at).slice(0, max);
   } catch { return []; }
 }
+/**
+ * The sandbox a member's fs.write writs give Codex. Any writable folder needs workspace-write: Codex only takes extra writable
+ * folders in that mode, so a writ for a folder other than the working folder used to leave the member read-only. workspace-write
+ * always opens the working folder too, which is the member's own workbench (Claude Code and the other CLIs get the same).
+ */
+export const sandboxOf = (writeDirs, cwd) => ({ writable: writeDirs.length > 0, addDirs: writeDirs.filter((d) => d !== cwd) });
 const plan = (it) => (it.items ?? []).map((x) => ({ text: x.text ?? '', status: x.completed ? 'completed' : 'pending' }));
 
 export async function run({ system, prompt, images = [], sessionId, cwd, addDirs = [], mcp = null, env = null, writable = false, web = false, model, signal, onEvent, onAccess = () => {} }) {

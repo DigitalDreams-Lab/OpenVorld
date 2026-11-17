@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.11.11 - 2026-11-17
+
+- Codex can write a folder granted by an fs.write writ when it is not the chat's working folder (the sandbox stayed read-only and the folder was dropped)
+
 ## 0.11.10 - 2026-11-17
 
 - Drop the removed quests from the package description
