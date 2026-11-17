@@ -1,17 +1,10 @@
-version: 0.11.3
+version: 0.11.9
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.3/OpenVorld-0.11.3-win-x64.exe
-    sha512: vIsF7mrHK/WtcjYfmfHXLkWUDM2BG+cCoxECF6exW377fJ+aAe2luY5q2A2HXDCrfvCRCUfM5yvObBJCmynu/Q==
-    size: 177393300
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.3/OpenVorld-0.11.3-win-x64.exe
-sha512: vIsF7mrHK/WtcjYfmfHXLkWUDM2BG+cCoxECF6exW377fJ+aAe2luY5q2A2HXDCrfvCRCUfM5yvObBJCmynu/Q==
-releaseNotes: "- Sign and notarize the Mac desktop releases with the correct
-  Developer ID identity selector.\r
-
-  - Keep four desktop downloads, with changelog and full-installer updates
-  served through a separate feed; versions before 0.11 need one manual
-  upgrade.\r
-
-  - Include the Canvas fallback for Macs without WebGL and the fix for agent
-  CLIs that close their input early."
-releaseDate: 2026-11-16T17:11:25.674Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.9/OpenVorld-0.11.9-win-x64.exe
+    sha512: Pp3r3E9GQctpPgF6jzzP7szAhGj5N2apuc9rfdEsh4ZS0PEu37jUARrr3EljKmYl4OjmoqlB29LLeO7swy/PYw==
+    size: 177404859
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.9/OpenVorld-0.11.9-win-x64.exe
+sha512: Pp3r3E9GQctpPgF6jzzP7szAhGj5N2apuc9rfdEsh4ZS0PEu37jUARrr3EljKmYl4OjmoqlB29LLeO7swy/PYw==
+releaseNotes: "- Keep About and Changelog open for clicks inside the dialog;
+  dismiss only for clicks starting and ending on the backdrop"
+releaseDate: 2026-11-17T10:56:29.193Z

@@ -1,17 +1,10 @@
-version: 0.11.3
+version: 0.11.9
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.3/OpenVorld-0.11.3-mac-arm64.zip
-    sha512: 3q2nNU5myopQC9UowjMdG9vfq7GBSgD/lKUekEtPP/TUxDchro/B6opUyZpPQk2HDhaVTHJOezjsjmbCjjc09g==
-    size: 177822451
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.3/OpenVorld-0.11.3-mac-arm64.zip
-sha512: 3q2nNU5myopQC9UowjMdG9vfq7GBSgD/lKUekEtPP/TUxDchro/B6opUyZpPQk2HDhaVTHJOezjsjmbCjjc09g==
-releaseNotes: >-
-  - Sign and notarize the Mac desktop releases with the correct Developer ID
-  identity selector.
-
-  - Keep four desktop downloads, with changelog and full-installer updates
-  served through a separate feed; versions before 0.11 need one manual upgrade.
-
-  - Include the Canvas fallback for Macs without WebGL and the fix for agent
-  CLIs that close their input early.
-releaseDate: 2026-11-16T17:21:28.404Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.9/OpenVorld-0.11.9-mac-arm64.zip
+    sha512: 8Ap2eAqmpMm6idK+raQWDj9IgpEnP/ExyLPiaYbZDv4nCrXFVagtXx5HcRKuHH4v3HZT71Nq5ue97VkZvkLIEw==
+    size: 177833558
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.9/OpenVorld-0.11.9-mac-arm64.zip
+sha512: 8Ap2eAqmpMm6idK+raQWDj9IgpEnP/ExyLPiaYbZDv4nCrXFVagtXx5HcRKuHH4v3HZT71Nq5ue97VkZvkLIEw==
+releaseNotes: "- Keep About and Changelog open for clicks inside the dialog;
+  dismiss only for clicks starting and ending on the backdrop"
+releaseDate: 2026-11-17T11:01:38.192Z
