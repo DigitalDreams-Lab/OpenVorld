@@ -5,7 +5,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fork } from 'node:child_process';
 import { once } from 'node:events';
-import { dataHome, engineEnvironment, isAppUrl, isExternalUrl, readSettings, writeSettings } from '../desktop/runtime.mjs';
+import { dataHome, engineEnvironment, isAppPermission, isAppUrl, isExternalUrl, readSettings, writeSettings } from '../desktop/runtime.mjs';
 import { cleanEnv } from '../engine/server/agents/drivers/proc.mjs';
 
 test('desktop data selection preserves browser data and explicit choices', t => {
@@ -43,6 +43,13 @@ test('desktop navigation keeps system URLs and other local origins out of its wi
   for (const url of ['http://127.0.0.1:4318/', 'https://example.com', 'file:///etc/passwd', 'javascript:alert(1)', 'not a URL']) assert.equal(isAppUrl(url, origin), false);
   assert.ok(isExternalUrl('https://example.com')); assert.ok(isExternalUrl('mailto:hello@example.com'));
   for (const url of ['file:///etc/passwd', 'javascript:alert(1)', 'data:text/html,hello', 'shell:AppsFolder', 'not a URL']) assert.equal(isExternalUrl(url), false);
+});
+
+test('desktop window grants its own page audio capture, notifications and clipboard writes only', () => {
+  assert.ok(isAppPermission('media', ['audio'])); assert.ok(isAppPermission('notifications'));
+  assert.ok(isAppPermission('clipboard-sanitized-write'));   // the Copy button on code blocks
+  for (const types of [undefined, [], ['video'], ['audio', 'video']]) assert.equal(isAppPermission('media', types), false);
+  for (const permission of ['clipboard-read', 'geolocation', 'openExternal', 'fullscreen', 'display-capture', 'fileSystem', 'unknown', undefined]) assert.equal(isAppPermission(permission, ['audio']), false);
 });
 
 test('desktop engine chooses a free port, authenticates it, and shuts down through IPC', { timeout: 20000 }, async t => {

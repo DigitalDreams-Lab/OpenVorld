@@ -6,7 +6,7 @@ import { fork } from 'node:child_process';
 import { spawnSync } from 'node:child_process';
 import electronUpdater from 'electron-updater';
 import { fileURLToPath } from 'node:url';
-import { dataHome, desktopPath, engineEnvironment, isAppUrl, isExternalUrl, readSettings, writeSettings } from './runtime.mjs';
+import { dataHome, desktopPath, engineEnvironment, isAppPermission, isAppUrl, isExternalUrl, readSettings, writeSettings } from './runtime.mjs';
 import { createUpdates, updateCapability, RELEASES } from './updates.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -100,9 +100,7 @@ function createWindow() {
   contents.on('will-navigate', (event, url) => { if (!isAppUrl(url, origin)) { event.preventDefault(); if (isExternalUrl(url)) shell.openExternal(url).catch(() => {}); } });
   contents.on('will-attach-webview', event => event.preventDefault());
   contents.session.setPermissionRequestHandler((webContents, permission, callback, details) => {
-    const audio = permission === 'media' && details.mediaTypes?.length && details.mediaTypes.every(type => type === 'audio');
-    const notifications = permission === 'notifications';       // "someone needs you" while the window is in the background
-    callback(Boolean(webContents === contents && isAppUrl(details.requestingUrl ?? webContents.getURL(), origin) && (audio || notifications)));
+    callback(Boolean(webContents === contents && isAppUrl(details.requestingUrl ?? webContents.getURL(), origin) && isAppPermission(permission, details.mediaTypes)));
   });
   contents.session.webRequest.onHeadersReceived({ urls: [`${origin}/*`] }, (details, callback) => {
     const policy = `default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; font-src 'self' data:; connect-src 'self' ${origin.replace('http:', 'ws:')}; media-src 'self' blob:; object-src 'none'; base-uri 'none'; frame-src 'self' blob:`;

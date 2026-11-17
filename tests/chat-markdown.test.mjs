@@ -10,7 +10,7 @@ import path from 'node:path';
 const previous=globalThis.document;globalThis.document={querySelector:()=>null};
 const cache=fs.mkdtempSync(path.join(os.tmpdir(),'ov-md-cache-'));
 const vite=await createServer({configFile:false,root:process.cwd()+'/engine/client',cacheDir:cache,logLevel:'silent',server:{middlewareMode:true,ws:false,watch:null},optimizeDeps:{noDiscovery:true}});
-const {Markdown}=await vite.ssrLoadModule('/src/ui/Markdown.tsx');
+const {Markdown,copyText}=await vite.ssrLoadModule('/src/ui/Markdown.tsx');
 const {setState}=await vite.ssrLoadModule('/src/store.ts');setState({vorldId:'demo'});
 test.after(async()=>{await vite.close();fs.rmSync(cache,{recursive:true,force:true});if(previous===undefined)delete globalThis.document;else globalThis.document=previous;});
 const render=text=>renderToStaticMarkup(React.createElement(Markdown,{text,thread:'thread-1'}));
@@ -38,4 +38,21 @@ test('renderable code blocks offer previews and local artifact links open as pre
   assert.equal((html.match(/>Expand preview<\/button>/g)??[]).length,3);
   assert.match(html,/title="Preview file"/);assert.match(html,/path=%2Ftmp%2FMy%20Project%2Freport.html/);
   assert.doesNotMatch(html,/<h1>Report<\/h1>/,'HTML stays isolated from the chat document');
+});
+
+test('copy uses the Clipboard API and falls back to a selection copy when it is missing or denied',async t=>{
+  const saved=Object.getOwnPropertyDescriptor(globalThis,'navigator'),page=globalThis.document;
+  t.after(()=>{globalThis.document=page;if(saved)Object.defineProperty(globalThis,'navigator',saved);else delete globalThis.navigator;});
+  const browser=clipboard=>Object.defineProperty(globalThis,'navigator',{configurable:true,value:{clipboard}});
+  const log=[];let works=true;
+  const area={style:{},select:()=>log.push('select'),remove:()=>log.push('remove')};
+  globalThis.document={querySelector:()=>null,activeElement:{focus:()=>log.push('focus')},createElement:tag=>(log.push(tag),area),body:{appendChild:()=>log.push('append')},execCommand:command=>(log.push(command+':'+area.value),works)};
+  const written=[];browser({writeText:async text=>{written.push(text);}});
+  await copyText('npm test');assert.deepEqual(written,['npm test']);assert.deepEqual(log,[]);
+  browser({writeText:async()=>{throw new DOMException('Write permission denied.','NotAllowedError');}});
+  await copyText('one\ntwo');assert.deepEqual(log,['textarea','append','select','copy:one\ntwo','remove','focus']);assert.equal(area.readOnly,true);
+  log.length=0;browser(undefined);   // plain http on a LAN host: no navigator.clipboard at all
+  await copyText('three');assert.ok(log.includes('copy:three'));
+  log.length=0;works=false;
+  await assert.rejects(copyText('four'),/Could not copy/);assert.deepEqual(log.slice(-2),['remove','focus']);
 });
