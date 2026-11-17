@@ -55,6 +55,8 @@ export function str(path: string, vars: Record<string, string> = {}, fallback?: 
 
 /** A crew member of the open vorld, by id. */
 export const memberOf = (id: string | null | undefined) => state.vorld?.crew?.find((c: any) => c.id === id) ?? null;
+/** Escape closes what is on top: a dialog, then a member's chat, then the party room it was opened from. */
+export const closeTop = (s: State): Partial<State> => (s.modal ? { modal: null } : s.talkingTo ? { talkingTo: null } : { partyId: null });
 export const openRequest = (request: OpenWrit) => setState({ request, modal: 'request' });
 
 // Event bus between React and the Phaser scene.

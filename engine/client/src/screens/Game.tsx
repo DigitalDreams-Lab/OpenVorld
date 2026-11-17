@@ -2,7 +2,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Phaser from 'phaser';
 import { api, artImage, connect } from '../api';
-import { announceAsking, emit, getState, on, setOpenWrits, setState, toast, useStore } from '../store';
+import { announceAsking, closeTop, emit, getState, on, setOpenWrits, setState, toast, useStore } from '../store';
 import { play } from '../audio/sfx';
 import { initNotifications, notify } from '../notify';
 import { VorldScene } from '../game/VorldScene';
@@ -86,7 +86,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
   }, [wid]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setState((s) => (s.modal ? { modal: null } : s.partyId ? { partyId: null } : { talkingTo: null })); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setState(closeTop); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, []);
@@ -99,7 +99,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
       {vorld && <CrewBar />}
       {vorld && <AgentBalloons />}
       {vorld && talkingTo && <MemberPanel key={`${wid}:${talkingTo}`} id={talkingTo} />}
-      {vorld && !talkingTo && partyId && <PartyPanel key={`${wid}:${partyId}`} id={partyId} />}
+      {vorld && partyId && <PartyPanel key={`${wid}:${partyId}`} id={partyId} hidden={!!talkingTo} />}
       {vorld && modal === 'parties' && <PartyHall />}
       {vorld && modal === 'deeds' && <Deeds />}
       {vorld && modal === 'settings' && <Settings />}

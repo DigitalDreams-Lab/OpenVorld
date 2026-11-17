@@ -480,6 +480,9 @@ select.field.small { padding-right: 26px; }
 .party-pick { display: flex; flex-wrap: wrap; gap: 6px; }
 .party-pick .chip.on { background: var(--gold); font-weight: 700; }
 .party-panel .cp-head { grid-template-columns: minmax(0, 1fr) auto; } .party-panel .cp-goal { font-size: 13px; line-height: 1.4; margin: 4px 0 0; overflow-wrap: anywhere; } .party-panel .party-crew { margin-top: 4px; }
+/* a member's name or portrait in a party room: a button that opens their own chat */
+.who { display: flex; flex: none; align-self: flex-start; align-items: baseline; background: transparent; border: 0; padding: 0; font: inherit; color: inherit; text-align: left; cursor: pointer; }
+.who:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; } .speaker.who:hover b, .speaker.who:focus-visible b { text-decoration: underline; }
 .party-speaking { font-size: 12px; padding: 2px 10px; color: color-mix(in srgb, var(--ink) 70%, transparent); }
 
 /* ---- member settings: room to breathe ---- */
