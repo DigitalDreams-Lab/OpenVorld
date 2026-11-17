@@ -23,6 +23,7 @@ import path from 'node:path';
 import net from 'node:net';
 import dns from 'node:dns/promises';
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { grantsOf } from './gate.mjs';
 import { BROWSER_TOOLS, isBrowserTool } from './browser-tools.mjs';
 import { vaultDir } from './house.mjs';
@@ -47,8 +48,39 @@ const CHROME_PATHS = {
   linux: ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/microsoft-edge', '/snap/bin/chromium'],
   win32: ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'],
 };
+// The founder's default browser goes first when it is one of these (macOS only for now). Only browsers seen to work are
+// listed: Playwright starts them with its own flags (--remote-debugging-pipe, a temporary --user-data-dir), and not every
+// Chromium-based browser honours those. Dia does (headless and the sign-in window, Dia 157); Arc is untried.
+const DEFAULT_IDS = {
+  darwin: { 'com.google.chrome': 'Google Chrome', 'com.microsoft.edgemac': 'Microsoft Edge', 'org.chromium.chromium': 'Chromium', 'com.brave.browser': 'Brave Browser', 'company.thebrowser.dia': 'Dia' },
+};
+/** The bundle id that opens https links, read from the output of `defaults read ... LSHandlers`, or ''. */
+export function defaultBrowserId(text) {
+  const entry = String(text ?? '').split(/^\s*\},?\s*$/m).find((e) => /LSHandlerURLScheme = "?https"?;/.test(e));
+  // the nested LSHandlerPreferredVersions has a LSHandlerRoleAll too, always "-"
+  return [...(entry ?? '').matchAll(/LSHandlerRoleAll = "?([^";\s]+)"?;/g)].map((m) => m[1].toLowerCase()).find((id) => id !== '-') ?? '';
+}
+/** Which browser to use: OV_CHROME, then the founder's default browser if it is a known one, then the fixed list. */
+export function pickChrome({ override = '', defaultId = '', platform = process.platform, exists = fs.existsSync } = {}) {
+  const paths = CHROME_PATHS[platform] ?? [], app = DEFAULT_IDS[platform]?.[String(defaultId).toLowerCase()];
+  return [override, app && `/Applications/${app}.app/Contents/MacOS/${app}`, ...paths].filter(Boolean).find((p) => exists(p)) ?? null;
+}
+/** A short name for a browser path, for the sign-in card: "Chrome", "Edge", ... or the file's own name. */
+export function browserName(exe) {
+  const file = String(exe ?? '').split(/[\\/]/).pop().replace(/\.exe$/i, '');
+  return [[/chromium/i, 'Chromium'], [/chrome/i, 'Chrome'], [/edge/i, 'Edge'], [/brave/i, 'Brave']].find(([re]) => re.test(file))?.[1] ?? file;
+}
+let defaultSeen = { at: 0, id: '' };   // asked at most once a minute: findChrome runs on every sign-in state
+function systemDefaultId() {
+  if (process.platform !== 'darwin' || process.env.OV_CHROME) return '';
+  if (defaultSeen.at && Date.now() - defaultSeen.at < 60000) return defaultSeen.id;
+  let id = '';
+  try { id = defaultBrowserId(execFileSync('/usr/bin/defaults', ['read', 'com.apple.LaunchServices/com.apple.launchservices.secure', 'LSHandlers'], { encoding: 'utf8', timeout: 3000, stdio: ['ignore', 'pipe', 'ignore'] })); } catch { /* no default chosen: the fixed list */ }
+  defaultSeen = { at: Date.now(), id };
+  return id;
+}
 /** The Chrome-family browser on this computer, or null. OV_CHROME can name one. */
-export const findChrome = () => [process.env.OV_CHROME, ...(CHROME_PATHS[process.platform] ?? [])].filter(Boolean).find((p) => fs.existsSync(p)) ?? null;
+export const findChrome = () => pickChrome({ override: process.env.OV_CHROME, defaultId: systemDefaultId() });
 export const browserAvailable = () => !!findChrome();
 
 async function chrome() {
@@ -108,7 +140,7 @@ export function sessionSites(ctx, role) {
 }
 /** Has the founder signed in to a site that covers this host (www.youtube.com is covered by youtube.com)? */
 export const signedInTo = (ctx, role, host) => sessionSites(ctx, role).some((s) => host === s.domain || host.endsWith('.' + s.domain));
-export const signInState = (ctx, role, site = '') => ({ role, available: browserAvailable(), open: signins.has(`${ctx.id}:${role}`), sites: sessionSites(ctx, role), ...(site ? { site, signed: signedInTo(ctx, role, site) } : {}) });
+export const signInState = (ctx, role, site = '') => ({ role, available: browserAvailable(), browser: browserName(findChrome()), open: signins.has(`${ctx.id}:${role}`), sites: sessionSites(ctx, role), ...(site ? { site, signed: signedInTo(ctx, role, site) } : {}) });
 
 /**
  * Open a real, visible Chrome window for the founder to sign in to sites AS this member. Whatever they sign in to is

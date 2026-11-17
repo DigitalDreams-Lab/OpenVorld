@@ -20,7 +20,7 @@ export function WritCard({ ask, answered, wid, thread, who }: { ask: WritEvent; 
     try { const p = await choose(scope); if (p) setScope(p); } catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   const [busy, setBusy] = useState(false);
-  const needs = useNeeds(wid, ask, !answered);
+  const needs = useNeeds(wid, ask, !answered, who);
   const [done, setDone] = useState<{ answer: string; scope?: string } | undefined>(answered);
   const result = answered ?? done;
   const answers = (perms?.answers ?? []).filter((a: any) => !(a.id === 'always' && cap?.seal === 'every_time'));
@@ -66,7 +66,7 @@ export function WritCard({ ask, answered, wid, thread, who }: { ask: WritEvent; 
  *  - a sign-in (`ask.signin`): a button opens a real browser window for the founder, the card notices when it is saved;
  *  - a secret the vault does not hold yet: a private box to paste it into (it goes to the vault, not the conversation).
  */
-function useNeeds(wid: string, ask: WritEvent, open: boolean): { ready: boolean; value: string; ui: React.ReactNode } {
+function useNeeds(wid: string, ask: WritEvent, open: boolean, who: string): { ready: boolean; value: string; ui: React.ReactNode } {
   const [st, setSt] = useState<any>(null);       // sign-in state for this site, or the vault
   const [value, setValue] = useState('');
   const [busy, setBusy] = useState(false);
@@ -97,6 +97,7 @@ function useNeeds(wid: string, ask: WritEvent, open: boolean): { ready: boolean;
             {!st.available ? <p className="error small">Signing in needs Google Chrome or Microsoft Edge installed on this computer.</p> : st.open
               ? <p className="small">A browser window is open. Sign in to {ask.scope} there, then close the window.</p>
               : <p className="small">Sign in yourself in a real window. Your password stays with you; only the sign-in is kept, for this crew member.</p>}
+            {st.available && !st.open && st.browser && <p className="muted small">{str('writ.signin_browser', { browser: st.browser, name: who }, "This opens {browser} with a private profile for {name}; your own browser's logins are not touched.")}</p>}
             {st.available && <button className="btn small primary" disabled={busy} onClick={start}>{st.open ? 'Show the window' : `Sign in to ${ask.scope}`}</button>}
           </div>
         ),

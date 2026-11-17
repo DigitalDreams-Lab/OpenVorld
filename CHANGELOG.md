@@ -2,6 +2,14 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.11.12 - 2026-11-17
+
+- use Dia for the crew browser and sign-in window when it is the default browser
+
+## 0.11.11 - 2026-11-17
+
+- Sign-in card names the browser it opens and why; a default browser that is Chrome, Edge, Chromium or Brave is used first on macOS
+
 ## 0.11.10 - 2026-11-17
 
 - Drop the removed quests from the package description

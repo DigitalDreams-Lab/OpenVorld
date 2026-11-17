@@ -25,6 +25,36 @@ test('local and private addresses are always blocked; domains match like writs',
   assert.ok(hub.allowsHost(['*'], 'anything.org') && !hub.allowsHost([], 'example.com'));
 });
 
+test('which browser opens: OV_CHROME, then a known default browser, then the fixed list; the card is told its name', () => {
+  const mac = (app) => `/Applications/${app}.app/Contents/MacOS/${app}`;
+  const pick = (defaultId, installed, more = {}) => hub.pickChrome({ platform: 'darwin', defaultId, exists: (p) => installed.includes(p), ...more });
+  const all = [mac('Google Chrome'), mac('Microsoft Edge'), mac('Chromium'), mac('Brave Browser')];
+  assert.equal(pick('', all), mac('Google Chrome'), 'no default known: the first of the list, as before');
+  assert.equal(pick('com.brave.browser', all), mac('Brave Browser'));
+  assert.equal(pick('com.microsoft.edgemac', all), mac('Microsoft Edge'));
+  assert.equal(pick('org.chromium.Chromium', all), mac('Chromium'), 'bundle ids are compared without case');
+  assert.equal(pick('com.brave.browser', [mac('Google Chrome')]), mac('Google Chrome'), 'a default that is not installed there is skipped');
+  for (const id of ['company.thebrowser.dia', 'company.thebrowser.Browser', 'com.apple.Safari', 'org.mozilla.firefox', 'constructor']) assert.equal(pick(id, all), mac('Google Chrome'), `${id} is not on the list`);
+  assert.equal(pick('com.brave.browser', [...all, '/opt/dia']), mac('Brave Browser'));
+  assert.equal(pick('company.thebrowser.dia', [...all, mac('Dia')]), mac('Dia'), 'Dia is used when it is the default');
+  assert.equal(pick('', [...all, mac('Dia')]), mac('Google Chrome'), 'and never as a fallback');
+  assert.equal(pick('com.brave.browser', [...all, '/opt/dia'], { override: '/opt/dia' }), '/opt/dia', 'OV_CHROME wins');
+  assert.equal(pick('com.brave.browser', all, { override: '/missing' }), mac('Brave Browser'));
+  assert.equal(pick('com.brave.browser', []), null);
+  assert.equal(hub.pickChrome({ platform: 'linux', defaultId: 'com.brave.browser', exists: (p) => p === '/usr/bin/chromium' }), '/usr/bin/chromium', 'only macOS reads the default');
+
+  const handlers = (id) => `(\n        {\n        LSHandlerContentType = "public.html";\n        LSHandlerRoleAll = "com.apple.safari";\n    },\n        {\n        LSHandlerModificationDate = 808853551;\n        LSHandlerPreferredVersions =         {\n            LSHandlerRoleAll = "-";\n        };\n        LSHandlerRoleAll = ${id};\n        LSHandlerURLScheme = https;\n    },\n        {\n        LSHandlerRoleAll = "com.apple.mail";\n        LSHandlerURLScheme = mailto;\n    }\n)\n`;
+  assert.equal(hub.defaultBrowserId(handlers('"company.thebrowser.dia"')), 'company.thebrowser.dia');
+  assert.equal(hub.defaultBrowserId(handlers('"com.Brave.Browser"')), 'com.brave.browser');
+  assert.equal(hub.defaultBrowserId(handlers('"com.apple.safari"').replace('https', 'http')), '', 'http alone is not the answer');
+  for (const junk of ['', undefined, '(\n)\n', 'The domain/default pair does not exist']) assert.equal(hub.defaultBrowserId(junk), '');
+
+  assert.deepEqual([mac('Google Chrome'), mac('Microsoft Edge'), mac('Chromium'), mac('Brave Browser'), '/usr/bin/google-chrome-stable', '/snap/bin/chromium', 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe', 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', mac('Dia'), null].map(hub.browserName),
+    ['Chrome', 'Edge', 'Chromium', 'Brave', 'Chrome', 'Chromium', 'Edge', 'Chrome', 'Dia', '']);
+  const ctx = crew();
+  assert.equal(hub.signInState(ctx, 'ada').browser, hub.browserName(hub.findChrome()), 'the sign-in card hears which browser the server found');
+});
+
 test('a site without a writ asks the founder and never starts a browser', async () => {
   const ctx = crew(), asks = [];
   const open = (url) => hub.callTool(ctx, 'ada', 'browser_open', { url }, { onRequest: (a) => asks.push(a) });
