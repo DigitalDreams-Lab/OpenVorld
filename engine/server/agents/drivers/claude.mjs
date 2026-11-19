@@ -1,29 +1,45 @@
 // Claude Code CLI driver (headless, stream-json). Isolation: no user settings, no user MCP servers,
 // no slash commands; built-in tools limited to what the crew member's writs allow.
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 import { runJsonLines } from './proc.mjs';
 import { kindOf, targetOf, detailOf, textOf, imagesOf } from '../steps.mjs';
 import { commandPattern, redact } from '../../gate.mjs';
 
 const PLAN_TOOLS = new Set(['TodoWrite']);
 
-export async function run({ bin = 'claude', system, prompt, images = [], sessionId, cwd, tools = [], allowed = [], addDirs = [], mcp = null, env = null, model, budgetUsd, signal, onEvent }) {
-  const first = !sessionId;
-  const sid = sessionId ?? crypto.randomUUID();
+/**
+ * The CLI arguments for one turn (exported for unit tests). The system prompt is read from a file, never passed as an argument:
+ * on Windows an npm-installed CLI is a .cmd launcher, and cmd.exe cuts a command line at the first newline, which dropped every
+ * argument after a multi-line prompt (including --allowedTools, so the member was refused its own browser tools).
+ */
+export function argsFor({ systemFile, sid, first, tools = [], allowed = [], addDirs = [], mcp = null, model, budgetUsd, images = [] }) {
   const args = ['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
     '--setting-sources', '', '--strict-mcp-config', ...(mcp ? ['--mcp-config', JSON.stringify({ mcpServers: { [mcp.name]: { command: mcp.command, args: mcp.args, env: mcp.env } } })] : []), '--disable-slash-commands',
-    '--tools', tools.join(','), '--system-prompt', system];
+    '--tools', tools.join(','), '--system-prompt-file', systemFile];
   if (allowed.length) args.push('--allowedTools', ...allowed);
   if (tools.some((t) => ['Edit', 'Write', 'MultiEdit'].includes(t))) args.push('--permission-mode', 'acceptEdits');
   for (const d of addDirs) args.push('--add-dir', d);
   if (model) args.push('--model', model);
   if (budgetUsd) args.push('--max-budget-usd', String(budgetUsd));
-  if (images.length) args.push('--input-format','stream-json');
+  if (images.length) args.push('--input-format', 'stream-json');
   args.push(...(first ? ['--session-id', sid] : ['--resume', sid]));
+  return args;
+}
+
+export async function run({ bin = 'claude', system, prompt, images = [], sessionId, cwd, tools = [], allowed = [], addDirs = [], mcp = null, env = null, model, budgetUsd, signal, onEvent }) {
+  const first = !sessionId;
+  const sid = sessionId ?? crypto.randomUUID();
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-claude-'));       // private, and removed when the turn ends
+  const systemFile = path.join(dir, 'system.md');
+  fs.writeFileSync(systemFile, system, { mode: 0o600 });
+  const args = argsFor({ systemFile, sid, first, tools, allowed, addDirs, mcp, model, budgetUsd, images });
 
   let text = '', cost = null, isError = false, errorText = '';
   const pending = new Map();
-  await runJsonLines({
+  try { await runJsonLines({
     cmd: bin, args, cwd, env, stdin: images.length ? JSON.stringify({type:'user',message:{role:'user',content:[{type:'text',text:prompt},...images.map(f=>({type:'image',source:{type:'base64',media_type:f.type,data:f.data}}))]}})+'\n' : prompt, signal,
     onLine: (m) => {
       const ev = m.type === 'stream_event' ? m.event : null;
@@ -54,7 +70,7 @@ export async function run({ bin = 'claude', system, prompt, images = [], session
         if (!text && m.result && !isError) text = m.result;
       }
     },
-  });
+  }); } finally { fs.rmSync(dir, { recursive: true, force: true }); }
   if (isError && !text) throw new Error(errorText ? `the agent stopped: ${String(errorText).slice(0, 200)}` : 'the agent reported an error');
   return { sessionId: sid, text, cost };
 }

@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.14.3 - 2026-11-19
+
+- Windows: the crew browser tools reach Claude Code members again (its system prompt was passed as a multi-line argument, which cmd.exe cut off together with --allowedTools; it now comes from a temporary file), and Chrome or Edge are found per user and in any Program Files folder
+
 ## 0.14.2 - 2026-11-19
 
 - Web demo on the current version, playing about 40% slower (one PACE setting); Mira's first note shows crew memory; the integration prompt button hides where there is nothing to copy

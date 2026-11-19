@@ -40,7 +40,7 @@ vorlds/<id>/
 | `parties.mjs` | Parties and their shared room: save a party, run a room (the leader answers, `@Name` hands over, no mention ends the job), pause on a writ, join the founder and stay nearby between messages. |
 | `threads.mjs` | Conversations as JSONL event logs. |
 | `agents/runner.mjs` | One turn for one member: builds the system prompt, picks the driver and stores the reply as ordered steps. |
-| `agents/drivers/` | `claude.mjs`, `codex.mjs`, `antigravity.mjs`, `opencode.mjs` (headless CLIs), `command.mjs` (any other harness a pack describes: prompt in, reply out), `openai.mjs` (HTTP plus an engine-run tool loop) and `scripted.mjs` (no brain yet). CLIs start through `cross-spawn`, so Windows `.cmd` shims work too. |
+| `agents/drivers/` | `claude.mjs`, `codex.mjs`, `antigravity.mjs`, `opencode.mjs` (headless CLIs), `command.mjs` (any other harness a pack describes: prompt in, reply out), `openai.mjs` (HTTP plus an engine-run tool loop) and `scripted.mjs` (no brain yet). CLIs start through `cross-spawn`, so Windows `.cmd` shims work too, which is also why no argument may hold a newline (`cmd.exe` cuts the command line there): Claude Code reads its system prompt from a temporary file, and Codex and OpenCode get their prompts on stdin. |
 | `agents/tools.mjs` | The tools the engine runs for API brains, always limited to the member's writs. |
 | `agents/envelope.mjs` | Reads the fenced `ov` JSON block at the end of a reply: options, mood, balloon, commands, access requests and memory (`remember`, `forget`, `summary`). |
 | `memory.mjs` | Crew memory, kept in each member's house: the notebook (shown in every turn), one summary per chat (the latest few start a new chat), and the `recall` tool that searches older chats. |
