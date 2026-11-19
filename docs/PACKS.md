@@ -101,8 +101,11 @@ providers:
         detect: [my-agent, --version]
         run: [my-agent, --print, --quiet]
         model_args: [--model, "{model}"]
+        mcp_args: [--mcp-config, "{mcp_config}"]   # optional, if it can use MCP tools
     models: { source: static, values: [small, large] }
 ```
+
+`mcp_args` hands the harness OpenVorld's own tools (the member's browser, `secret_ask` and `recall`) as a standard `mcpServers` JSON file: `{mcp_config}` is its path, which is also in `$OV_MCP_CONFIG` together with `OV_URL` and `OV_TOKEN`. The file is private and removed when the turn ends. Without it the harness gets no OpenVorld tools, so leave the browser out of what it is told it can do.
 
 You don't have to write this yourself. **Copy integration prompt** (in Settings and under a member's Brain) copies a prompt for your own AI, with this computer's paths filled in (`add_yourself` in `providers.yaml`), so it can write the pack and check its own command. Then press look again.
 

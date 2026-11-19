@@ -75,6 +75,7 @@ add_yourself: |
                detect: ["<command>", "--version"]
                run: ["<command>", "<arguments for one headless, non-interactive answer that reads the prompt from stdin>"]
                model_args: ["--model", "{model}"]      # optional: added when a model is picked
+               mcp_args: ["--mcp-config", "{mcp_config}"]  # optional: passes OpenVorld's MCP tools (browser, recall, secret_ask) as a standard mcpServers JSON file (also in $OV_MCP_CONFIG)
            models: { source: static, values: ["<model ids you accept>"] }   # optional
 
      Pick arguments that print only the answer (no colors, spinners or prompts for input) and that keep you inside the work folder. OpenVorld cannot enforce its own access rules inside your tools, so prefer your safest mode.

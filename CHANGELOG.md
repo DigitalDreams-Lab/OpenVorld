@@ -2,9 +2,21 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
-## 0.14.3 - 2026-11-19
+## 0.15.1 - 2026-11-19
 
 - Windows: the crew browser tools reach Claude Code members again (its system prompt was passed as a multi-line argument, which cmd.exe cut off together with --allowedTools; it now comes from a temporary file), and Chrome or Edge are found per user and in any Program Files folder
+
+## 0.15.0 - 2026-11-19
+
+- Every brain can use the crew's tools: Antigravity, OpenCode and any command harness with mcp_args get the browser, secret_ask and recall over the bridge
+
+## 0.14.4 - 2026-11-19
+
+- The launch token is no longer passed to brain processes or the engine's run_command (only the per-turn bridge token reaches a brain)
+
+## 0.14.3 - 2026-11-19
+
+- Security: the tool bridge no longer gets the launch token (which opens the whole API and can be read by the brain from a config file, its arguments or its environment); it gets a token for one member's one turn that opens only that member's own tools and stops when the turn ends
 
 ## 0.14.2 - 2026-11-19
 

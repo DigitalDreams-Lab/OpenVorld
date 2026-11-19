@@ -105,6 +105,91 @@ test('runner dispatches antigravity crew members and persists the conversation i
   const args = JSON.parse(fs.readFileSync(log, 'utf8'));
   assert.ok(args.includes('--sandbox'));
   assert.ok(args.includes('gemini-4-argon-medium'));
+  assert.ok(args.includes('--settings'), 'runner passes session settings to allow ov_browser MCP tools');
+  assert.ok(args.includes('--add-dir'), 'runner adds the temporary MCP config dir');
   const events = readEvents(ctx, thread.id);
   assert.equal(events.find((e) => e.type === 'agent.text')?.text, 'Ready.');
+});
+
+test('antigravity attaches ov_browser via a private temp MCP config and session allow-rule, then cleans it up', { skip: process.platform === 'win32' }, async (t) => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agy-mcp-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  const bin = path.join(dir, 'agy');
+  const out = path.join(dir, 'seen.json');
+  const ev = (event, body) => ({ event, [event]: body });
+  const stream = [
+    ev('init', { cwd: dir, conversation_id: 'conv-mcp' }),
+    ev('step_update', {
+      step_index: 4,
+      state: 'ACTIVE',
+      step_type: 'tool',
+      tool_name: 'call_mcp_tool',
+      tool_info: { name: 'call_mcp_tool', parameters: { ServerName: 'ov_browser', ToolName: 'browser_open', Arguments: { url: 'https://example.com' } } },
+    }),
+    ev('step_update', {
+      step_index: 4,
+      state: 'DONE',
+      step_type: 'tool',
+      tool_name: 'call_mcp_tool',
+      tool_info: { name: 'call_mcp_tool', parameters: { ServerName: 'ov_browser', ToolName: 'browser_open', Arguments: { url: 'https://example.com' } }, output: 'Example Domain' },
+    }),
+    ev('step_update', {
+      step_index: 5,
+      state: 'ACTIVE',
+      step_type: 'tool',
+      tool_name: 'call_mcp_tool',
+      tool_info: { name: 'call_mcp_tool', parameters: { ServerName: 'ov_browser', ToolName: 'browser_click', Arguments: { id: 3 } } },
+    }),
+    ev('step_update', {
+      step_index: 5,
+      state: 'ERROR',
+      step_type: 'tool',
+      tool_name: 'call_mcp_tool',
+      tool_info: { name: 'call_mcp_tool', parameters: { ServerName: 'ov_browser', ToolName: 'browser_click', Arguments: { id: 3 } }, error: { type: 'TOOL_ERROR', message: 'not found' } },
+    }),
+    ev('result', { status: 'SUCCESS', conversation_id: 'conv-mcp', response: 'Opened.' }),
+  ];
+  fs.writeFileSync(bin, `#!${process.execPath}
+import fs from 'node:fs';
+import path from 'node:path';
+const a = process.argv.slice(2);
+const addDirs = [];
+for (let i = 0; i < a.length; i++) if (a[i] === '--add-dir') addDirs.push(a[i + 1]);
+const mcpDir = addDirs.at(-1);
+const mcpFile = path.join(mcpDir, '.agents', 'mcp_config.json');
+const settingsFile = a[a.indexOf('--settings') + 1];
+fs.writeFileSync(${JSON.stringify(out)}, JSON.stringify({
+  args: a,
+  mcpDir,
+  mcpConfig: JSON.parse(fs.readFileSync(mcpFile, 'utf8')),
+  mcpMode: fs.statSync(mcpFile).mode & 0o777,
+  settings: JSON.parse(fs.readFileSync(settingsFile, 'utf8')),
+  settingsMode: fs.statSync(settingsFile).mode & 0o777,
+  secret: process.env.YT_TOKEN,
+}));
+for (const line of ${JSON.stringify(stream)}) console.log(JSON.stringify(line));
+`, { mode: 0o755 });
+
+  const mcp = { name: 'ov_browser', command: process.execPath, args: ['/app/browser-mcp.mjs'], env: { OV_URL: 'http://127.0.0.1:4317', OV_TOKEN: 'tok', OV_TOOLS: 'browser_open,recall' } };
+  const events = [];
+  const r = await run({ bin, system: 'S', prompt: 'P', cwd: dir, mcp, env: { YT_TOKEN: 'sec-1' }, onEvent: (e) => events.push(e) });
+
+  assert.equal(r.text, 'Opened.');
+  const seen = JSON.parse(fs.readFileSync(out, 'utf8'));
+  assert.ok(!seen.args.includes('--dangerously-skip-permissions'));
+  assert.deepEqual(seen.mcpConfig.mcpServers.ov_browser, { command: mcp.command, args: mcp.args, env: mcp.env });
+  assert.equal(seen.mcpMode, 0o600);
+  assert.deepEqual(seen.settings, { permissions: { allow: ['mcp(ov_browser/*)'] } });
+  assert.equal(seen.settingsMode, 0o600);
+  assert.equal(seen.secret, 'sec-1');
+  assert.equal(fs.existsSync(seen.mcpDir), false, 'temp MCP config dir is removed after the turn');
+
+  assert.deepEqual(events.map((e) => [e.type, e.name, e.kind ?? e.ok, e.target]), [
+    ['tool', 'ov_browser.browser_open', 'tool.web', 'https://example.com'],
+    ['tool_result', 'ov_browser.browser_open', true, 'https://example.com'],
+    ['tool', 'ov_browser.browser_click', 'tool.web', '#3'],
+    ['tool_result', 'ov_browser.browser_click', false, '#3'],
+  ]);
+  assert.equal(events[1].output, 'Example Domain');
+  assert.equal(events[3].output, 'not found');
 });
