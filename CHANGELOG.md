@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.15.0 - 2026-11-19
+
+- Every brain can use the crew's tools: Antigravity, OpenCode and any command harness with mcp_args get the browser, secret_ask and recall over the bridge
+
 ## 0.14.4 - 2026-11-19
 
 - The launch token is no longer passed to brain processes or the engine's run_command (only the per-turn bridge token reaches a brain)

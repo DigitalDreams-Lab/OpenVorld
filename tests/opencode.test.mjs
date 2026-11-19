@@ -5,7 +5,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { readYaml } from '../tools/lib/packs.mjs';
-import { argsFor, permissionsFor, deniedAccess, run } from '../engine/server/agents/drivers/opencode.mjs';
+import { argsFor, permissionsFor, mcpConfigFor, deniedAccess, run } from '../engine/server/agents/drivers/opencode.mjs';
 import { home, makeVorld } from './helpers/vorld.mjs';
 import { createThread, readEvents } from '../engine/server/threads.mjs';
 import { grant } from '../engine/server/gate.mjs';
@@ -139,6 +139,7 @@ for await (const c of process.stdin) stdin += c;
 fs.writeFileSync(${JSON.stringify(log)}, JSON.stringify({
   args: process.argv.slice(2),
   perm: JSON.parse(process.env.OPENCODE_PERMISSION || '{}'),
+  cfg: JSON.parse(process.env.OPENCODE_CONFIG_CONTENT || '{}'),
   stdin,
 }));
 console.log(JSON.stringify({ type: 'text', sessionID: 'ses_dispatch_1', part: { type: 'text', text: 'Ready via OpenCode.' } }));
@@ -158,6 +159,11 @@ console.log(JSON.stringify({ type: 'text', sessionID: 'ses_dispatch_1', part: { 
   assert.deepEqual(logged.args, ['run', '--format', 'json', '--thinking', '-m', 'opencode/big-pickle']);
   assert.equal(logged.perm.bash['npm test'], 'allow');
   assert.equal(logged.perm.edit, 'deny');
+  assert.equal(logged.perm['ov_browser_*'], 'allow');
+  assert.equal(logged.cfg.mcp?.ov_browser?.type, 'local');
+  assert.equal(logged.cfg.mcp?.ov_browser?.enabled, true);
+  assert.ok(Array.isArray(logged.cfg.mcp?.ov_browser?.command) && logged.cfg.mcp.ov_browser.command.some((a) => a.endsWith('browser-mcp.mjs')));
+  assert.equal(mcpConfigFor(null), null);
   const events = readEvents(ctx, thread.id);
   assert.equal(events.find((e) => e.type === 'agent.text')?.text, 'Ready via OpenCode.');
 });
