@@ -1,10 +1,11 @@
-version: 0.11.9
+version: 0.13.1
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.9/OpenVorld-0.11.9-linux-x86_64.AppImage
-    sha512: NUB9a3Ifq8FSDjoEjH00r9ZcVgajzODP2qH5vuhSdYfODIjCDIJy8bHxK4Bf/RyQHdP9ODmrZS+HB2EaU6e0Iw==
-    size: 185608277
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.11.9/OpenVorld-0.11.9-linux-x86_64.AppImage
-sha512: NUB9a3Ifq8FSDjoEjH00r9ZcVgajzODP2qH5vuhSdYfODIjCDIJy8bHxK4Bf/RyQHdP9ODmrZS+HB2EaU6e0Iw==
-releaseNotes: "- Keep About and Changelog open for clicks inside the dialog;
-  dismiss only for clicks starting and ending on the backdrop"
-releaseDate: 2026-11-17T10:55:38.064Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.13.1/OpenVorld-0.13.1-linux-x86_64.AppImage
+    sha512: 8JGpRFCu8rFnVL47Ay1iklNeup5F/9NIa50qzuuWrVaUpzy6soDP0b42a7GXsbwfdsw7blbiUzmxwxarFclDzQ==
+    size: 185612298
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.13.1/OpenVorld-0.13.1-linux-x86_64.AppImage
+sha512: 8JGpRFCu8rFnVL47Ay1iklNeup5F/9NIa50qzuuWrVaUpzy6soDP0b42a7GXsbwfdsw7blbiUzmxwxarFclDzQ==
+releaseNotes: "- Crew memory polish from a live run with Claude Code and Codex:
+  recall reads as a search for every brain, and a search leaves out the chat
+  that asks"
+releaseDate: 2026-11-19T17:37:59.735Z
