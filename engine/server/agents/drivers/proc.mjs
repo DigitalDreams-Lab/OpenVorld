@@ -1,6 +1,6 @@
 // Spawn an agent CLI, feed the prompt, yield parsed JSON lines. Strips the parent harness's session
 // variables so a nested agent CLI behaves like a fresh one.
-import { spawn } from 'node:child_process';
+import spawn from 'cross-spawn';      // finds and runs .cmd shims on Windows (npm installs claude.cmd, codex.cmd ...), quoting each argument safely
 
 export function cleanEnv() {
   const env = { ...process.env };

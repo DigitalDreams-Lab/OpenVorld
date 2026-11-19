@@ -48,11 +48,11 @@ export function deniedAccess(tool, input = {}, cwd) {
   return null;
 }
 
-export async function run({ system, prompt, images = [], sessionId, cwd, addDirs = [], writable = false, cmdAllow = [], web = false, model, signal, onEvent }) {
+export async function run({ bin = 'opencode', system, prompt, images = [], sessionId, cwd, addDirs = [], writable = false, cmdAllow = [], web = false, model, signal, onEvent }) {
   let sid = sessionId, text = '', cost = 0, hasCost = false, failed = '', seq = 0;
 
   await runJsonLines({
-    cmd: 'opencode',
+    cmd: bin,
     args: argsFor({ sessionId, model, images }),
     cwd,
     stdin: sessionId ? prompt : `${system}\n\n---\n\n${prompt}`,

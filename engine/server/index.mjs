@@ -6,7 +6,7 @@ import path from 'node:path';
 import crypto from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import { WebSocketServer } from 'ws';
-import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMember, detected, migrateVorlds } from './vorld.mjs';
+import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMember, detected, migrateVorlds, addYourselfMessage } from './vorld.mjs';
 import { atlasFor, sheetImage } from './art.mjs';
 import { gameFor } from './game.mjs';
 import { listThreads, createThread, getThread, updateThread, readEvents, appendEvent } from './threads.mjs';
@@ -97,6 +97,7 @@ route('GET', '/api/boot', () => {
   };
 });
 route('POST', '/api/detect', () => detected(true));
+route('GET', '/api/detect/add-yourself', () => ({ text: addYourselfMessage() }));
 route('GET', '/api/profile', () => readProfile(HOME));
 route('PUT', '/api/profile', async ({ req }) => {
   const profile = saveProfile(HOME, await body(req));

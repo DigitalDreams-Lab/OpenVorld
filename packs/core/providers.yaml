@@ -1,10 +1,15 @@
 # Brains for the crew. A provider is "how to talk to an agent or a model". Each member picks one in its settings.
-#   cli     spawn a headless agent CLI per turn and stream its JSON events (Claude Code, Codex, Antigravity, OpenCode)
-#   openai  any OpenAI-compatible HTTP API; the ENGINE runs the tool loop and offers only granted tools
+#   cli      spawn a headless agent CLI per turn and stream its JSON events (Claude Code, Codex, Antigravity, OpenCode).
+#            The first word of `detect` is the command that runs: a user pack can make it a full path.
+#   command  any other agent CLI or harness: `run` gets the prompt on its input and prints the reply (engine/server/agents/
+#            drivers/command.mjs). No sessions, no tool steps, and writs reach it only as words in its prompt.
+#   openai   any OpenAI-compatible HTTP API; the ENGINE runs the tool loop and offers only granted tools
+# A user pack (<data folder>/packs/*.yaml, kind: providers) adds a brain or changes one by id; `add_yourself` below is the
+# message the founder copies to an AI that OpenVorld did not find, so it can write that pack itself.
 # models.source: where the model picker gets its list (static values, a CLI command, a file the tool keeps, or the endpoint's /models).
 kind: providers
 version: 1
-bin_dirs: ["~/.local/bin", "~/.claude/local", "~/.gemini/bin", "~/.opencode/bin", "/opt/homebrew/bin", "/usr/local/bin"]
+bin_dirs: ["~/.local/bin", "~/.claude/local", "~/.gemini/bin", "~/.opencode/bin", "/opt/homebrew/bin", "/usr/local/bin", "~/AppData/Roaming/npm"]
 providers:
   claude-code:
     label: Claude Code
@@ -39,3 +44,41 @@ providers:
       openai:     { base_url: "https://api.openai.com/v1", api: responses }   # OpenAI itself
       ollama:     { base_url: "http://localhost:11434/v1", api_key: null }
       lm-studio:  { base_url: "http://localhost:1234/v1", api_key: null }
+
+# Copied by "Copy integration prompt" (Settings, and under a member's Brain). Filled in: {platform}, {packs_dir}, {found} (brains found now), {known} (the ones
+# OpenVorld has a driver for, with the command it looks for).
+add_yourself: |
+  I use OpenVorld, an app on this computer ({platform}) where AI agents work together as a crew. It runs agent CLIs as the crew's "brains", but it did not find you. Please add yourself, then tell me when you are done.
+
+  1. Make sure you can run from a terminal on this computer. If your command-line tool is not installed, or something it needs is missing (for example Node.js, npm or Python), install it with the official installer or package manager for {platform}: ask me before installing anything, or give me the exact steps to do it myself. Sign in if the tool needs it. Then check the command: it must exit with 0 on `--version` (or another quick check).
+     OpenVorld only sees what was on the PATH when it started, so after installing something, use the full path of your command below (or I restart OpenVorld).
+  2. If OpenVorld already has a driver for you ({known}), keep its id and only tell it where you are. Write {packs_dir}/my-brain.yaml (create the folder if needed):
+
+       kind: providers
+       version: 1
+       providers:
+         <id from the list above>:
+           drivers: { cli: { detect: ["<full path of your command>", "--version"] } }
+
+     If that brain lists its models with a command (shown in the list above), add the same full path there too:
+       models: { command: ["<full path of your command>", "models"] }
+
+  3. Otherwise add yourself as a new brain in that file. OpenVorld runs `run` once per message, in the member's work folder, writes the whole prompt to its standard input and shows everything it prints as the reply:
+
+       kind: providers
+       version: 1
+       providers:
+         <short-id>:
+           label: <your name>
+           drivers:
+             command:
+               detect: ["<command>", "--version"]
+               run: ["<command>", "<arguments for one headless, non-interactive answer that reads the prompt from stdin>"]
+               model_args: ["--model", "{model}"]      # optional: added when a model is picked
+           models: { source: static, values: ["<model ids you accept>"] }   # optional
+
+     Pick arguments that print only the answer (no colors, spinners or prompts for input) and that keep you inside the work folder. OpenVorld cannot enforce its own access rules inside your tools, so prefer your safest mode.
+
+  4. Use forward slashes or quoted paths in YAML. Run the command from `run` once by hand, with a short prompt on its input, to be sure it answers and exits.
+
+  Brains OpenVorld finds right now: {found}. When the file is written, I will press "Look again" in OpenVorld.

@@ -87,6 +87,25 @@ providers:
       groq: { base_url: "https://api.groq.com/openai/v1" }
 ```
 
+**A brain OpenVorld did not find.** Each CLI brain is found by its `detect` command, whose first word is also the command that runs, so a pack can point to a full path. Any other agent CLI or harness can be a brain through the `command` driver. It runs `run` once per message in the member's workbench, writes the prompt to its input and shows what it prints as the reply (no sessions, no tool steps, and writs reach it only as words in its prompt):
+
+```yaml
+kind: providers
+providers:
+  antigravity:                       # a known CLI that is not on the PATH
+    drivers: { cli: { detect: ["C:/path/to/agy.exe", "--version"] } }
+  my-agent:                          # anything else
+    label: My Agent
+    drivers:
+      command:
+        detect: [my-agent, --version]
+        run: [my-agent, --print, --quiet]
+        model_args: [--model, "{model}"]
+    models: { source: static, values: [small, large] }
+```
+
+You don't have to write this yourself. **Copy integration prompt** (in Settings and under a member's Brain) copies a prompt for your own AI, with this computer's paths filled in (`add_yourself` in `providers.yaml`), so it can write the pack and check its own command. Then press look again.
+
 ## Other kinds
 
 | Kind | What it controls |

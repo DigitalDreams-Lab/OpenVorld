@@ -7,7 +7,7 @@ import { commandPattern, redact } from '../../gate.mjs';
 
 const PLAN_TOOLS = new Set(['TodoWrite']);
 
-export async function run({ system, prompt, images = [], sessionId, cwd, tools = [], allowed = [], addDirs = [], mcp = null, env = null, model, budgetUsd, signal, onEvent }) {
+export async function run({ bin = 'claude', system, prompt, images = [], sessionId, cwd, tools = [], allowed = [], addDirs = [], mcp = null, env = null, model, budgetUsd, signal, onEvent }) {
   const first = !sessionId;
   const sid = sessionId ?? crypto.randomUUID();
   const args = ['-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
@@ -24,7 +24,7 @@ export async function run({ system, prompt, images = [], sessionId, cwd, tools =
   let text = '', cost = null, isError = false, errorText = '';
   const pending = new Map();
   await runJsonLines({
-    cmd: 'claude', args, cwd, env, stdin: images.length ? JSON.stringify({type:'user',message:{role:'user',content:[{type:'text',text:prompt},...images.map(f=>({type:'image',source:{type:'base64',media_type:f.type,data:f.data}}))]}})+'\n' : prompt, signal,
+    cmd: bin, args, cwd, env, stdin: images.length ? JSON.stringify({type:'user',message:{role:'user',content:[{type:'text',text:prompt},...images.map(f=>({type:'image',source:{type:'base64',media_type:f.type,data:f.data}}))]}})+'\n' : prompt, signal,
     onLine: (m) => {
       const ev = m.type === 'stream_event' ? m.event : null;
       if (ev?.type === 'content_block_delta' && ev.delta?.type === 'text_delta') {

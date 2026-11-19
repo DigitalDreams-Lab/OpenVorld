@@ -2,7 +2,7 @@
 // (providers.yaml > models.source): `static` values, a CLI `command` that prints them, an HTTP `endpoint` of the configured
 // server, or `settings` (only what the founder typed). The tier defaults and any model already chosen are always included.
 // Nothing here sends a prompt or a secret anywhere but to the endpoint the founder configured, and it never returns a key.
-import { execFile } from 'node:child_process';
+import spawn from 'cross-spawn';
 import fs from 'node:fs';
 import os from 'node:os';
 
@@ -10,7 +10,11 @@ const cache = new Map();           // key -> { at, value }
 const TTL = 60_000;
 
 const run = (cmd, args) => new Promise((resolve) => {
-  execFile(cmd, args, { timeout: 8000, maxBuffer: 1 << 20, encoding: 'utf8' }, (err, stdout) => resolve(err ? null : String(stdout)));
+  let out = '', child;
+  try { child = spawn(cmd, args, { stdio: ['ignore', 'pipe', 'ignore'], timeout: 8000 }); } catch { return resolve(null); }
+  child.stdout.on('data', (d) => { if (out.length < 1 << 20) out += d; });
+  child.on('error', () => resolve(null));
+  child.on('close', (code) => resolve(code === 0 ? out : null));
 });
 
 /** `agy models` / `opencode models` print one model per line (sometimes "id  description"). */
