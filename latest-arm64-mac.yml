@@ -1,11 +1,12 @@
-version: 0.14.1
+version: 0.15.1
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.14.1/OpenVorld-0.14.1-mac-arm64.zip
-    sha512: 3sxpGTLxCAdqIqL+4011CDqjmVNAUtnPKDQ+xAKpAyYumq7dmCkviTgmlFmr1tNfACgrbK056lLSen4ebSDJpA==
-    size: 177868581
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.14.1/OpenVorld-0.14.1-mac-arm64.zip
-sha512: 3sxpGTLxCAdqIqL+4011CDqjmVNAUtnPKDQ+xAKpAyYumq7dmCkviTgmlFmr1tNfACgrbK056lLSen4ebSDJpA==
-releaseNotes: "- Copy integration prompt: one minimal button instead of showing
-  the prompt, and the prompt now covers installing the AI's command-line tool
-  (and what it needs) when it is missing"
-releaseDate: 2026-11-19T18:11:41.754Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.15.1/OpenVorld-0.15.1-mac-arm64.zip
+    sha512: leEg4ZXi0Q/ncn271zLRrwzqt1QhlSFRqJSqKbePvDGBnkfNATlQPWJp0yL/2K0sgWg/3SIiKc9DXKLnNJaACQ==
+    size: 177873171
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.15.1/OpenVorld-0.15.1-mac-arm64.zip
+sha512: leEg4ZXi0Q/ncn271zLRrwzqt1QhlSFRqJSqKbePvDGBnkfNATlQPWJp0yL/2K0sgWg/3SIiKc9DXKLnNJaACQ==
+releaseNotes: "- Windows: the crew browser tools reach Claude Code members again
+  (its system prompt was passed as a multi-line argument, which cmd.exe cut off
+  together with --allowedTools; it now comes from a temporary file), and Chrome
+  or Edge are found per user and in any Program Files folder"
+releaseDate: 2026-11-19T21:37:26.624Z
