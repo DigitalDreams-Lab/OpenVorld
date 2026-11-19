@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.14.2 - 2026-11-19
+
+- Web demo on the current version, playing about 40% slower (one PACE setting); Mira's first note shows crew memory; the integration prompt button hides where there is nothing to copy
+
 ## 0.14.1 - 2026-11-19
 
 - Copy integration prompt: one minimal button instead of showing the prompt, and the prompt now covers installing the AI's command-line tool (and what it needs) when it is missing

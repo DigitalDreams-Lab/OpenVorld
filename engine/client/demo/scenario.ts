@@ -74,7 +74,7 @@ export async function partyMessage(tid: string) {
   try {
     await sleep(400); moment('chat');
     gather(); await sleep(1500);
-    await turn(tid, IDS.mira, { mood: 'happy', balloon: 'A secret plan!' }, async (k) => {
+    await turn(tid, IDS.mira, { mood: 'happy', balloon: 'A secret plan!', noted: ['Buzz loves sunflowers, honey cake and slow jazz'] }, async (k) => {
       await k.think('A secret party for Buzz! First: what does Buzz love most?');
       const plan = (done: number) => ['Read what Buzz loves', 'Write a birthday poem', 'Build the invitation', 'Surprise!'].map((text, i) => ({ text, status: i < done ? 'completed' : i === done ? 'in_progress' : 'pending' }));
       k.plan(plan(0));

@@ -14,10 +14,11 @@ export function AddYourBrain({ onFound }: { onFound?: (detected: any[]) => void 
     try { const d = await api('/detect', { body: {} }); onFound?.(d); toast({ kind: 'info', title: d.length ? `Found: ${d.map((x: any) => x.label).join(', ')}` : 'Still no agent found' }); }
     catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
+  if (!text) return null;      // nothing to copy (the web demo, or the server is not reachable)
   return (
     <div className="add-brain small">
       <span className="muted">Your AI isn't listed?</span>
-      <button type="button" className="btn small" disabled={!text} title="Paste it into your own AI: it adds itself to OpenVorld" onClick={copy}>{copied ? 'Copied ✓' : 'Copy integration prompt'}</button>
+      <button type="button" className="btn small" title="Paste it into your own AI: it adds itself to OpenVorld" onClick={copy}>{copied ? 'Copied ✓' : 'Copy integration prompt'}</button>
       {copied && <span className="muted">Paste it into your AI, then <button type="button" className="link small" onClick={again}>look again</button></span>}
     </div>
   );

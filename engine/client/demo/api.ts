@@ -57,6 +57,8 @@ const routes: Route[] = [
   ['GET', new RegExp(`^${V}/browser/[^/]+$`), () => ({})],
   ['GET', new RegExp(`^${V}/crew/([^/]+)/vault$`), (m) => F.vaults[m[1]] ?? { secrets: [], signin: {} }],
   ['GET', new RegExp(`^${V}/crew/[^/]+/signin$`), () => ({})],
+  ['GET', new RegExp(`^${V}/crew/([^/]+)/memory$`), () => ({ notes: [], chats: [] })],
+  ['GET', /^\/detect\/add-yourself$/, () => ({ text: '' })],         // no integration prompt in the demo: the button stays hidden
 ];
 
 export async function api<T = any>(path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
