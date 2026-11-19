@@ -81,7 +81,7 @@ export async function run({ system, prompt, images = [], sessionId, cwd, addDirs
           onEvent({ type: 'tool_result', id, ok: it.status !== 'failed', name: 'patch', target: c.path, output: c.kind ?? '' });
         });
       } else if (started && it.type === 'mcp_tool_call') {
-        onEvent({ type: 'tool', id: it.id, kind: kindOf(it.tool), name: `${it.server}.${it.tool}`, target: kindOf(it.tool) === 'tool.web' ? targetOf(it.tool, it.arguments ?? {}) : JSON.stringify(it.arguments ?? {}).slice(0, 240) });
+        onEvent({ type: 'tool', id: it.id, kind: kindOf(it.tool), name: `${it.server}.${it.tool}`, target: it.server === mcp?.name ? targetOf(it.tool, it.arguments ?? {}) : JSON.stringify(it.arguments ?? {}).slice(0, 240) });   // the engine's own tools read like the rest
       } else if (done && it.type === 'mcp_tool_call') {
         const content=it.result?.content;
         const output=Array.isArray(content)?content.filter(b=>b.type!=='image').map(b=>b.text??JSON.stringify(b)).join('\n'):JSON.stringify(it.result??'');

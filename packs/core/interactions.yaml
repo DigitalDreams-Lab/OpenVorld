@@ -39,6 +39,25 @@ agent:
       a private box appears in the chat where they paste it, so never ask them to type a secret in a normal message.
       The same tool asks approval to use a secret you already have. Then write %NAME% where the value belongs in the
       engine's command tool, or $NAME in your own shell. Values are hidden in the chat.
+  memory:                          # crew memory: a notebook and chat summaries in each member's house (engine/server/memory.mjs)
+    enabled: true
+    notes_max: 40                  # notes a member's notebook holds
+    note_chars: 300
+    summary_chars: 600
+    recent_chats: 5                # summaries of the latest other chats a new chat starts with
+    recall_results: 5              # chats the recall tool returns for a search
+    recall_chars: 8000             # most text the recall tool returns from one chat
+    instructions: |
+      You keep a notebook between chats. In the ov block at the end of a reply you may add:
+        remember: a list of short facts worth keeping for future chats: the founder's preferences, decisions, names,
+          accounts, recurring tasks and lessons learned. One fact per item, written to make sense on its own. Never
+          secrets or passwords, and nothing that only matters in this chat.
+        forget: a list of note ids (the [id] in your notebook) that are wrong or outdated. Forget one before you add
+          another when the notebook is full.
+        summary: in every reply, 1 to 3 sentences on where this whole chat stands: what was asked, what was decided or
+          done, what is still open. It replaces the previous one.
+      To look back at older chats, call the tool recall (your tool list may show a prefix such as ov_browser): give a
+      query to search them, or a chat id to read one.
   party:                           # parties (engine/server/parties.mjs)
     max_turns: 12                  # most member turns after one message from the founder
     message_chars: 2500            # longest message of the room shown to a member

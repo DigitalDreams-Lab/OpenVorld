@@ -24,6 +24,7 @@ vorlds/<id>/
   threads/<tid>.files/      files attached to that thread
   workbenches/<member>/     each member's Main bench (the default; more benches live wherever you pick)
   houses/<member>/vault/    each member's private house: secrets.env (named secrets) and session.json (sign-ins). Never shared
+  houses/<member>/memory/   the member's memory: notes.json (their notebook) and chats.json (a summary of each chat they took part in)
   grants.yaml               the writs you have granted
   audit.log                 every tool call the engine ran, allowed or not
   saves/game.json           XP, level, deeds and event counts
@@ -41,14 +42,25 @@ vorlds/<id>/
 | `agents/runner.mjs` | One turn for one member: builds the system prompt, picks the driver and stores the reply as ordered steps. |
 | `agents/drivers/` | `claude.mjs`, `codex.mjs` (headless CLIs), `openai.mjs` (HTTP plus an engine-run tool loop) and `scripted.mjs` (no brain yet). |
 | `agents/tools.mjs` | The tools the engine runs for API brains, always limited to the member's writs. |
-| `agents/envelope.mjs` | Reads the fenced `ov` JSON block at the end of a reply: options, mood, balloon, commands and access requests. |
+| `agents/envelope.mjs` | Reads the fenced `ov` JSON block at the end of a reply: options, mood, balloon, commands, access requests and memory (`remember`, `forget`, `summary`). |
+| `memory.mjs` | Crew memory, kept in each member's house: the notebook (shown in every turn), one summary per chat (the latest few start a new chat), and the `recall` tool that searches older chats. |
 | `agents/commands.mjs` | Game commands a member can send (walk somewhere, say something, emote). |
 | `browser.mjs` | The crew browser: one private Chrome profile per member (plain, or signed in with the founder's saved sign-ins), driven through `playwright-core` and the Chrome or Edge on this computer. Enforces writs on every page, follows redirects itself, runs the sign-in window, and streams small JPEG frames to the game. |
-| `agents/browse.mjs`, `agents/browser-mcp.mjs` | How brains reach the browser: API brains call it in-process; Claude Code and Codex start `browser-mcp.mjs`, a tiny MCP bridge that calls back into the engine's API with the launch token. |
+| `agents/browse.mjs`, `agents/browser-mcp.mjs` | How brains reach the engine's own tools (the browser, `secret_ask` and `recall`): API brains call them in-process; Claude Code and Codex start `browser-mcp.mjs`, a tiny MCP bridge that calls back into the engine's API with the launch token. |
 | `gate.mjs` | Writs: check, grant and revoke, plus each capability's never-list. |
 | `game.mjs` | XP, levels and deeds. |
 | `art.mjs` | Works out which sprite frames belong to which member. |
 | `attachments.mjs`, `benches.mjs`, `house.mjs`, `browse.mjs`, `models.mjs` | File uploads and references, workbenches and the project folder, the house and its vault (named secrets, `%NAME%` substitution, redaction), the folder picker and model lists. |
+
+### Crew memory
+
+A member remembers between chats through `memory.mjs`, the same way for every brain:
+
+1. **Notebook.** A member adds short facts with `remember` in its `ov` block, and drops wrong or outdated ones with `forget` (by note id). The engine hides vault values, skips duplicates and stops at `agent.memory.notes_max`. The notebook is in every turn's prompt, and a resumed CLI session gets it again with each message. New notes show under the reply in the chat.
+2. **Chat summaries.** Every reply carries a `summary` of where the whole chat stands. It replaces the previous one for that chat. A new chat starts with the latest few summaries (`agent.memory.recent_chats`). In a party room, each member who speaks keeps their own summary of it.
+3. **Recall.** The `recall` tool searches the member's own chats and the party rooms they spoke in (summaries and messages, by keyword), or reads one chat back. API brains run it in-process; Claude Code and Codex reach it over the MCP bridge. Antigravity and OpenCode get the notebook and summaries but not the tool.
+
+The founder reads, edits and removes all of it in the member's settings (Memory). `agent.memory.enabled: false` turns it off.
 
 ### A party room
 
@@ -83,6 +95,7 @@ Messages support isolated HTML/SVG previews (from fenced blocks, complete markup
 - Every other kind of access is a writ, scoped to one path, one command pattern or one domain. The engine enforces writs on every tool call, and CLI brains also get their sandbox flags from them.
 - The crew browser opens only domains the member holds a `net.fetch` writ for (re-read on every call, redirects and link clicks included), never addresses on this computer or network, and never types into password or payment fields. A site without a writ becomes a writ card in the member's thread.
 - Signed-in browsing is separate from plain browsing. The founder signs in to sites themselves in a real Chrome window (from a card in the chat: when a member opens a site with `signed_in` and has no saved sign-in there, the `net.session` writ card carries a sign-in button, and Allow stays disabled until the sign-in is saved); the cookies and local storage are saved per member to `<vorld>/houses/<member>/vault/session.json` (owner-only, never leaves the computer). A member gets them only through `browser_open{signed_in:true}`, only on sites where it holds a `net.session` writ, and in a context that can only navigate to those sites. Anything that acts as the founder (a submit-type click, a form POST, Enter in a comment box) needs a `net.act` writ, which can be given once or for the session, never "always". The act check is a guard rail based on form methods and button labels (`agent.browser.act_words`), not a guarantee for every site.
+- A member's memory lives in its house, so no writ reaches it, and `recall` only opens chats that member took part in. Vault values are hidden before anything is saved there.
 - Codex runs with `--ignore-user-config`, so plugins and MCP servers in your own Codex setup (computer-use, browser) can't drive your real apps around the writs.
 - Never-lists such as `~/.ssh` and `.env*` can't be granted at all.
 - The server only listens on 127.0.0.1, with a random token for each launch.

@@ -1,5 +1,5 @@
 // Settings of one crew member: name, job title, job description, personality, the brain they think with, their
-// workbenches and their vault.
+// workbenches, their vault and their memory.
 import { IconButton } from './IconButton';
 import { useEffect, useState } from 'react';
 import { api, artImage } from '../api';
@@ -12,6 +12,7 @@ import { useConfirm } from './ConfirmDialog';
 import { ModelPicker } from './ModelPicker';
 import { Workbenches } from './Workbenches';
 import { VaultPanel } from './VaultPanel';
+import { MemoryPanel } from './MemoryPanel';
 import { MemberWrits } from './WritsList';
 
 /** The brains this vorld can use: detected CLIs plus the API endpoints set up in Settings. */
@@ -97,6 +98,7 @@ export function MemberSettings({ id }: { id: string }) {
             </div>
             <Workbenches id={id} />
             <VaultPanel id={id} />
+            <MemoryPanel id={id} />
             <MemberWrits id={id} />
           </div>
         </div>

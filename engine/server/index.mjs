@@ -21,6 +21,7 @@ import { listSecrets, setSecret, removeSecret, hasSecret, redactSecrets, askSecr
 import { listModels } from './models.mjs';
 import * as browse from './browser.mjs';
 import { readProfile, saveProfile } from './profile.mjs';
+import { notes, chats, editNote, dropNote, dropChat, recall } from './memory.mjs';
 import { REPO, resolveTheme } from '../../tools/lib/packs.mjs';
 
 let PORT = Number(process.env.OV_PORT ?? 4317);
@@ -228,6 +229,11 @@ route('DELETE', '/api/vorlds/:id/crew/:mid/vault/secrets/:name', ({ p }) => {
   for (const g of listGrants(ctx).filter((x) => x.role === p.mid && x.capability === 'secret.use' && x.scope === p.name)) revoke(ctx, g.id);
   return { secrets: listSecrets(ctx, p.mid) };
 });
+// a member's memory (memory.mjs): the founder reads it, corrects a note, and removes notes or chat summaries
+route('GET', '/api/vorlds/:id/crew/:mid/memory', ({ p }) => { const ctx = W(p); memberOr404(ctx, p.mid); return { notes: notes(ctx, p.mid), chats: chats(ctx, p.mid) }; });
+route('PUT', '/api/vorlds/:id/crew/:mid/memory/notes/:nid', async ({ p, req }) => { const ctx = W(p); memberOr404(ctx, p.mid); return { notes: editNote(ctx, p.mid, p.nid, (await body(req)).text) }; });
+route('DELETE', '/api/vorlds/:id/crew/:mid/memory/notes/:nid', ({ p }) => { const ctx = W(p); memberOr404(ctx, p.mid); return { notes: dropNote(ctx, p.mid, p.nid) }; });
+route('DELETE', '/api/vorlds/:id/crew/:mid/memory/chats/:tid', ({ p }) => { const ctx = W(p); memberOr404(ctx, p.mid); return { chats: dropChat(ctx, p.mid, p.tid) }; });
 // signing in as a member: the founder logs in to sites in a real window; the logins go to that member's vault
 route('GET', '/api/vorlds/:id/crew/:mid/signin', ({ p, q }) => { const ctx = W(p); memberOr404(ctx, p.mid); return browse.signInState(ctx, p.mid, q.get('site') ?? ''); });
 route('POST', '/api/vorlds/:id/crew/:mid/signin', async ({ p, req }) => {
@@ -376,6 +382,7 @@ route('POST', '/api/vorlds/:id/browser/:role/:tool', async ({ p, q, req }) => {
   const thread = q.get('thread') ? (() => { try { return getThread(ctx, q.get('thread')); } catch { return null; } })() : null;
   // a site without a writ becomes a writ card in the member's thread right away (the brain is waiting on this call)
   const onRequest = (a) => { if (thread) requestAccess(ctx, thread, p.role, [a], (ev) => emit({ type: 'thread.event', thread: thread.id, role: p.role, kind: thread.kind, party: thread.party, ev })); };
+  if (p.tool === 'recall') { try { return { ok: true, output: recall(ctx, p.role, await body(req), thread?.id) }; } catch (e) { return { ok: false, output: `error: ${e.message}` }; } }
   if (p.tool === 'secret_ask') { try { return { ok: true, output: askSecret(ctx, p.role, await body(req), onRequest) }; } catch (e) { return { ok: false, output: `error: ${e.message}` }; } }
   try {
     const res = await browse.callTool(ctx, p.role, p.tool, await body(req), { emit, onRequest });

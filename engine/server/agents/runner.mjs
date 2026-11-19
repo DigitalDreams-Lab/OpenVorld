@@ -21,6 +21,7 @@ import { heldSecrets, redactEvent, redactSecrets, vaultHelp } from '../house.mjs
 import { browserFor } from './browse.mjs';
 import { gameFor } from '../game.mjs';
 import { profileContext } from '../profile.mjs';
+import { applyMemory, memoryContext } from '../memory.mjs';
 import { attachmentPrompt, publicFiles, threadAttachments, getAttachment, saveAttachment, imageType } from '../attachments.mjs';
 
 const active = new Map(); // threadId -> AbortController
@@ -45,7 +46,7 @@ export function brainOf(ctx, id) {
   return { provider: b.provider, driver: Object.keys(p?.drivers ?? {})[0] ?? 'cli', model: b.model || inst.models?.[tier] || p?.models?.tiers?.[tier], cfg: (({ key, missing }) => ({ ...inst, api_key: key ?? undefined, key_missing: missing ?? undefined }))(keyFor(ctx, inst)), label: p?.label ?? b.provider };
 }
 
-function systemPrompt(ctx, id, benchId, scope = {}) {
+function systemPrompt(ctx, id, benchId, scope = {}, threadId = null) {
   const m = ctx.member(id);
   const crew = ctx.crew.filter((c) => c.id !== id).map((c) => `${c.name} (${c.job}${c.function ? `: ${c.function}` : ''})`).join('; ') || 'nobody yet';
   const vars = { name: m.name, job: m.job, function: m.function || 'whatever the founder asks', voice: m.voice, vorld: ctx.doc.name, about: ctx.doc.about || 'not described yet', crew,
@@ -56,7 +57,7 @@ function systemPrompt(ctx, id, benchId, scope = {}) {
   const benchNote = mine.length ? `Your workbenches (you can read and change files on all of them, in any chat): ${mine.map((b) => `${b.name} (${b.path})`).join('; ')}. This chat's active workbench is ${active.name} (${active.path}): start there and put new files there unless the founder says otherwise.` : '';
   const writs = grantsOf(ctx, id).map((g) => `${g.capability} ${g.scope}`).join('; ') || 'none';
   const env = ctx.interactions.envelope ?? {};
-  return [base, profileContext(ctx.home), benchNote, `Your writs (access): ${writs}. You have no other access; if you need more, ask for it in the "access" list so the founder can grant it.`,
+  return [base, profileContext(ctx.home), memoryContext(ctx, id, threadId), benchNote, `Your writs (access): ${writs}. You have no other access; if you need more, ask for it in the "access" list so the founder can grant it.`,
     env.instructions ?? '', vaultHelp(ctx, id), commandHelp(ctx, id, scope)].filter(Boolean).join('\n\n');
 }
 
@@ -189,22 +190,22 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
   try {
     const web = browserFor(ctx, role, threadId, { emit, onRequest: (a) => asks.push(a) });
     const scope = { party: partyScope(ctx, thread) };
-    const system = [systemPrompt(ctx, role, thread.bench, scope), web ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
+    const system = [systemPrompt(ctx, role, thread.bench, scope, threadId), web.call ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
     // with no session to resume, a CLI brain is told the conversation so far; the API driver is handed the history itself
     const drive = async (sessionId) => {
     const catchup = !inRoom && !sessionId && brain.driver !== 'openai' ? catchUp(history(ctx, threadId).slice(0, -1)) : '';
-    // Resumed CLI sessions retain their first system prompt, so refresh personal context in the new turn too.
-    const personal = sessionId && brain.driver !== 'openai' ? profileContext(ctx.home) : '';
+    // Resumed CLI sessions retain their first system prompt, so refresh personal context and the notebook in the new turn too.
+    const personal = sessionId && brain.driver !== 'openai' ? [profileContext(ctx.home), memoryContext(ctx, role, threadId, { recent: false })].filter(Boolean).join('\n\n') : '';
     const common = { system, prompt: [personal, catchup + attachmentPrompt(text, attachments)].filter(Boolean).join('\n\n'), sessionId, cwd, model: brain.model, signal, onEvent };
     let result;
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
-    else if (brain.provider === 'claude-code') result = await claude.run({ ...common, env: heldSecrets(ctx, role), tools, allowed: [...allowed, ...(web?.allowed ?? [])], addDirs, mcp: web?.mcp });
-    else if (brain.provider === 'codex') result = await codex.run({ ...common, env: heldSecrets(ctx, role), mcp: web?.mcp, ...codex.sandboxOf(writeDirs, cwd), web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
+    else if (brain.provider === 'claude-code') result = await claude.run({ ...common, env: heldSecrets(ctx, role), tools, allowed: [...allowed, ...(web.allowed ?? [])], addDirs, mcp: web.mcp });
+    else if (brain.provider === 'codex') result = await codex.run({ ...common, env: heldSecrets(ctx, role), mcp: web.mcp, ...codex.sandboxOf(writeDirs, cwd), web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
     else if (brain.provider === 'antigravity') result = await antigravity.run({ ...common, addDirs, writable: writeDirs.length > 0 });
     else if (brain.provider === 'opencode') result = await opencode.run({ ...common, addDirs, writable: writeDirs.length > 0, cmdAllow: cmdGrants, web: netGrants.length > 0 });
     else if (brain.driver === 'openai') {
       const et = agentCfg.engine_tools ?? {};
-      const engine = et.enabled === false ? null : engineTools({ ctx, role, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, browser: web?.call, scope, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });
+      const engine = et.enabled === false ? null : engineTools({ ctx, role, threadId, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, browser: web.call, scope, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });
       const prior = (inRoom ? [] : history(ctx, threadId).slice(0, -1)).map((turn) => {
         if (!turn.attachments?.length) return turn;
         const files = turn.attachments.flatMap((f) => { try { return [getAttachment(ctx, threadId, f.id)]; } catch { return []; } });
@@ -220,7 +221,9 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     catch (e) { if (!sessionId || !SESSION_LOST.test(e.message ?? '')) throw e; result = await drive(null); }      // its session is gone: start fresh, with the conversation so far
 
     const { text: shown, meta } = splitEnvelope(redactSecrets(ctx, role, result.text ?? ''), lang);
-    const { access, commands: askedCommands, ...metaShown } = meta;
+    const { access, commands: askedCommands, remember, forget, summary, ...metaShown } = meta;
+    const noted = applyMemory(ctx, role, threadId, { remember, forget, summary });
+    if (noted.length) metaShown.noted = noted;
     const done = prepareCommands(ctx, role, askedCommands, scope);
     if (done.commands.length) metaShown.did = done.commands.map((c) => c.label);
     appendEvent(ctx, threadId, { type: 'agent.text', role, text: shown, meta: metaShown, steps: steps() });

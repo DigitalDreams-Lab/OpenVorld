@@ -22,7 +22,7 @@ const ENVELOPE = /```ov[\s\S]*$/;
 /** @Name of a crew member shown in bold, so a hand-over stands out in a group chat. */
 const boldMentions = (text: string, names: string[]) => names.reduce((t, n) => t.replace(new RegExp(`@${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\p{L}\\p{N}_])`, 'giu'), (m) => `**${m}**`), text);
 
-export function AgentTurn({ role, steps, text, mood, did, speaker, job, live, root, thread, mentions }: { role: string; mentions?: string[]; did?: string[]; steps?: Step[]; text?: string; mood?: string; speaker?: string; job?: string; live?: boolean; root?: string; thread?: string }) {
+export function AgentTurn({ role, steps, text, mood, did, noted, speaker, job, live, root, thread, mentions }: { role: string; mentions?: string[]; did?: string[]; noted?: string[]; steps?: Step[]; text?: string; mood?: string; speaker?: string; job?: string; live?: boolean; root?: string; thread?: string }) {
   const vorld = useStore((s) => s.vorld);
   const list: Step[] = steps?.length ? steps : text ? [{ t: 'text', text }] : [];
   // consecutive non-text steps form one activity block
@@ -51,6 +51,7 @@ export function AgentTurn({ role, steps, text, mood, did, speaker, job, live, ro
           ? <div key={i} className="bubble"><Markdown text={b.text} thread={thread} />{live && i === blocks.length - 1 && <span className="caret">▌</span>}</div>
           : <Activity key={i} steps={b.steps} live={!!live && i === blocks.length - 1} root={root} />)}
         {did && did.length > 0 && <div className="turn-did" title="What they did in the vorld">{did.map((d, i) => <span key={i}>{d}</span>)}</div>}
+        {noted && noted.length > 0 && <div className="turn-did noted" title={str('memory.noted', {}, 'Kept in their notebook')}>{noted.map((d, i) => <span key={i}>{d}</span>)}</div>}
         {live && !blocks.length && <div className="bubble"><span className="dots">…</span><span className="caret">▌</span></div>}
         {live && blocks.length > 0 && !lastIsText && <div className="turn-working"><span className="spin" /> {str('chat.working', {}, 'working')}…</div>}
       </div>
@@ -97,7 +98,8 @@ function ToolRow({ step, root }: { step: Extract<Step, { t: 'tool' }>; root?: st
   const verb = str(`tool.${step.kind.split('.')[1] ?? 'run'}`, {}, VERB[step.kind] ?? 'Run');
   const target = rel(step.target ?? '', root);
   const has = !!(step.output?.trim() || step.detail);
-  const name = /^(Read|Grep|Glob|LS|Edit|MultiEdit|Write|Bash|WebFetch|WebSearch|shell|patch|web|read_file|search|list_files|write_file|edit_file|run_command|fetch_url)$/.test(step.name) ? '' : step.name;
+  const bare = String(step.name ?? '').replace(/^(mcp__ov_browser__|ov_browser\.)/, '');      // the engine's own tools, as Claude Code and Codex name them
+  const name = /^(Read|Grep|Glob|LS|Edit|MultiEdit|Write|Bash|WebFetch|WebSearch|shell|patch|web|read_file|search|list_files|write_file|edit_file|run_command|fetch_url)$/.test(bare) ? '' : bare;
   return (
     <div className={`tool-row st-${step.status} ${step.test ? 'test-' + step.test : ''}`}>
       <button className="tool-line" onClick={() => has && setOpen(!open)} disabled={!has} title={step.target}>
