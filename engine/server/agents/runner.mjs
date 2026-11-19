@@ -190,8 +190,9 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
   const strip = (t) => splitEnvelope(t, lang).text;
   const steps = () => { const s = tr.final(strip); return s.some((x) => x.t !== 'text') ? s : undefined; };
 
+  let web = null;
   try {
-    const web = browserFor(ctx, role, threadId, { emit, onRequest: (a) => asks.push(a) });
+    web = browserFor(ctx, role, threadId, { emit, onRequest: (a) => asks.push(a) });
     const scope = { party: partyScope(ctx, thread) };
     const system = [systemPrompt(ctx, role, thread.bench, scope, threadId), web.call ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
     // with no session to resume, a CLI brain is told the conversation so far; the API driver is handed the history itself
@@ -243,6 +244,7 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     send({ type: 'turn.error', message: err.message, speaker: role, reaction: reactions['turn.error'] });
     return { ok: false, error: err.message };
   } finally {
+    web?.release();                                  // the bridge's token ends with the turn
     consumeOnce(ctx, role);                          // "allow once" ends with this turn
   }
 }

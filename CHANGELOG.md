@@ -2,6 +2,14 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.14.4 - 2026-11-19
+
+- The launch token is no longer passed to brain processes or the engine's run_command (only the per-turn bridge token reaches a brain)
+
+## 0.14.3 - 2026-11-19
+
+- Security: the tool bridge no longer gets the launch token (which opens the whole API and can be read by the brain from a config file, its arguments or its environment); it gets a token for one member's one turn that opens only that member's own tools and stops when the turn ends
+
 ## 0.14.2 - 2026-11-19
 
 - Web demo on the current version, playing about 40% slower (one PACE setting); Mira's first note shows crew memory; the integration prompt button hides where there is nothing to copy

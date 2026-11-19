@@ -8,18 +8,25 @@ import { fileURLToPath } from 'node:url';
 import * as hub from '../browser.mjs';
 import { BRIDGE_TOOLS, BROWSER_SERVER, RECALL_TOOL, isBrowserTool } from '../browser-tools.mjs';
 import { memoryOn } from '../memory.mjs';
+import { mintBridgeToken, revokeBridgeToken } from '../bridge-token.mjs';
 
 const BRIDGE = path.join(path.dirname(fileURLToPath(import.meta.url)), 'browser-mcp.mjs');
 
-/** { call, mcp, allowed } for this member and thread. `call` is null when browsing is switched off or no Chrome is installed. */
+/**
+ * { call, mcp, allowed, release } for this member and thread. `call` is null when browsing is switched off or no Chrome is installed.
+ * The bridge gets its own token for this one turn (bridge-token.mjs), never the launch token, because the brain can often read it;
+ * the caller `release()`s it when the turn ends.
+ */
 export function browserFor(ctx, role, threadId, { emit, onRequest }) {
   const browsing = ctx.interactions?.agent?.browser?.enabled !== false && hub.browserAvailable();
   const tools = BRIDGE_TOOLS.filter((t) => (browsing || !isBrowserTool(t.name)) && (t !== RECALL_TOOL || memoryOn(ctx))).map((t) => t.name);
+  const token = mintBridgeToken(ctx.id, role, threadId);
   return {
+    release: () => revokeBridgeToken(token),
     call: browsing ? (name, args) => hub.callTool(ctx, role, name, args, { emit, onRequest }) : null,
     mcp: {
       name: BROWSER_SERVER, command: process.env.OV_NODE_EXECUTABLE || process.execPath, args: [BRIDGE],
-      env: { OV_URL: `http://127.0.0.1:${process.env.OV_PORT ?? 4317}`, OV_TOKEN: process.env.OV_TOKEN ?? '', OV_VORLD: ctx.id, OV_ROLE: role, OV_THREAD: threadId, OV_TOOLS: tools.join(','),
+      env: { OV_URL: `http://127.0.0.1:${process.env.OV_PORT ?? 4317}`, OV_TOKEN: token, OV_VORLD: ctx.id, OV_ROLE: role, OV_THREAD: threadId, OV_TOOLS: tools.join(','),
         ...(process.env.OV_DESKTOP === '1' ? { ELECTRON_RUN_AS_NODE: '1' } : {}) },
     },
     allowed: [`mcp__${BROWSER_SERVER}`],
