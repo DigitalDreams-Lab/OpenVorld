@@ -8,6 +8,7 @@ import { play, setSfxVolume } from '../audio/sfx';
 import { notify, notifyPrefs, setNotifyPrefs } from '../notify';
 import { FolderPicker, useFolderDialog } from './FolderPicker';
 import { openAbout, APP_VERSION, BrandIcon } from './Brand';
+import { AddYourBrain } from './AddYourBrain';
 
 /** The same test as the server's: a variable name is SHOUTED; anything else in the key box is a key (and is masked). */
 const looksLikeEnvName = (s: string) => /^[A-Z_][A-Z0-9_]{1,63}$/.test(String(s).trim());
@@ -60,6 +61,7 @@ export function Settings() {
 
         <h3>Brains</h3>
         <p className="muted">Found on this computer: {s.detected.map((d: any) => d.label).join(', ') || 'no agent CLI'} <button className="link" onClick={async () => { const d = await api('/detect', { body: {} }).catch(() => null); if (d) setS({ ...s, detected: d }); }}>look again</button>. Pick each member's brain in their settings (⚙).</p>
+        <AddYourBrain onFound={(d) => setS({ ...s, detected: d })} />
         <h4>Model endpoints (OpenAI-compatible)</h4>
         {endpoints.map((p, i) => (
           <div key={i} className="endpoint endpoint-row">

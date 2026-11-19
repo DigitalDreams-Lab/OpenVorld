@@ -9,6 +9,7 @@ import * as antigravity from './drivers/antigravity.mjs';
 import * as opencode from './drivers/opencode.mjs';
 import * as openai from './drivers/openai.mjs';
 import * as scripted from './drivers/scripted.mjs';
+import * as command from './drivers/command.mjs';
 import { splitEnvelope } from './envelope.mjs';
 import { commandHelp, partyScope, prepareCommands } from './commands.mjs';
 import { keyFor } from '../keys.mjs';
@@ -43,7 +44,9 @@ export function brainOf(ctx, id) {
   const p = ctx.providers[b.provider];
   const inst = (ctx.doc.providers ?? []).find((x) => x.id === b.provider && (!b.name || x.name === b.name)) ?? {};
   const tier = m.model_tier ?? 'balanced';
-  return { provider: b.provider, driver: Object.keys(p?.drivers ?? {})[0] ?? 'cli', model: b.model || inst.models?.[tier] || p?.models?.tiers?.[tier], cfg: (({ key, missing }) => ({ ...inst, api_key: key ?? undefined, key_missing: missing ?? undefined }))(keyFor(ctx, inst)), label: p?.label ?? b.provider };
+  const driver = Object.keys(p?.drivers ?? {})[0] ?? 'cli', spec = p?.drivers?.[driver] ?? {};
+  // `bin`: the command a CLI driver runs, the first word of its `detect` (a pack can give a full path when it is not on the PATH)
+  return { provider: b.provider, driver, spec, bin: spec.detect?.[0] ? String(spec.detect[0]) : undefined, model: b.model || inst.models?.[tier] || p?.models?.tiers?.[tier], cfg: (({ key, missing }) => ({ ...inst, api_key: key ?? undefined, key_missing: missing ?? undefined }))(keyFor(ctx, inst)), label: p?.label ?? b.provider };
 }
 
 function systemPrompt(ctx, id, benchId, scope = {}, threadId = null) {
@@ -196,13 +199,14 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     const catchup = !inRoom && !sessionId && brain.driver !== 'openai' ? catchUp(history(ctx, threadId).slice(0, -1)) : '';
     // Resumed CLI sessions retain their first system prompt, so refresh personal context and the notebook in the new turn too.
     const personal = sessionId && brain.driver !== 'openai' ? [profileContext(ctx.home), memoryContext(ctx, role, threadId, { recent: false })].filter(Boolean).join('\n\n') : '';
-    const common = { system, prompt: [personal, catchup + attachmentPrompt(text, attachments)].filter(Boolean).join('\n\n'), sessionId, cwd, model: brain.model, signal, onEvent };
+    const common = { bin: brain.bin, system, prompt: [personal, catchup + attachmentPrompt(text, attachments)].filter(Boolean).join('\n\n'), sessionId, cwd, model: brain.model, signal, onEvent };
     let result;
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
     else if (brain.provider === 'claude-code') result = await claude.run({ ...common, env: heldSecrets(ctx, role), tools, allowed: [...allowed, ...(web.allowed ?? [])], addDirs, mcp: web.mcp });
     else if (brain.provider === 'codex') result = await codex.run({ ...common, env: heldSecrets(ctx, role), mcp: web.mcp, ...codex.sandboxOf(writeDirs, cwd), web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
     else if (brain.provider === 'antigravity') result = await antigravity.run({ ...common, addDirs, writable: writeDirs.length > 0 });
     else if (brain.provider === 'opencode') result = await opencode.run({ ...common, addDirs, writable: writeDirs.length > 0, cmdAllow: cmdGrants, web: netGrants.length > 0 });
+    else if (brain.driver === 'command') result = await command.run({ ...common, spec: brain.spec });
     else if (brain.driver === 'openai') {
       const et = agentCfg.engine_tools ?? {};
       const engine = et.enabled === false ? null : engineTools({ ctx, role, threadId, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, browser: web.call, scope, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });

@@ -19,12 +19,12 @@ export function argsFor({ system, prompt, sessionId, model, addDirs = [], writab
   ];
 }
 
-export async function run({ system, prompt, sessionId, cwd, addDirs = [], writable = false, model, signal, onEvent }) {
+export async function run({ bin = 'agy', system, prompt, sessionId, cwd, addDirs = [], writable = false, model, signal, onEvent }) {
   let sid = sessionId, text = '', final = '', failed = '';
   const open = new Set();
 
   await runJsonLines({
-    cmd: 'agy',
+    cmd: bin,
     args: argsFor({ system, prompt, sessionId, model, addDirs, writable }),
     cwd,
     signal,

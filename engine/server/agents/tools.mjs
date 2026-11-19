@@ -3,7 +3,7 @@
 // exact command patterns, allowed domains) and written to the vorld's audit log.
 import fs from 'node:fs';
 import path from 'node:path';
-import { spawn } from 'node:child_process';
+import spawn from 'cross-spawn';
 import { isNever, commandMatches, capabilityLimit, commandPattern, redact } from '../gate.mjs';
 import { clip, kindOf, targetOf, detailOf } from './steps.mjs';
 import { cleanEnv } from './drivers/proc.mjs';

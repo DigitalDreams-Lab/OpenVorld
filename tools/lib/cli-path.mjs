@@ -8,7 +8,7 @@ import path from 'node:path';
 export function addCliDirs(dirs = []) {
   const have = new Set((process.env.PATH ?? '').split(path.delimiter));
   for (const raw of dirs) {
-    const dir = String(raw).replace(/^~(?=$|[\\/])/, os.homedir());
+    const dir = path.normalize(String(raw).replace(/^~(?=$|[\\/])/, os.homedir()));
     if (!have.has(dir) && fs.existsSync(dir)) { process.env.PATH = [process.env.PATH, dir].filter(Boolean).join(path.delimiter); have.add(dir); }
   }
 }

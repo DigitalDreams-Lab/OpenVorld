@@ -4,7 +4,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import spawn from 'cross-spawn';
 import YAML from 'yaml';
 import { loadPacks, packRoots, homeDir, readYaml, REPO, resolveTheme } from '../../tools/lib/packs.mjs';
 import { planScenery, newSeed } from '../../tools/lib/scenery.mjs';
@@ -24,19 +24,29 @@ export const slug = (s) => String(s ?? '').toLowerCase().normalize('NFKD').repla
 
 // ---------- providers on this machine ----------
 let detectedCache = null;
-/** Agent CLIs found on this machine (providers.yaml > drivers.cli.detect). Cached; `force` probes again. */
+/** Agent CLIs found on this machine (providers.yaml > drivers.<driver>.detect). Cached; `force` probes again. */
 export function detected(force = false) {
   if (detectedCache && !force) return detectedCache;
   const pack = allPacks().byKind.providers?.providers ?? {};
   addCliDirs(pack.bin_dirs);
   detectedCache = [];
   for (const [id, p] of Object.entries(pack.providers ?? {})) {
-    const probe = p.drivers?.cli?.detect;
+    const probe = Object.values(p.drivers ?? {}).find((d) => d?.detect)?.detect;
     if (!probe) continue;
-    const r = spawnSync(probe[0], probe.slice(1), { encoding: 'utf8', timeout: 5000 });
+    const r = spawn.sync(String(probe[0]), probe.slice(1).map(String), { encoding: 'utf8', timeout: 5000 });
     if (r.status === 0) detectedCache.push({ id, label: p.label, version: String(r.stdout || r.stderr).trim().split('\n')[0] });
   }
   return detectedCache;
+}
+
+/** The message the founder copies to an AI that was not found, so it can add itself in a user pack (providers.yaml > add_yourself). */
+export function addYourselfMessage() {
+  const pack = allPacks().byKind.providers?.providers ?? {};
+  const platform = { win32: 'Windows', darwin: 'macOS', linux: 'Linux' }[process.platform] ?? process.platform;
+  const known = Object.entries(pack.providers ?? {}).filter(([, p]) => p.drivers?.cli?.detect)
+    .map(([id, p]) => `${id}: ${p.label}, looks for "${p.drivers.cli.detect[0]}"${p.models?.source === 'command' ? ` and lists models with models.command ${JSON.stringify(p.models.command)}` : ''}`).join('; ');
+  const vars = { platform, packs_dir: path.join(HOME, 'packs').split(path.sep).join('/'), found: detected().map((d) => d.label).join(', ') || 'none', known };
+  return String(pack.add_yourself ?? '').replace(/\{(\w+)\}/g, (all, k) => vars[k] ?? all);
 }
 
 // ---------- listing and loading ----------

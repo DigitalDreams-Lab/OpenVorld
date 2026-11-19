@@ -14,12 +14,14 @@ import { Workbenches } from './Workbenches';
 import { VaultPanel } from './VaultPanel';
 import { MemoryPanel } from './MemoryPanel';
 import { MemberWrits } from './WritsList';
+import { AddYourBrain } from './AddYourBrain';
 
 /** The brains this vorld can use: detected CLIs plus the API endpoints set up in Settings. */
 export function useBrainChoices(wid: string) {
   const [opts, setOpts] = useState<any>(null);
   const [failed, setFailed] = useState(false);
   // the server may be restarting (development) or slow: keep trying instead of leaving the list empty for good
+  const [round, setRound] = useState(0);
   useEffect(() => {
     let stop = false, timer: any, tries = 0;
     const load = () => api(`/vorlds/${wid}/settings`).then((o) => { if (!stop) { setOpts(o); setFailed(false); } }).catch(() => {
@@ -28,12 +30,12 @@ export function useBrainChoices(wid: string) {
     });
     load();
     return () => { stop = true; clearTimeout(timer); };
-  }, [wid]);
+  }, [wid, round]);
   const label = (id: string) => opts?.catalog.find((x: any) => x.id === id)?.label ?? id;
   const choices = opts ? [{ value: 'none', label: 'No brain yet' },
     ...opts.detected.map((d: any) => ({ value: d.id, label: d.label })),
     ...opts.providers.map((p: any) => ({ value: `${p.id}#${p.name ?? ''}`, label: `${label(p.id)}${p.name ? ' · ' + p.name : ''}` }))] : [];
-  return { opts, choices, label, failed };
+  return { opts, choices, label, failed, reload: () => setRound((n) => n + 1) };
 }
 
 export function MemberSettings({ id }: { id: string }) {
@@ -44,7 +46,7 @@ export function MemberSettings({ id }: { id: string }) {
   const agentIdx = agents.findIndex((m: any) => m.id === id);
   const fallbackAvatar = `agent_${((agentIdx >= 0 ? agentIdx : 0) % 14) + 1}`;
   const [f, setF] = useState<any>(() => ({ name: c.name, job: c.job ?? '', function: c.function ?? '', personality: c.personality ?? '', avatar: c.avatar || fallbackAvatar, form: c.look?.form ?? 'creature', brain: { provider: c.brain?.provider ?? 'none', name: c.brain?.name, model: c.brain?.model ?? '' } }));
-  const { opts, choices, label, failed } = useBrainChoices(wid);
+  const { opts, choices, label, failed, reload } = useBrainChoices(wid);
   const [confirm, dialog] = useConfirm();
   const close = () => setState({ modal: null });
   const brainValue = `${f.brain.provider}${f.brain.name ? '#' + f.brain.name : ''}`;
@@ -96,6 +98,7 @@ export function MemberSettings({ id }: { id: string }) {
                 {choices.length ? choices.map((p) => <option key={p.value} value={p.value}>{p.label}</option>) : <option value={brainValue}>{failed ? 'Cannot reach the server, retrying…' : 'Loading…'}</option>}</select></label>
               <label className="grow">Model<ModelPicker wid={wid} provider={f.brain.provider} name={f.brain.name} tier="balanced" value={f.brain.model || undefined} onChange={(model) => setF({ ...f, brain: { ...f.brain, model: model ?? '' } })} /></label>
             </div>
+            <AddYourBrain onFound={reload} />
             <Workbenches id={id} />
             <VaultPanel id={id} />
             <MemoryPanel id={id} />

@@ -38,7 +38,7 @@ export function generatedImages(sessionId, since, env = null, max = 4) {
 export const sandboxOf = (writeDirs, cwd) => ({ writable: writeDirs.length > 0, addDirs: writeDirs.filter((d) => d !== cwd) });
 const plan = (it) => (it.items ?? []).map((x) => ({ text: x.text ?? '', status: x.completed ? 'completed' : 'pending' }));
 
-export async function run({ system, prompt, images = [], sessionId, cwd, addDirs = [], mcp = null, env = null, writable = false, web = false, model, signal, onEvent, onAccess = () => {} }) {
+export async function run({ bin = 'codex', system, prompt, images = [], sessionId, cwd, addDirs = [], mcp = null, env = null, writable = false, web = false, model, signal, onEvent, onAccess = () => {} }) {
   const SANDBOX = /Operation not permitted|Read-only file system|EROFS|EPERM|sandbox/i;
   // --ignore-user-config: only what OpenVorld passes applies, never the founder's own Codex plugins or MCP servers
   // (computer-use and browser plugins there could drive the founder's real apps and bypass writs)
@@ -54,7 +54,7 @@ export async function run({ system, prompt, images = [], sessionId, cwd, addDirs
   const startedAt = Date.now() - 2000;
   const searches = new Set();
   await runJsonLines({
-    cmd: 'codex', args, cwd, env, signal,
+    cmd: bin, args, cwd, env, signal,
     stdin: sessionId ? prompt : `${system}\n\n---\n\n${prompt}`,
     onLine: (m) => {
       if (m.type === 'thread.started') sid = m.thread_id;
