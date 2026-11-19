@@ -2,14 +2,15 @@
 // under their own name; the party joins the founder on the map while a job runs.
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import { memberOf, setState, toast, useStore } from '../store';
+import { emit, memberOf, setState, str, toast, useStore } from '../store';
 import { IconButton } from './IconButton';
 import { play } from '../audio/sfx';
 import { Portrait } from './Portrait';
 import { ThreadView } from './Thread';
 import { PendingRequests } from './Requests';
 
-export function PartyPanel({ id }: { id: string }) {
+/** `hidden`: a member's chat is open on top; the room stays mounted so its chat, scroll and draft are there to come back to. */
+export function PartyPanel({ id, hidden }: { id: string; hidden?: boolean }) {
   const wid = useStore((s) => s.vorldId)!;
   const version = useStore((s) => s.threadsVersion);
   const party = useStore((s) => (s.vorld.parties ?? []).find((p: any) => p.id === id));
@@ -33,11 +34,14 @@ export function PartyPanel({ id }: { id: string }) {
   };
   const speaking = active && live[active]?.working ? memberOf(live[active].role)?.name : null;
   return (
-    <aside className="member-panel party-panel panel" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+    <aside className="member-panel party-panel panel" style={hidden ? { visibility: 'hidden' } : undefined} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
       <header className="cp-head">
         <div className="cp-who">
           <div className="cp-name" title={party.name}>🎲 {party.name}</div>
-          <div className="party-crew">{party.members.map((m: string, i: number) => <span key={m} className={i === 0 ? 'lead' : ''} title={`${memberOf(m)?.name ?? m}${i === 0 ? ' (leader)' : ''}`}><Portrait role={m} size={32} /></span>)}</div>
+          <div className="party-crew">{party.members.map((m: string, i: number) => {
+            const hint = `${str('chat.open_member', { name: memberOf(m)?.name ?? m }, 'Chat with {name}')}${i === 0 ? ' (leader)' : ''}`;      // a click opens their own chat, the same way as on the map
+            return <button key={m} type="button" className={`who ${i === 0 ? 'lead' : ''}`} title={hint} aria-label={hint} onClick={() => { play('ui.open'); emit('talk', m); }}><Portrait role={m} size={32} /></button>;
+          })}</div>
           {party.goal && <div className="cp-goal muted">{party.goal}</div>}
         </div>
         <div className="cp-actions">

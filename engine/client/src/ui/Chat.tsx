@@ -4,7 +4,8 @@
 import { Fragment, useMemo, useState } from 'react';
 import { Markdown } from './Markdown';
 import { MessageFiles, type Attachment } from './MessageFiles';
-import { str, useStore } from '../store';
+import { emit, memberOf, str, useStore } from '../store';
+import { play } from '../audio/sfx';
 import { Portrait } from './Portrait';
 import { Icon } from './Icon';
 
@@ -35,11 +36,17 @@ export function AgentTurn({ role, steps, text, mood, did, speaker, job, live, ro
     return out;
   }, [list]);
   const lastIsText = blocks[blocks.length - 1]?.kind === 'text';
+  // in a party room the speaker's name and portrait open that member's own chat (the map's 'talk' path)
+  const hint = speaker && memberOf(role) ? str('chat.open_member', { name: speaker }, 'Chat with {name}') : '';
+  const open = () => { play('ui.open'); emit('talk', role); };
+  const portrait = <Portrait vorld={vorld} role={role} size={32} mood={live ? 'thinking' : mood} />;
   return (
     <div className="msg them turn">
-      <Portrait vorld={vorld} role={role} size={32} mood={live ? 'thinking' : mood} />
+      {hint ? <button type="button" className="who" title={hint} tabIndex={-1} aria-hidden onClick={open}>{portrait}</button> : portrait}      {/* the name is the one tab stop */}
       <div className="turn-body">
-        {speaker && <b className="speaker">{speaker}{job && <span className="job-tag">{job}</span>}</b>}
+        {speaker && (hint
+          ? <button type="button" className="speaker who" title={hint} onClick={open}><b>{speaker}</b>{job && <span className="job-tag">{job}</span>}</button>
+          : <b className="speaker">{speaker}{job && <span className="job-tag">{job}</span>}</b>)}
         {blocks.map((b, i) => b.kind === 'text'
           ? <div key={i} className="bubble"><Markdown text={b.text} thread={thread} />{live && i === blocks.length - 1 && <span className="caret">▌</span>}</div>
           : <Activity key={i} steps={b.steps} live={!!live && i === blocks.length - 1} root={root} />)}
