@@ -1,11 +1,14 @@
 #!/usr/bin/env node
-// A tiny MCP server (stdio, JSON-RPC lines) that gives Claude Code and Codex the crew browser tools. It holds no logic
-// of its own: every call goes to the OpenVorld server, which checks the member's writs and drives the browser.
-// Environment: OV_URL, OV_TOKEN, OV_VORLD, OV_ROLE, OV_THREAD (set by the engine for each turn).
+// A tiny MCP server (stdio, JSON-RPC lines) that gives Claude Code and Codex the engine's own tools: the crew browser,
+// secret_ask and recall. It holds no logic of its own: every call goes to the OpenVorld server, which checks the member's
+// writs and does the work.
+// Environment: OV_URL, OV_TOKEN, OV_VORLD, OV_ROLE, OV_THREAD and OV_TOOLS (the tools to offer; all when unset), set by the
+// engine for each turn.
 import readline from 'node:readline';
 import { BRIDGE_TOOLS, BROWSER_SERVER } from '../browser-tools.mjs';
 
-const { OV_URL, OV_TOKEN, OV_VORLD, OV_ROLE, OV_THREAD } = process.env;
+const { OV_URL, OV_TOKEN, OV_VORLD, OV_ROLE, OV_THREAD, OV_TOOLS } = process.env;
+const offered = OV_TOOLS === undefined ? BRIDGE_TOOLS : BRIDGE_TOOLS.filter((t) => OV_TOOLS.split(',').includes(t.name));
 const send = (m) => process.stdout.write(JSON.stringify({ jsonrpc: '2.0', ...m }) + '\n');
 
 async function call(name, args) {
@@ -25,7 +28,7 @@ readline.createInterface({ input: process.stdin }).on('line', async (line) => {
   const reply = (result) => m.id !== undefined && send({ id: m.id, result });
   if (m.method === 'initialize') return reply({ protocolVersion: m.params?.protocolVersion ?? '2024-11-05', capabilities: { tools: {} }, serverInfo: { name: BROWSER_SERVER, version: '1.0.0' } });
   if (m.method === 'ping') return reply({});
-  if (m.method === 'tools/list') return reply({ tools: BRIDGE_TOOLS.map((t) => ({ name: t.name, description: t.description, inputSchema: { type: 'object', properties: t.properties, required: t.required } })) });
+  if (m.method === 'tools/list') return reply({ tools: offered.map((t) => ({ name: t.name, description: t.description, inputSchema: { type: 'object', properties: t.properties, required: t.required } })) });
   if (m.method === 'tools/call') {
     const r = await call(m.params?.name, m.params?.arguments);
     const content = [{ type: 'text', text: r.text }];

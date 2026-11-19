@@ -365,7 +365,7 @@ select.field, .cs-fields select  { appearance: none; -webkit-appearance: none; m
   background-color: #fffaf0; background-repeat: no-repeat; background-position: right 10px center; background-size: 12px 8px;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%232a2233' stroke-width='2.4' stroke-linecap='square'/%3E%3C/svg%3E"); }
 select.field.small { padding-right: 26px; }
-.workbenches .pf-row, .vault .pf-row { flex-wrap: wrap; row-gap: 4px; } .workbenches .pf-path { flex: 1 1 100%; }
+.workbenches .pf-row, .vault .pf-row { flex-wrap: wrap; row-gap: 4px; } .memory .pf-row { flex-wrap: wrap; row-gap: 4px; } .memory .pf-row .field { flex: 1; min-width: 0; } .memory .pf-path { flex: 1 1 100%; white-space: normal; line-height: 1.35; } .workbenches .pf-path { flex: 1 1 100%; }
 .bench { display: grid; gap: 4px; padding: 6px 0; border-top: 1px dashed var(--ink); } .bench-name { font-size: 14px; }
 .vault-part { display: grid; gap: 4px; padding: 6px 0; border-top: 1px dashed var(--ink); } .vault .row.wrap { flex-wrap: wrap; }
 .cs-fields > label, .cs-fields .row > label, .add-agent > label, .add-agent .row > label { min-width: 0; }
@@ -394,7 +394,7 @@ select.field.small { padding-right: 26px; }
 .confirm-input { display: grid; gap: 4px; font-size: 13px; } .confirm-input textarea { resize: vertical; min-height: 72px; border: 2px solid var(--ink); padding: 6px 8px; background: #fffaf0; font: inherit; color: var(--ink); }
 .modal.confirm:has(.confirm-input) { width: min(460px, 92vw); }
 
-.turn-did { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0 2px; } .turn-did span { font-size: 12px; padding: 1px 8px; border: 2px solid color-mix(in srgb, var(--ink) 45%, transparent); background: rgba(255,255,255,.35); border-radius: 10px; opacity: .85; } .turn-did span::before { content: '▸ '; opacity: .6; }
+.turn-did { display: flex; flex-wrap: wrap; gap: 4px 6px; margin: 4px 0 2px; } .turn-did span { font-size: 12px; padding: 1px 8px; border: 2px solid color-mix(in srgb, var(--ink) 45%, transparent); background: rgba(255,255,255,.35); border-radius: 10px; opacity: .85; } .turn-did span::before { content: '▸ '; opacity: .6; } .turn-did.noted span::before { content: '📝 '; opacity: 1; }
 
 /* ---------- v1: parties, onboarding, crew ---------- */
 .deed.done { opacity: 1; filter: none; }

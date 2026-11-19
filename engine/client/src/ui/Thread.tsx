@@ -49,7 +49,7 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
       <div className="messages">
         {events.map((e: any, i: number) => {
           if (e.type === 'founder.message') return <div key={i} className="msg me"><Markdown text={e.text} thread={tid} /><MessageFiles files={e.attachments} /></div>;
-          if (e.type === 'agent.text') return <AgentTurn key={i} role={e.role ?? thread.role} steps={e.steps} text={e.text} mood={e.meta?.mood} did={e.meta?.did} thread={tid} {...(party ? { speaker: speakerName(e.role), job: memberOf(e.role)?.job, mentions: names } : {})} />;
+          if (e.type === 'agent.text') return <AgentTurn key={i} role={e.role ?? thread.role} steps={e.steps} text={e.text} mood={e.meta?.mood} did={e.meta?.did} noted={e.meta?.noted} thread={tid} {...(party ? { speaker: speakerName(e.role), job: memberOf(e.role)?.job, mentions: names } : {})} />;
           if (e.type === 'writ.request') return <WritCard key={e.id} ask={e} answered={answered.get(e.id)} wid={wid} thread={tid} who={speakerName(e.role)} />;
           if (e.type === 'turn.error') return <div key={i} className="log err">✖ {e.message}</div>;
           if (e.type === 'party.paused') return <div key={i} className="log">⏸ {e.text}</div>;

@@ -21,5 +21,8 @@ export const BROWSER_TOOLS = [
 // Asking the founder for a secret: not a browser tool, but it travels over the same bridge.
 export const SECRET_TOOL = { name: 'secret_ask', description: 'Ask the founder for a secret you need (an API key, an OAuth token, a code or link they must copy for you). A private box appears in the chat for them to paste it into; you never see the value. Then use it by name: %NAME% in the command tool, $NAME in your own shell. Only ask when you really need it.',
   properties: { name: { type: 'string', description: 'Name in capitals, e.g. YT_CLIENT_SECRET' }, why: { type: 'string', description: 'What you need it for, one short sentence' } }, required: ['name'] };
-export const BRIDGE_TOOLS = [...BROWSER_TOOLS, SECRET_TOOL];
+// Looking back at older chats (memory.mjs): also not a browser tool, and it travels over the same bridge.
+export const RECALL_TOOL = { name: 'recall', description: 'Look back at your older chats with the founder and party rooms you spoke in. Give a query to search them (you get the best matches with a summary and a matching line), or a chat id to read that chat. With neither, you get your latest chats.',
+  properties: { query: { type: 'string', description: 'Words to search for, e.g. "pricing page launch date"' }, chat: { type: 'string', description: 'A chat id from an earlier answer or from your memory, to read that chat' } }, required: [] };
+export const BRIDGE_TOOLS = [...BROWSER_TOOLS, SECRET_TOOL, RECALL_TOOL];
 export const isBrowserTool = (name) => BROWSER_TOOLS.some((t) => t.name === name);

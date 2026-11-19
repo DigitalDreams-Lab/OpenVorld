@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.13.0 - 2026-11-19
+
+- Crew memory: each member keeps a notebook between chats (remember and forget in the ov block), a summary of every chat (the latest few start a new chat) and a recall tool to search and reread older chats; the founder reads, edits and removes it in the member's settings
+
 ## 0.12.2 - 2026-11-19
 
 - Branch and pull request rules in CONTRIBUTING.md, plus a pull request template
