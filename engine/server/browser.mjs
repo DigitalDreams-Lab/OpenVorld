@@ -45,10 +45,14 @@ const cfgOf = (ctx) => ({ ...DEFAULTS, ...(ctx.interactions?.agent?.browser ?? {
 const CHROME_PATHS = {
   darwin: ['/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge', '/Applications/Chromium.app/Contents/MacOS/Chromium', '/Applications/Brave Browser.app/Contents/MacOS/Brave Browser'],
   linux: ['/usr/bin/google-chrome', '/usr/bin/google-chrome-stable', '/usr/bin/chromium', '/usr/bin/chromium-browser', '/usr/bin/microsoft-edge', '/snap/bin/chromium'],
-  win32: ['C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe'],
 };
+/** Where Chrome and Edge usually are on Windows: both Program Files folders (read from the environment, since Windows can be on any drive) and the per-user install in %LOCALAPPDATA%, which is Chrome's default for many people. */
+export function windowsBrowserPaths(env = process.env) {
+  const roots = [env.PROGRAMFILES || 'C:\\Program Files', env['PROGRAMFILES(X86)'] || 'C:\\Program Files (x86)', env.LOCALAPPDATA].filter(Boolean);
+  return [['Google', 'Chrome', 'chrome.exe'], ['Microsoft', 'Edge', 'msedge.exe']].flatMap(([vendor, product, exe]) => roots.map((r) => path.win32.join(r, vendor, product, 'Application', exe)));
+}
 /** The Chrome-family browser on this computer, or null. OV_CHROME can name one. */
-export const findChrome = () => [process.env.OV_CHROME, ...(CHROME_PATHS[process.platform] ?? [])].filter(Boolean).find((p) => fs.existsSync(p)) ?? null;
+export const findChrome = () => [process.env.OV_CHROME, ...(process.platform === 'win32' ? windowsBrowserPaths() : CHROME_PATHS[process.platform] ?? [])].filter(Boolean).find((p) => fs.existsSync(p)) ?? null;
 export const browserAvailable = () => !!findChrome();
 
 async function chrome() {

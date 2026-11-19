@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.15.1 - 2026-11-19
+
+- Windows: the crew browser tools reach Claude Code members again (its system prompt was passed as a multi-line argument, which cmd.exe cut off together with --allowedTools; it now comes from a temporary file), and Chrome or Edge are found per user and in any Program Files folder
+
 ## 0.15.0 - 2026-11-19
 
 - Every brain can use the crew's tools: Antigravity, OpenCode and any command harness with mcp_args get the browser, secret_ask and recall over the bridge

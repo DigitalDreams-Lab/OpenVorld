@@ -17,6 +17,15 @@ const { BROWSER_TOOLS, BRIDGE_TOOLS } = await import('../engine/server/browser-t
 
 const crew = () => makeVorld({ crew: [{ name: 'Ada', job: 'Researcher' }] });
 
+test('on Windows, Chrome and Edge are looked for per user and in whichever Program Files folders the system names', () => {
+  const env = { PROGRAMFILES: 'D:\\Program Files', 'PROGRAMFILES(X86)': 'D:\\Program Files (x86)', LOCALAPPDATA: 'C:\\Users\\Ada\\AppData\\Local' };
+  const paths = hub.windowsBrowserPaths(env);
+  assert.deepEqual(paths.slice(0, 3), ['D:\\Program Files\\Google\\Chrome\\Application\\chrome.exe', 'D:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe', 'C:\\Users\\Ada\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe']);
+  assert.ok(paths.includes('D:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'), 'the 64-bit Edge folder');
+  assert.ok(paths.indexOf('C:\\Users\\Ada\\AppData\\Local\\Google\\Chrome\\Application\\chrome.exe') < paths.findIndex((p) => p.endsWith('msedge.exe')), 'Chrome first, then Edge');
+  assert.ok(hub.windowsBrowserPaths({}).every((p) => p.startsWith('C:\\Program Files')), 'the usual folders when the environment says nothing');
+});
+
 test('local and private addresses are always blocked; domains match like writs', async () => {
   for (const h of ['localhost', 'app.localhost', 'printer.local', '127.0.0.1', '10.1.2.3', '192.168.0.9', '172.20.0.1', '169.254.169.254', '[::1]', '::ffff:127.0.0.1']) assert.equal(await hub.isPrivateHost(h), true, h);
   for (const h of ['93.184.216.34', '8.8.8.8', '2606:4700::1111']) assert.equal(await hub.isPrivateHost(h), false, h);
