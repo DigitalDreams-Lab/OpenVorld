@@ -22,11 +22,12 @@ import { listModels } from './models.mjs';
 import * as browse from './browser.mjs';
 import { readProfile, saveProfile } from './profile.mjs';
 import { notes, chats, editNote, dropNote, dropChat, recall } from './memory.mjs';
+import { apiAuthorized } from './bridge-token.mjs';
 import { REPO, resolveTheme } from '../../tools/lib/packs.mjs';
 
 let PORT = Number(process.env.OV_PORT ?? 4317);
 const TOKEN = process.env.OV_TOKEN || crypto.randomBytes(24).toString('hex');
-process.env.OV_TOKEN = TOKEN; process.env.OV_PORT = String(PORT);   // the browser bridge (a child of Claude Code or Codex) calls back with these
+process.env.OV_TOKEN = TOKEN; process.env.OV_PORT = String(PORT);   // the tool bridge calls back to this port, but with its own per-turn token (bridge-token.mjs), never this one
 const DIST = path.join(REPO, 'engine', 'client', 'dist');
 const LOCAL_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`, ...(process.env.OV_DEV_HOSTS ?? '').split(',').filter(Boolean)]);
 const VERSION = JSON.parse(fs.readFileSync(path.join(REPO, 'package.json'), 'utf8')).version;
@@ -437,7 +438,7 @@ const server = http.createServer(async (req, res) => {
     if (!LOCAL_HOSTS.has(req.headers.host ?? '')) return json(res, 403, { error: 'host not allowed' });
     const url = new URL(req.url, 'http://x');
     if (!url.pathname.startsWith('/api/')) return serveStatic(req, res);
-    if (req.headers['x-ov-token'] !== TOKEN) return json(res, 401, { error: 'missing or wrong token' });
+    if (!apiAuthorized(req.headers['x-ov-token'], TOKEN, req.method, url)) return json(res, 401, { error: 'missing or wrong token' });      // the launch token, or a tool bridge's own token for its own call
     for (const r of routes) {
       const m = r.method === req.method && url.pathname.match(r.re);
       if (m) { const data = await r.fn({ req, res, p: m.groups ?? {}, q: url.searchParams }); if (!res.writableEnded) json(res, 200, data); return; }
