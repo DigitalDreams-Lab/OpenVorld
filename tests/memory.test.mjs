@@ -12,6 +12,7 @@ const { splitEnvelope } = await import('../engine/server/agents/envelope.mjs');
 const { engineTools } = await import('../engine/server/agents/tools.mjs');
 const { setSecret } = await import('../engine/server/house.mjs');
 const { browserFor } = await import('../engine/server/agents/browse.mjs');
+const { kindOf, targetOf } = await import('../engine/server/agents/steps.mjs');
 
 const sse = (text) => new Response(`data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\ndata: [DONE]\n\n`);
 function crew() {
@@ -77,11 +78,13 @@ test('recall finds a member\'s own chats and the party rooms they spoke in, and 
   assert.match(found, /waiting for review/);
   assert.ok(!found.includes(theirs.id), 'never another member\'s own chat');
   assert.match(M.recall(ctx, ada, { query: 'zebra' }), /Nothing in your past chats matches/);
+  assert.ok(!M.recall(ctx, ada, { query: 'pricing' }, mine.id).includes(mine.id), 'a search leaves out the chat asking');
   const read = M.recall(ctx, ada, { chat: room.id });
   assert.match(read, /Founder: Plan the pricing page\n\nYou: I will write the pricing copy\./);
   assert.match(M.recall(ctx, ada, { chat: theirs.id }), /No chat/);
   assert.ok(!M.recall(ctx, bo, {}).includes(room.id), 'a party room counts once the member spoke in it');
   assert.ok(engineTools({ ctx, role: ada, cwd: ctx.dir }).specs.some((s) => s.function.name === 'recall'), 'API brains get the recall tool');
+  assert.deepEqual([kindOf('mcp__ov_browser__recall'), kindOf('ov_browser.recall'), targetOf('ov_browser.recall', { chat: 'c1' })], ['tool.search', 'tool.search', 'chat c1'], 'recall reads as a search for every brain');
   ctx.interactions.agent.browser = { ...ctx.interactions.agent.browser, enabled: false };
   const bridge = browserFor(ctx, ada, mine.id, {});
   assert.equal(bridge.call, null);

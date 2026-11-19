@@ -98,7 +98,8 @@ function ToolRow({ step, root }: { step: Extract<Step, { t: 'tool' }>; root?: st
   const verb = str(`tool.${step.kind.split('.')[1] ?? 'run'}`, {}, VERB[step.kind] ?? 'Run');
   const target = rel(step.target ?? '', root);
   const has = !!(step.output?.trim() || step.detail);
-  const name = /^(Read|Grep|Glob|LS|Edit|MultiEdit|Write|Bash|WebFetch|WebSearch|shell|patch|web|read_file|search|list_files|write_file|edit_file|run_command|fetch_url)$/.test(step.name) ? '' : step.name;
+  const bare = String(step.name ?? '').replace(/^(mcp__ov_browser__|ov_browser\.)/, '');      // the engine's own tools, as Claude Code and Codex name them
+  const name = /^(Read|Grep|Glob|LS|Edit|MultiEdit|Write|Bash|WebFetch|WebSearch|shell|patch|web|read_file|search|list_files|write_file|edit_file|run_command|fetch_url)$/.test(bare) ? '' : bare;
   return (
     <div className={`tool-row st-${step.status} ${step.test ? 'test-' + step.test : ''}`}>
       <button className="tool-line" onClick={() => has && setOpen(!open)} disabled={!has} title={step.target}>

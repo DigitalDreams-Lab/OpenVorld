@@ -382,7 +382,7 @@ route('POST', '/api/vorlds/:id/browser/:role/:tool', async ({ p, q, req }) => {
   const thread = q.get('thread') ? (() => { try { return getThread(ctx, q.get('thread')); } catch { return null; } })() : null;
   // a site without a writ becomes a writ card in the member's thread right away (the brain is waiting on this call)
   const onRequest = (a) => { if (thread) requestAccess(ctx, thread, p.role, [a], (ev) => emit({ type: 'thread.event', thread: thread.id, role: p.role, kind: thread.kind, party: thread.party, ev })); };
-  if (p.tool === 'recall') { try { return { ok: true, output: recall(ctx, p.role, await body(req)) }; } catch (e) { return { ok: false, output: `error: ${e.message}` }; } }
+  if (p.tool === 'recall') { try { return { ok: true, output: recall(ctx, p.role, await body(req), thread?.id) }; } catch (e) { return { ok: false, output: `error: ${e.message}` }; } }
   if (p.tool === 'secret_ask') { try { return { ok: true, output: askSecret(ctx, p.role, await body(req), onRequest) }; } catch (e) { return { ok: false, output: `error: ${e.message}` }; } }
   try {
     const res = await browse.callTool(ctx, p.role, p.tool, await body(req), { emit, onRequest });

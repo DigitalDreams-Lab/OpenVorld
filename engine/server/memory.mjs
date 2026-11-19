@@ -98,9 +98,9 @@ const speakerOf = (ctx, role, e) => e.type === 'founder.message' ? 'Founder' : e
 
 /**
  * The recall tool. With `chat`: that chat's latest messages. With `query`: the chats that match best, with their summary
- * and a matching line. With neither: the latest chats.
+ * and a matching line. With neither: the latest chats. `from`: the chat asking, left out of searches.
  */
-export function recall(ctx, role, { query = '', chat = '' } = {}) {
+export function recall(ctx, role, { query = '', chat = '' } = {}, from = null) {
   if (!memoryOn(ctx)) return 'Memory is switched off in this vorld.';
   const c = cfg(ctx), all = chatsOf(ctx, role), summaries = new Map(chats(ctx, role).map((s) => [s.chat, s.summary]));
   const head = ({ t }) => `[chat ${t.id}] "${t.title ?? 'Chat'}" (${day(t.updated_at)})${summaries.has(t.id) ? `: ${summaries.get(t.id)}` : ''}`;
@@ -118,7 +118,7 @@ export function recall(ctx, role, { query = '', chat = '' } = {}) {
   } else {
     const words = [...new Set(String(query).toLowerCase().match(/[\p{L}\p{N}]{3,}/gu) ?? [])];
     const hits = (s) => words.reduce((n, w) => n + (String(s ?? '').toLowerCase().includes(w) ? 1 : 0), 0);
-    const ranked = all.map((x) => {
+    const ranked = all.filter(({ t }) => t.id !== from).map((x) => {
       const best = x.events.map((e) => ({ e, n: hits(e.text) })).sort((a, b) => b.n - a.n)[0];
       return { ...x, best, score: 3 * hits(`${x.t.title} ${summaries.get(x.t.id) ?? ''}`) + (best?.n ?? 0) };
     }).filter((x) => !words.length || x.score > 0)

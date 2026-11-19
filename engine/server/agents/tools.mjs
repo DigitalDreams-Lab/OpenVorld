@@ -41,7 +41,7 @@ export function argvOf(command) {
  * @param {string[]} o.commands cmd.run scopes (patterns)
  * @param {string[]} o.domains net.fetch scopes ("*" = any)
  */
-export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], commands = [], domains = [], limits = {}, onRequest = () => {}, onCommand = null, browser = null, scope = {} }) {
+export function engineTools({ ctx, role, threadId = null, cwd, readRoots = [], writeRoots = [], commands = [], domains = [], limits = {}, onRequest = () => {}, onCommand = null, browser = null, scope = {} }) {
   const lim = { output_chars: 12000, command_seconds: 120, fetch_chars: 20000, search_matches: 80, ...limits };
   const audit = (entry) => { try { fs.appendFileSync(path.join(ctx.dir, 'audit.log'), JSON.stringify({ at: new Date().toISOString(), role, ...entry }) + '\n', { mode: 0o600 }); } catch { /* vorld gone */ } };
   const real = (p) => { try { return fs.realpathSync(p); } catch { return path.resolve(p); } };
@@ -113,7 +113,7 @@ export function engineTools({ ctx, role, cwd, readRoots = [], writeRoots = [], c
 
   const impl = {
     secret_ask(a) { return askSecret(ctx, role, a, onRequest); },
-    recall(a) { return recall(ctx, role, a); },
+    recall(a) { return recall(ctx, role, a, threadId); },
     vorld_info() { return vorldInfo(ctx, role); },
     game_command({ commands }) {
       const r = prepareCommands(ctx, role, commands, scope);

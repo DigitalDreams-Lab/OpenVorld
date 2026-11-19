@@ -7,18 +7,19 @@ export const KIND = {
   Edit: 'tool.edit', edit: 'tool.edit', MultiEdit: 'tool.edit', NotebookEdit: 'tool.edit', edit_file: 'tool.edit', patch: 'tool.edit', apply_patch: 'tool.edit',
   Write: 'tool.write', write: 'tool.write', write_file: 'tool.write',
   Bash: 'tool.run', bash: 'tool.run', shell: 'tool.run', run_command: 'tool.run',
-  game_command: 'tool.vorld', vorld_info: 'tool.vorld',
+  game_command: 'tool.vorld', vorld_info: 'tool.vorld', recall: 'tool.search',
   WebFetch: 'tool.web', webfetch: 'tool.web', WebSearch: 'tool.web', websearch: 'tool.web', fetch_url: 'tool.web', web: 'tool.web',
 };
-// the browser tools arrive as browser_open, or as mcp__ov_browser__browser_open from Claude Code, or ov_browser.browser_open from Codex
+// the engine's own tools arrive as browser_open, or as mcp__ov_browser__browser_open from Claude Code, or ov_browser.browser_open from Codex
+const bare = (name) => String(name).replace(/^(mcp__ov_browser__|ov_browser\.)/, '');
 const isBrowser = (name) => /(^|[_.])browser_(open|read|click|type|back)$/.test(String(name));
-export const kindOf = (name) => (isBrowser(name) ? 'tool.web' : KIND[name] ?? 'tool.run');
+export const kindOf = (name) => (isBrowser(name) ? 'tool.web' : KIND[bare(name)] ?? 'tool.run');
 
 export function targetOf(name, input = {}) {
   if (isBrowser(name) && /(click|type)$/.test(name)) return `#${input.id}${input.text ? ` "${String(input.text).slice(0, 40)}"` : ''}`;
-  const t = input.file_path ?? input.filePath ?? input.filepath ?? input.path ?? input.notebook_path ?? input.command ?? input.url ?? input.query ?? input.pattern ?? '';
+  const t = input.file_path ?? input.filePath ?? input.filepath ?? input.path ?? input.notebook_path ?? input.command ?? input.url ?? input.query ?? input.pattern ?? (input.chat ? `chat ${input.chat}` : '');
   const extra = name === 'Grep' || name === 'grep' || name === 'search' ? (input.path ? ` in ${input.path}` : '') : '';
-  return String(t || name).slice(0, 240) + extra;
+  return String(t || bare(name)).slice(0, 240) + extra;
 }
 
 const cut = (s, n) => { const t = String(s ?? ''); return t.length > n ? t.slice(0, n) + `\n… (${t.length - n} more characters)` : t; };

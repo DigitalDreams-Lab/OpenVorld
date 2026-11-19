@@ -205,7 +205,7 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     else if (brain.provider === 'opencode') result = await opencode.run({ ...common, addDirs, writable: writeDirs.length > 0, cmdAllow: cmdGrants, web: netGrants.length > 0 });
     else if (brain.driver === 'openai') {
       const et = agentCfg.engine_tools ?? {};
-      const engine = et.enabled === false ? null : engineTools({ ctx, role, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, browser: web.call, scope, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });
+      const engine = et.enabled === false ? null : engineTools({ ctx, role, threadId, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, browser: web.call, scope, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });
       const prior = (inRoom ? [] : history(ctx, threadId).slice(0, -1)).map((turn) => {
         if (!turn.attachments?.length) return turn;
         const files = turn.attachments.flatMap((f) => { try { return [getAttachment(ctx, threadId, f.id)]; } catch { return []; } });
