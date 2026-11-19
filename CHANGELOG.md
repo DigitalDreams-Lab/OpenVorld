@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.15.0 - 2026-11-19
+
+- Every brain can use the crew's tools: Antigravity, OpenCode and any command harness with mcp_args get the browser, secret_ask and recall over the bridge
+
 ## 0.14.2 - 2026-11-19
 
 - Web demo on the current version, playing about 40% slower (one PACE setting); Mira's first note shows crew memory; the integration prompt button hides where there is nothing to copy

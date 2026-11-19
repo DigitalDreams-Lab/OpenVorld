@@ -18,8 +18,13 @@ export function argsFor({ sessionId, model, images = [] }) {
   ];
 }
 
+/** Inline OpenCode config (OPENCODE_CONFIG_CONTENT) that registers the crew browser MCP server for this turn. */
+export function mcpConfigFor(mcp) {
+  return mcp ? { mcp: { [mcp.name]: { type: 'local', command: [mcp.command, ...mcp.args], environment: mcp.env, enabled: true } } } : null;
+}
+
 /** Map OpenVorld writs onto an OPENCODE_PERMISSION ruleset object. */
-export function permissionsFor({ addDirs = [], writable = false, cmdAllow = [], web = false }) {
+export function permissionsFor({ addDirs = [], writable = false, cmdAllow = [], web = false, mcp = null }) {
   return {
     read: { '*': 'allow', '*.env': 'deny', '*.env.*': 'deny', '*.env.example': 'allow' },
     edit: writable ? 'allow' : 'deny',
@@ -29,6 +34,7 @@ export function permissionsFor({ addDirs = [], writable = false, cmdAllow = [], 
     webfetch: web ? 'allow' : 'deny',
     websearch: web ? 'allow' : 'deny',
     external_directory: { '*': 'deny', ...Object.fromEntries(addDirs.map((d) => [path.join(d, '*'), 'allow'])) },
+    ...(mcp ? { [`${mcp.name}_*`]: 'allow' } : {}),
   };
 }
 
@@ -48,15 +54,20 @@ export function deniedAccess(tool, input = {}, cwd) {
   return null;
 }
 
-export async function run({ bin = 'opencode', system, prompt, images = [], sessionId, cwd, addDirs = [], writable = false, cmdAllow = [], web = false, model, signal, onEvent }) {
+export async function run({ bin = 'opencode', system, prompt, images = [], sessionId, cwd, addDirs = [], writable = false, cmdAllow = [], web = false, mcp = null, env = null, model, signal, onEvent }) {
   let sid = sessionId, text = '', cost = 0, hasCost = false, failed = '', seq = 0;
+  const mcpCfg = mcpConfigFor(mcp);
 
   await runJsonLines({
     cmd: bin,
     args: argsFor({ sessionId, model, images }),
     cwd,
     stdin: sessionId ? prompt : `${system}\n\n---\n\n${prompt}`,
-    env: { OPENCODE_PERMISSION: JSON.stringify(permissionsFor({ addDirs, writable, cmdAllow, web })) },
+    env: {
+      ...(env ?? {}),
+      OPENCODE_PERMISSION: JSON.stringify(permissionsFor({ addDirs, writable, cmdAllow, web, mcp })),
+      ...(mcpCfg ? { OPENCODE_CONFIG_CONTENT: JSON.stringify(mcpCfg) } : {}),
+    },
     signal,
     onLine: (m) => {
       if (m.sessionID) sid = m.sessionID;

@@ -193,7 +193,10 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
   try {
     const web = browserFor(ctx, role, threadId, { emit, onRequest: (a) => asks.push(a) });
     const scope = { party: partyScope(ctx, thread) };
-    const system = [systemPrompt(ctx, role, thread.bench, scope, threadId), web.call ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
+    // the engine's own tools reach every brain, except a command harness whose pack did not ask for them (`mcp_args`): telling that one
+    // it has a browser would send it looking for tools it cannot call, and it gets no bridge, token or config file
+    const bridged = brain.driver !== 'command' || !!brain.spec?.mcp_args?.length;
+    const system = [systemPrompt(ctx, role, thread.bench, scope, threadId), web.call && bridged ? ctx.interactions.agent?.browser?.instructions : ''].filter(Boolean).join('\n\n');
     // with no session to resume, a CLI brain is told the conversation so far; the API driver is handed the history itself
     const drive = async (sessionId) => {
     const catchup = !inRoom && !sessionId && brain.driver !== 'openai' ? catchUp(history(ctx, threadId).slice(0, -1)) : '';
@@ -204,9 +207,9 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
     else if (brain.provider === 'claude-code') result = await claude.run({ ...common, env: heldSecrets(ctx, role), tools, allowed: [...allowed, ...(web.allowed ?? [])], addDirs, mcp: web.mcp });
     else if (brain.provider === 'codex') result = await codex.run({ ...common, env: heldSecrets(ctx, role), mcp: web.mcp, ...codex.sandboxOf(writeDirs, cwd), web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
-    else if (brain.provider === 'antigravity') result = await antigravity.run({ ...common, addDirs, writable: writeDirs.length > 0 });
-    else if (brain.provider === 'opencode') result = await opencode.run({ ...common, addDirs, writable: writeDirs.length > 0, cmdAllow: cmdGrants, web: netGrants.length > 0 });
-    else if (brain.driver === 'command') result = await command.run({ ...common, spec: brain.spec });
+    else if (brain.provider === 'antigravity') result = await antigravity.run({ ...common, env: heldSecrets(ctx, role), addDirs, writable: writeDirs.length > 0, mcp: web.mcp });
+    else if (brain.provider === 'opencode') result = await opencode.run({ ...common, env: heldSecrets(ctx, role), addDirs, writable: writeDirs.length > 0, cmdAllow: cmdGrants, web: netGrants.length > 0, mcp: web.mcp });
+    else if (brain.driver === 'command') result = await command.run({ ...common, env: heldSecrets(ctx, role), mcp: bridged ? web.mcp : null, spec: brain.spec });
     else if (brain.driver === 'openai') {
       const et = agentCfg.engine_tools ?? {};
       const engine = et.enabled === false ? null : engineTools({ ctx, role, threadId, cwd, readRoots: [...readDirs, ...referenceFiles], writeRoots: writeDirs, commands: cmdGrants, domains: netGrants, limits: et, browser: web.call, scope, onCommand: (commands) => emit({ type: 'command', role, thread: threadId, commands }), onRequest: (a) => asks.push(a) });

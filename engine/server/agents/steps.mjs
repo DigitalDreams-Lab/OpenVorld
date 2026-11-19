@@ -10,8 +10,8 @@ export const KIND = {
   game_command: 'tool.vorld', vorld_info: 'tool.vorld', recall: 'tool.search',
   WebFetch: 'tool.web', webfetch: 'tool.web', WebSearch: 'tool.web', websearch: 'tool.web', fetch_url: 'tool.web', web: 'tool.web',
 };
-// the engine's own tools arrive as browser_open, or as mcp__ov_browser__browser_open from Claude Code, or ov_browser.browser_open from Codex
-const bare = (name) => String(name).replace(/^(mcp__ov_browser__|ov_browser\.)/, '');
+// the engine's own tools arrive as browser_open, or as mcp__ov_browser__browser_open (Claude Code), ov_browser.browser_open (Codex/Antigravity), or ov_browser_browser_open (OpenCode)
+const bare = (name) => String(name).replace(/^(mcp__ov_browser__|ov_browser[._])/, '');
 const isBrowser = (name) => /(^|[_.])browser_(open|read|click|type|back)$/.test(String(name));
 export const kindOf = (name) => (isBrowser(name) ? 'tool.web' : KIND[bare(name)] ?? 'tool.run');
 
