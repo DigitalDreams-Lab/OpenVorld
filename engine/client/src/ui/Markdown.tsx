@@ -25,6 +25,14 @@ function localUrl(url:string, thread?:string) {
   return root+'file?path='+encodeURIComponent(name);
 }
 const textContent=(node:ReactNode):string=>Children.toArray(node).map(child=>isValidElement<{children?:ReactNode}>(child)?textContent(child.props.children):String(child)).join('');
+/** The Clipboard API needs a secure context and a granted permission (the desktop app must allow it; a LAN host on plain http has none); fall back to the selection copy that Cmd+C uses. */
+export async function copyText(text:string) {
+  try{await navigator.clipboard.writeText(text);return;}catch{/* fall through */}
+  const area=document.createElement('textarea'),focused=document.activeElement as HTMLElement|null;
+  area.value=text;area.readOnly=true;area.style.cssText='position:fixed;top:0;left:0;opacity:0';
+  document.body.appendChild(area);area.select();
+  try{if(!document.execCommand('copy'))throw new Error('Could not copy');}finally{area.remove();focused?.focus?.();}
+}
 function CodeBlock({children,thread}:{children?:ReactNode;thread?:string}) {
   const [copied,setCopied]=useState(false),[error,setError]=useState('');
   const [preview,setPreview]=useState(false),[expanded,setExpanded]=useState(false);
@@ -32,7 +40,7 @@ function CodeBlock({children,thread}:{children?:ReactNode;thread?:string}) {
   const code=Children.toArray(children).find(isValidElement) as React.ReactElement<{className?:string}>|undefined;
   const language=code?.props.className?.match(/language-([\w+-]+)/)?.[1]??'text';
   const source=textContent(children).replace(/\n$/,''),kind=codePreviewKind(language,source);
-  return <div className="code-block"><div className="code-toolbar"><span>{language}</span><span className="code-actions">{kind&&<><button type="button" onClick={()=>setPreview(!preview)} aria-pressed={preview}>{preview?'Source':'Preview'}</button><button type="button" onClick={()=>setExpanded(true)}>Expand preview</button></>}<button type="button" onClick={async()=>{try{await navigator.clipboard.writeText(source);setCopied(true);setError('');setTimeout(()=>setCopied(false),1800);}catch{setError('Could not copy');}}}>{error|| (copied?'Copied ✓':'Copy')}</button></span></div>{preview&&kind?<div className="inline-preview"><InlinePreview kind={kind} source={source} language={language} thread={thread}/></div>:<pre className="code">{children}</pre>}
+  return <div className="code-block"><div className="code-toolbar"><span>{language}</span><span className="code-actions">{kind&&<><button type="button" onClick={()=>setPreview(!preview)} aria-pressed={preview}>{preview?'Source':'Preview'}</button><button type="button" onClick={()=>setExpanded(true)}>Expand preview</button></>}<button type="button" onClick={async()=>{try{await copyText(source);setCopied(true);setError('');setTimeout(()=>setCopied(false),1800);}catch{setError('Could not copy');}}}>{error|| (copied?'Copied ✓':'Copy')}</button></span></div>{preview&&kind?<div className="inline-preview"><InlinePreview kind={kind} source={source} language={language} thread={thread}/></div>:<pre className="code">{children}</pre>}
     {expanded&&<PreviewDialog name={`${language} preview`} onClose={closeExpanded}><InlinePreview kind={kind} source={source} language={language} thread={thread}/></PreviewDialog>}
   </div>;
 }

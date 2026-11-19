@@ -54,3 +54,10 @@ export function isAppUrl(value, origin) {
 export function isExternalUrl(value) {
   try { return ['https:', 'http:', 'mailto:'].includes(new URL(value).protocol); } catch { return false; }
 }
+/** What the app's own page may ask Chromium for. Everything else, and every other origin, stays denied. */
+export function isAppPermission(permission, mediaTypes) {
+  if (permission === 'media') return Boolean(mediaTypes?.length) && mediaTypes.every(type => type === 'audio');
+  // notifications: "someone needs you" while the window is in the background.
+  // clipboard-sanitized-write: navigator.clipboard.writeText behind the Copy buttons; reading the clipboard stays denied.
+  return permission === 'notifications' || permission === 'clipboard-sanitized-write';
+}
