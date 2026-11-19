@@ -1,25 +1,24 @@
-// "Your AI isn't in the list?": a message the founder copies to their own AI (any agent on this computer), so it can add
-// itself to OpenVorld in a user pack (providers.yaml > add_yourself), then a "Look again" for the new brain.
-import { useState } from 'react';
+// "Your AI isn't listed?": one button that copies an integration prompt (providers.yaml > add_yourself, filled in with this
+// computer's paths). The founder pastes it into their own AI, which adds itself in a user pack; then "look again".
+import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { toast } from '../store';
 import { copyText } from './Markdown';
 
 export function AddYourBrain({ onFound }: { onFound?: (detected: any[]) => void }) {
-  const [text, setText] = useState<string | null>(null);
+  const [text, setText] = useState('');
   const [copied, setCopied] = useState(false);
-  const open = async () => { try { setText((await api('/detect/add-yourself')).text); } catch (e: any) { toast({ kind: 'error', title: e.message }); } };
-  const copy = async () => { await copyText(text ?? ''); setCopied(true); setTimeout(() => setCopied(false), 1500); };
+  useEffect(() => { api('/detect/add-yourself').then((r) => setText(r.text)).catch(() => {}); }, []);      // ready before the click, so copying keeps the gesture
+  const copy = async () => { if (!text) return; await copyText(text); setCopied(true); };
   const again = async () => {
     try { const d = await api('/detect', { body: {} }); onFound?.(d); toast({ kind: 'info', title: d.length ? `Found: ${d.map((x: any) => x.label).join(', ')}` : 'Still no agent found' }); }
     catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
-  if (text === null) return <button type="button" className="link small" onClick={open}>Your AI isn't in the list?</button>;
   return (
-    <div className="add-brain">
-      <p className="small">Send this message to your AI (any agent on this computer, in its own app or terminal). It adds itself to OpenVorld, then press Look again.</p>
-      <pre className="add-brain-text">{text}</pre>
-      <div className="row"><button type="button" className="btn small primary" onClick={copy}>{copied ? 'Copied ✓' : 'Copy message'}</button><button type="button" className="btn small" onClick={again}>Look again</button><button type="button" className="btn small" onClick={() => setText(null)}>Close</button></div>
+    <div className="add-brain small">
+      <span className="muted">Your AI isn't listed?</span>
+      <button type="button" className="btn small" disabled={!text} title="Paste it into your own AI: it adds itself to OpenVorld" onClick={copy}>{copied ? 'Copied ✓' : 'Copy integration prompt'}</button>
+      {copied && <span className="muted">Paste it into your AI, then <button type="button" className="link small" onClick={again}>look again</button></span>}
     </div>
   );
 }

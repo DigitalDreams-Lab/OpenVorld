@@ -45,12 +45,13 @@ providers:
       ollama:     { base_url: "http://localhost:11434/v1", api_key: null }
       lm-studio:  { base_url: "http://localhost:1234/v1", api_key: null }
 
-# Shown under "Your AI isn't in the list?". Filled in: {platform}, {packs_dir}, {found} (brains found now), {known} (the ones
+# Copied by "Copy integration prompt" (Settings, and under a member's Brain). Filled in: {platform}, {packs_dir}, {found} (brains found now), {known} (the ones
 # OpenVorld has a driver for, with the command it looks for).
 add_yourself: |
   I use OpenVorld, an app on this computer ({platform}) where AI agents work together as a crew. It runs agent CLIs as the crew's "brains", but it did not find you. Please add yourself, then tell me when you are done.
 
-  1. Find the command that runs you here, and check it in a terminal: it must exit with 0 on `--version` (or another quick check).
+  1. Make sure you can run from a terminal on this computer. If your command-line tool is not installed, or something it needs is missing (for example Node.js, npm or Python), install it with the official installer or package manager for {platform}: ask me before installing anything, or give me the exact steps to do it myself. Sign in if the tool needs it. Then check the command: it must exit with 0 on `--version` (or another quick check).
+     OpenVorld only sees what was on the PATH when it started, so after installing something, use the full path of your command below (or I restart OpenVorld).
   2. If OpenVorld already has a driver for you ({known}), keep its id and only tell it where you are. Write {packs_dir}/my-brain.yaml (create the folder if needed):
 
        kind: providers

@@ -104,7 +104,7 @@ providers:
     models: { source: static, values: [small, large] }
 ```
 
-You don't have to write this yourself. "Your AI isn't in the list?" (in Settings and in a member's settings) shows a message to copy into your own AI, with this computer's paths filled in (`add_yourself` in `providers.yaml`), so it can write the pack and check its own command. Then press Look again.
+You don't have to write this yourself. **Copy integration prompt** (in Settings and under a member's Brain) copies a prompt for your own AI, with this computer's paths filled in (`add_yourself` in `providers.yaml`), so it can write the pack and check its own command. Then press look again.
 
 ## Other kinds
 

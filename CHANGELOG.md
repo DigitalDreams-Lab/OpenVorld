@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.14.1 - 2026-11-19
+
+- Copy integration prompt: one minimal button instead of showing the prompt, and the prompt now covers installing the AI's command-line tool (and what it needs) when it is missing
+
 ## 0.14.0 - 2026-11-19
 
 - Brains on every platform: CLIs start through cross-spawn, so Windows .cmd shims (claude.cmd, codex.cmd ...) are found and run; a pack can point a known CLI to a full path; a generic command driver lets any other agent harness be a brain; and "Your AI isn't in the list?" gives a message to copy into your own AI so it adds itself
