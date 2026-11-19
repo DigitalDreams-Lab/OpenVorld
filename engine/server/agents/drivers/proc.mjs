@@ -8,6 +8,7 @@ export function cleanEnv() {
   delete env.ELECTRON_RUN_AS_NODE;
   delete env.OV_NODE_EXECUTABLE;
   delete env.OV_DESKTOP;
+  delete env.OV_TOKEN;   // the launch token opens the whole API: no brain process, and no command a brain runs, ever gets it (the tool bridge has its own per-turn token)
   for (const k of Object.keys(env)) if (k === 'CLAUDECODE' || (k.startsWith('CLAUDE_CODE_') && k !== 'CLAUDE_CODE_OAUTH_TOKEN') || k.startsWith('CODEX_SANDBOX')) delete env[k];
   return env;
 }

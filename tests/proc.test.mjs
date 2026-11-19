@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { runJsonLines } from '../engine/server/agents/drivers/proc.mjs';
+import { runJsonLines, cleanEnv } from '../engine/server/agents/drivers/proc.mjs';
 
 test('a CLI that closes stdin early can still return its JSON response', async () => {
   const lines = [];
@@ -20,4 +20,10 @@ test('a CLI that rejects input reports its own failure instead of EPIPE', async 
     stdin: 'x'.repeat(2 * 1024 * 1024),
     onLine() {},
   }), /Provider rejected authentication/);
+});
+
+test('a brain process never inherits the launch token', () => {
+  process.env.OV_TOKEN = 'the-launch-token';
+  try { assert.equal(cleanEnv().OV_TOKEN, undefined); }
+  finally { delete process.env.OV_TOKEN; }
 });

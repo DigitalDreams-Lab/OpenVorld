@@ -190,8 +190,9 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
   const strip = (t) => splitEnvelope(t, lang).text;
   const steps = () => { const s = tr.final(strip); return s.some((x) => x.t !== 'text') ? s : undefined; };
 
+  let web = null;
   try {
-    const web = browserFor(ctx, role, threadId, { emit, onRequest: (a) => asks.push(a) });
+    web = browserFor(ctx, role, threadId, { emit, onRequest: (a) => asks.push(a) });
     const scope = { party: partyScope(ctx, thread) };
     // the engine's own tools reach every brain, except a command harness whose pack did not ask for them (`mcp_args`): telling that one
     // it has a browser would send it looking for tools it cannot call, and it gets no bridge, token or config file
@@ -246,6 +247,7 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     send({ type: 'turn.error', message: err.message, speaker: role, reaction: reactions['turn.error'] });
     return { ok: false, error: err.message };
   } finally {
+    web?.release();                                  // the bridge's token ends with the turn
     consumeOnce(ctx, role);                          // "allow once" ends with this turn
   }
 }
