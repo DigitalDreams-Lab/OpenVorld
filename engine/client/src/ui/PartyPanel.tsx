@@ -39,7 +39,8 @@ export function PartyPanel({ id, hidden }: { id: string; hidden?: boolean }) {
         <div className="cp-who">
           <div className="cp-name" title={party.name}>🎲 {party.name}</div>
           <div className="party-crew">{party.members.map((m: string, i: number) => {
-            const hint = `${str('chat.open_member', { name: memberOf(m)?.name ?? m }, 'Chat with {name}')}${i === 0 ? ' (leader)' : ''}`;      // a click opens their own chat, the same way as on the map
+            const name = memberOf(m)?.name ?? m;      // a click opens their own chat, the same way as on the map
+            const hint = i === 0 ? str('chat.open_leader', { name }, 'Chat with {name} (leader)') : str('chat.open_member', { name }, 'Chat with {name}');
             return <button key={m} type="button" className={`who ${i === 0 ? 'lead' : ''}`} title={hint} aria-label={hint} onClick={() => { play('ui.open'); emit('talk', m); }}><Portrait role={m} size={32} /></button>;
           })}</div>
           {party.goal && <div className="cp-goal muted">{party.goal}</div>}

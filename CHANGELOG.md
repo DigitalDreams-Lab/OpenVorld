@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.12.1 - 2026-11-19
+
+- Party chat tooltips ("Chat with {name}", and the leader's) come from the theme pack instead of hard-coded English
+
 ## 0.12.0 - 2026-11-19
 
 - Open a crew member's own chat by clicking their portrait or name in a party chat; the party room keeps its chat, scroll and draft, and Escape or Close returns to it

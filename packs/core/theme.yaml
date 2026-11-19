@@ -22,6 +22,9 @@ strings:
     allow_session: Allow for this session
     allow_always: Always allow
     deny: Refuse
+  chat:
+    open_member: "Chat with {name}"            # a member's portrait or name in a party chat
+    open_leader: "Chat with {name} (leader)"   # the same, for the party's leader
   scripted:
     companion: "Hi, I am {name}. I have no mind yet, so I can only say this: pick a brain for me in my settings (Claude Code, Codex or any OpenAI-compatible model) and I can really help. Meanwhile, open the Party Hall and form a party."
     agent: "{name} waves but stays quiet. Pick a brain for {name} in their settings."
