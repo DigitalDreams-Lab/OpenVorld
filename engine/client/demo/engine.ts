@@ -70,5 +70,7 @@ export const EMBED = new URLSearchParams(location.search).has('embed');
 /** Behind the hero's play button (play/?embed&attract): the story plays itself, silently, on a loop, and nobody can click. */
 export const ATTRACT = new URLSearchParams(location.search).has('attract');
 
-export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+/** How slowly the story plays: every pause, tool step and streamed word is this much longer (1 = the original pace). */
+export const PACE = 1.4;
+export const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms * PACE));
 export const DEMO_ONLY = 'This is a demo vorld, so this part stays as it is. Download OpenVorld to make it yours.';
