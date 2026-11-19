@@ -1,11 +1,11 @@
-version: 0.13.1
+version: 0.14.1
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.13.1/OpenVorld-0.13.1-win-x64.exe
-    sha512: Q90Sw/gMAjnrdSk5Wj6Nvy2CL04cx3f9xCrTTRpoS8wywNk8oRFCVHJqCqQpyhdREZCZYhv3dOxylc3qrv5uPA==
-    size: 177411847
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.13.1/OpenVorld-0.13.1-win-x64.exe
-sha512: Q90Sw/gMAjnrdSk5Wj6Nvy2CL04cx3f9xCrTTRpoS8wywNk8oRFCVHJqCqQpyhdREZCZYhv3dOxylc3qrv5uPA==
-releaseNotes: "- Crew memory polish from a live run with Claude Code and Codex:
-  recall reads as a search for every brain, and a search leaves out the chat
-  that asks"
-releaseDate: 2026-11-19T17:38:31.865Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.14.1/OpenVorld-0.14.1-win-x64.exe
+    sha512: fUF85Cc/zClNxQfUybvc36PJ22pIEf0508nuZoFQrTZsTE0NOZaq/ZFD3HuIcHmsQbe9rXx6nevNmMvQNAX89Q==
+    size: 177430033
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.14.1/OpenVorld-0.14.1-win-x64.exe
+sha512: fUF85Cc/zClNxQfUybvc36PJ22pIEf0508nuZoFQrTZsTE0NOZaq/ZFD3HuIcHmsQbe9rXx6nevNmMvQNAX89Q==
+releaseNotes: "- Copy integration prompt: one minimal button instead of showing
+  the prompt, and the prompt now covers installing the AI's command-line tool
+  (and what it needs) when it is missing"
+releaseDate: 2026-11-19T18:05:40.085Z

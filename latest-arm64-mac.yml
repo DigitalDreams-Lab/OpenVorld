@@ -1,11 +1,11 @@
-version: 0.13.1
+version: 0.14.1
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.13.1/OpenVorld-0.13.1-mac-arm64.zip
-    sha512: 0Inzm8bugJcBYRvJrAg9hciPXzRYH/rzA9lUA6cPfYc4iRn4DkX3T58ZUFAOsfhScFcPMRvNNoSoor0p+KZPDw==
-    size: 177841040
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.13.1/OpenVorld-0.13.1-mac-arm64.zip
-sha512: 0Inzm8bugJcBYRvJrAg9hciPXzRYH/rzA9lUA6cPfYc4iRn4DkX3T58ZUFAOsfhScFcPMRvNNoSoor0p+KZPDw==
-releaseNotes: "- Crew memory polish from a live run with Claude Code and Codex:
-  recall reads as a search for every brain, and a search leaves out the chat
-  that asks"
-releaseDate: 2026-11-19T17:49:15.932Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.14.1/OpenVorld-0.14.1-mac-arm64.zip
+    sha512: 3sxpGTLxCAdqIqL+4011CDqjmVNAUtnPKDQ+xAKpAyYumq7dmCkviTgmlFmr1tNfACgrbK056lLSen4ebSDJpA==
+    size: 177868581
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.14.1/OpenVorld-0.14.1-mac-arm64.zip
+sha512: 3sxpGTLxCAdqIqL+4011CDqjmVNAUtnPKDQ+xAKpAyYumq7dmCkviTgmlFmr1tNfACgrbK056lLSen4ebSDJpA==
+releaseNotes: "- Copy integration prompt: one minimal button instead of showing
+  the prompt, and the prompt now covers installing the AI's command-line tool
+  (and what it needs) when it is missing"
+releaseDate: 2026-11-19T18:11:41.754Z
