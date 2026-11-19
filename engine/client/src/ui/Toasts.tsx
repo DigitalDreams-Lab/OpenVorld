@@ -6,7 +6,7 @@ export function Toasts() {
   return (
     <div className="toasts">
       {toasts.map((t) => (
-        <div key={t.id} className={`toast ${t.kind}`}>
+        <div key={t.id} className={`toast toast-${t.kind}`}>      {/* prefixed: a bare "deed" or "error" class picks up other screens' styles */}
           {t.kind === 'deed' && <Icon name={t.icon ?? 'trophy'} size={32} />}
           <div>
             {t.kind === 'deed' && <div className="toast-kicker">Deed unlocked{t.xp ? ` · +${t.xp} XP` : ''}</div>}

@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.13.2 - 2026-11-19
+
+- Deed, level and error toasts are readable again: their kind class no longer picks up the faded style of locked deeds (or the red error text)
+
 ## 0.13.1 - 2026-11-19
 
 - Crew memory polish from a live run with Claude Code and Codex: recall reads as a search for every brain, and a search leaves out the chat that asks

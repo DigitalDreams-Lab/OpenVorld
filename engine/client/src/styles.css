@@ -167,7 +167,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .toast { display: flex; gap: 10px; align-items: center; background: var(--parchment); border: 3px solid var(--ink); padding: 6px 12px; min-width: 240px; max-width: 340px; animation: pop .35s cubic-bezier(.2,1.6,.4,1); box-shadow: 4px 4px 0 rgba(0,0,0,.35); }
 @keyframes pop { from { transform: scale(.6) translateY(-10px); opacity: 0; } }
 .toast-kicker { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: .7; } .toast-title { font-size: calc(18px * var(--display-scale)); font-weight: 600; } .toast-body { font-size: 14px; }
-.toast.level { background: var(--gold); } .toast.error { background: color-mix(in srgb, var(--danger) 25%, var(--parchment)); }
+.toast-level { background: var(--gold); } .toast-error { background: color-mix(in srgb, var(--danger) 25%, var(--parchment)); }
 
 /* modals */
 .modal-bg { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: grid; place-items: center; z-index: 20; }
