@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.12.2 - 2026-11-19
+
+- Branch and pull request rules in CONTRIBUTING.md, plus a pull request template
+
 ## 0.12.1 - 2026-11-19
 
 - Party chat tooltips ("Chat with {name}", and the leader's) come from the theme pack instead of hard-coded English

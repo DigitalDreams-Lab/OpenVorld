@@ -15,11 +15,21 @@ Your dev vorlds go in `~/.openvorld` unless you set `OPENVORLD_HOME`, or pin a f
 { "home": "../openvorld-data", "port": 4329, "client_port": 5185 }
 ```
 
-## Before you open a pull request
+## Branches and pull requests
 
-```bash
-npm test && npm run typecheck && npm run validate
-```
+Nobody commits straight to `main`. Every change goes through a branch and a pull request.
+
+1. **Branch from the latest `main`**, named by kind: `feat/<name>` (new behaviour), `fix/<name>`, `docs/<name>` or `chore/<name>` (tooling, tests, cleanup). Example: `feat/crew-memory`.
+2. **One topic per pull request.** Keep it small. Split a big change into steps that each work on their own, and leave unrelated formatting, renames and refactors for a PR of their own.
+3. **Agree on features first.** A new feature starts as an issue (see [Guidelines](#guidelines)). Link it in the description, for example `Closes #12`.
+4. **Open it as a draft** while you work, and mark it ready for review when all of these hold:
+   - it is rebased onto the newest `main`;
+   - the checks pass: `npm test && npm run typecheck && npm run validate`;
+   - every commit bumps the version (see [Versioning](#versioning)). If `main` moved on, bump again above the newest version when you rebase;
+   - the docs say what changed (README, `docs/` or this file), when it is something a user or contributor needs to know.
+5. **Write a clear description**, using the template GitHub fills in: what changed and why, how you tested it (the commands, and what you checked by hand in the app), and screenshots for anything visible.
+6. **During review**, answer comments in the PR and push new commits. Force-push only to rebase onto `main`.
+7. **Merging** is done by a maintainer, with a merge commit (no squash), so each commit must pass the checks on its own. The branch is deleted after the merge.
 
 Tests use `node --test`, and nothing in them touches the network: model APIs are mocked with `fetch` stubs (see `tests/parties.test.mjs`).
 
