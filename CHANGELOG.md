@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.19.3 - 2026-11-20
+
+- The member panel no longer shows the job description (more room for the chat); a new agent always keeps its own workbench, and the optional Initial folder you pick in the New agent dialog becomes an extra workbench its chats start on; a chat's workbench list no longer shows the agent's own workbench as a choice: None means only its own workbench, then the agent's folders, and Add folder adds one to the agent's folders
+
 ## 0.19.2 - 2026-11-20
 
 - Removed the Looks like dropdown from onboarding and the companion's settings: it never changed the companion's art, only how it moves
