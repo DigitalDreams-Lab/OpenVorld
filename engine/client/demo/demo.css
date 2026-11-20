@@ -26,13 +26,25 @@
 
 /* Embed mode (play/?embed, inside the website's hero): a small window, so the menus and cards are drawn smaller and the
    map stays in view. The map's balloons are left alone (they follow the characters on the canvas). */
+.demo-embed { --chat-panel-width: min(420px, 70vw); --wide-chat-panel-width: var(--chat-panel-width); --chat-panel-zoom: .8; }
 .demo-embed .hud, .demo-embed .crew-bar, .demo-embed .toasts, .demo-embed .demo-tip, .demo-embed .demo-veil > .demo-card { zoom: .78; }
-.demo-embed .member-panel { zoom: .8; width: min(420px, 70vw); }
+.demo-embed .member-panel { zoom: var(--chat-panel-zoom); }
 .demo-embed .hint { display: none; }
 .demo-embed .demo-tip { bottom: 14px; }
 .demo-embed .demo-card h2 { font-size: 25px; }
 /* in the small window the crew's balloons (and Jules's Allow buttons) must never hide under the menus or the tip */
 .demo-embed .agent-balloons { z-index: 45; }
+
+/* Keep the guide and its buttons beside the chat when there is room on the map. */
+@media (min-width: 850px) {
+  :root:has(.member-panel) .demo-tip {
+    --open-chat-width: var(--chat-panel-width);
+    --map-width: calc(100vw - var(--open-chat-width) * var(--chat-panel-zoom, 1) - 24px);
+    left: calc(var(--map-width) / 2);
+    max-width: calc(var(--map-width) - 24px);
+  }
+  :root:has(.member-panel.wide) .demo-tip { --open-chat-width: var(--wide-chat-panel-width); }
+}
 /* Attract mode (behind the hero's play button): only the living map, its balloons and the celebration toasts. */
 .demo-attract .hud, .demo-attract .crew-bar, .demo-attract .hint { display: none; }
 .demo-attract, .demo-attract * { cursor: default !important; }

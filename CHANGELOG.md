@@ -2,6 +2,11 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.19.5 - 2026-11-20
+
+- Cover the active direct chat deletion guard and verify that deletion removes the log and uploads after the reply finishes.
+- Keep the demo guide beside the chat so it leaves room for the composer in short windows.
+
 ## 0.19.4 - 2026-11-20
 
 - Right-to-left text in chats and party rooms; chat tabs with delete (the chat's log and attachments are removed, a party's shared folder stays); a chat cannot be deleted while it is working or uploading

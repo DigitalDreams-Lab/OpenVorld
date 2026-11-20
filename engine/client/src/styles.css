@@ -8,6 +8,8 @@
   --mono: "JetBrains Mono", ui-monospace, monospace;
   --code: "JetBrains Mono", ui-monospace, Menlo, monospace; --code-scale: 1;
   --text: 15px;
+  --chat-panel-width: min(470px, 96vw);
+  --wide-chat-panel-width: min(max(470px, 70vw), 1040px, 96vw);
   --r-common: #9a8f7a; --r-uncommon: #c08040; --r-rare: #c9d2dc; --r-epic: #f0c040; --r-legendary: #4d7fe6; --r-mythic: #c45cff;
 }
 * { box-sizing: border-box; }
@@ -116,8 +118,8 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .coin { display: inline-flex; gap: 4px; align-items: center; }
 .hud-right { margin-left: auto; display: flex; gap: 8px; }
 
-.member-panel { position: absolute; top: 12px; right: 12px; bottom: 12px; width: min(470px, 96vw); display: flex; flex-direction: column; overflow: hidden; z-index: 5; }
-.member-panel.wide { width: min(max(470px, 70vw), 1040px, 96vw); }   /* the chat's expand button: wide enough for long replies, code and pictures, the map still shows on the left */
+.member-panel { position: absolute; top: 12px; right: 12px; bottom: 12px; width: var(--chat-panel-width); display: flex; flex-direction: column; overflow: hidden; z-index: 5; }
+.member-panel.wide { width: var(--wide-chat-panel-width); }   /* the chat's expand button: wide enough for long replies, code and pictures, the map still shows on the left */
 .member-panel.wide .messages { padding-inline: 18px; }
 .cp-head { flex: none; display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 10px 12px; border-bottom: 3px solid var(--ink); background: color-mix(in srgb, var(--parchment) 85%, var(--gold)); }
 /* Keep the canvas at its own size; stretching it also changes its intrinsic width
