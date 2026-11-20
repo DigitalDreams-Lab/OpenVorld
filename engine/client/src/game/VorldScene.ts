@@ -10,6 +10,7 @@ import { makeBuilding, makeMember, makePillar, makeWorldArt } from './sprites';
 import { companionOf, generatedRevision, movementDirection, walkFrame, IDLE_FRAME, type Direction } from './pixels';
 import { homeGeometry, propGeometry } from './geometry';
 import { clearWalk, NavigationGrid, type RouteSearch } from './navigation';
+import { SolidIndex } from './solids';
 import { companionPosition } from './companion-position';
 import { BODY_FONT } from '../theme';
 const bodyFont = () => BODY_FONT;
@@ -52,6 +53,7 @@ export class VorldScene extends Phaser.Scene {
   playerDir: Direction = 'down';
   terminal = { x: 0, y: 0 };
   homeRects: Array<{ x: number; y: number; w: number; h: number }> = [];
+  barriers = new SolidIndex(T);      // the same solids the founder bumps into, for the crew's walking and route search
   companionDir: Direction = 'down';
   beeShadow?: Phaser.GameObjects.Ellipse; beeLastX = 0; beeLean = 0; beeBobT = 0; followersKey = '';
   browsing = new Set<string>();              // members whose browser is in use right now: a globe over their head
@@ -63,7 +65,7 @@ export class VorldScene extends Phaser.Scene {
   init(data: { vorld: any; position?: {x:number;y:number} }) { this.vorld = data.vorld; this.startPosition = data.position ?? null; }
 
   create() {
-    this.npcs.clear(); this.routes.clear(); this.unsub = []; this.near = null; this.walkTo = null; this.homeRects = []; this.beeTask = null; this.beeReturn = false;
+    this.npcs.clear(); this.routes.clear(); this.unsub = []; this.near = null; this.walkTo = null; this.homeRects = []; this.barriers.clear(); this.beeTask = null; this.beeReturn = false;
     this.navigation = undefined; this.routeJobs.clear(); this.failedRoutes.clear(); this.founderMoving = false;
     this.companionOffset = undefined;
     this.playerDir = this.companionDir = 'down';
@@ -91,7 +93,7 @@ export class VorldScene extends Phaser.Scene {
     const pillar = this.add.image(cx * T + 8, cy * T + 12, 'pillar').setOrigin(0.5, 1).setScale(1 / TEX).setDepth(cy * T + 12).setInteractive({ cursor: 'pointer' });
     pillar.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; play('ui.open'); emit('parties'); });
     this.terminal = { x: pillar.x, y: pillar.y + 6 };
-    this.solids.add(this.add.zone(pillar.x, pillar.y - 4, Math.min(28, pillarSize.w - 4), 8));
+    this.addSolid(pillar.x, pillar.y - 4, Math.min(28, pillarSize.w - 4), 8);
     this.add.text(pillar.x, pillar.y - pillarSize.h - 6, this.vorld.theme.buildings?.party_hall ?? 'Party Hall', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999).setInteractive({ cursor: 'pointer' })
       .on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; play('ui.open'); emit('parties'); });
 
@@ -201,8 +203,8 @@ export class VorldScene extends Phaser.Scene {
     const building = this.add.container(bx, geo.bottom).setDepth(by - 1);
     for (const b of house?.blocks ?? []) building.add(this.add.image(b.x, -b.y, b.tex).setOrigin(0, 0).setScale(1 / TEX).setFlipX(b.flip).setData('y', -b.y).setData('overlay', b.overlay));
     const hit = this.add.zone(bx, geo.bottom - (size?.h ?? 48) / 2, size?.w ?? 48, size?.h ?? 48).setInteractive({ cursor: 'pointer' });
-    this.solids.add(this.add.zone(geo.solid.x, geo.solid.y, geo.solid.w, geo.solid.h));
-    for (const w of geo.walls) this.solids.add(this.add.zone(w.x, w.y, w.w, w.h));
+    this.addSolid(geo.solid.x, geo.solid.y, geo.solid.w, geo.solid.h);
+    for (const w of geo.walls) this.addSolid(w.x, w.y, w.w, w.h);
     const sign = this.add.text(bx, geo.top - 8, '', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999);
     const sprite = this.add.sprite(bx, by, `npc-${c.id}-down-2`).setOrigin(0.5, 1).setScale(this.charScale / CHAR_TEX).setDepth(by).setInteractive({ cursor: 'pointer' });
     sprite.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; this.tryTalk(c.id); });
@@ -228,7 +230,7 @@ export class VorldScene extends Phaser.Scene {
       const x = p.x * T + 8, y = p.y * T + 16;
       const img = this.add.image(x, y, `prop-${p.t}-${p.v}`).setOrigin(0.5, 1).setScale(1 / TEX).setDepth(y);
       const geo = propGeometry(def);
-      if (geo.solid) this.solids.add(this.add.zone(x, y - geo.footHeight / 2, geo.solid, geo.footHeight));
+      if (geo.solid) this.addSolid(x, y - geo.footHeight / 2, geo.solid, geo.footHeight);
       if (def.sway && sway++ < 90) this.tweens.add({ targets: img, angle: { from: -1.6, to: 1.6 }, duration: 1800 + (p.x * 37 + p.y * 17) % 1400, yoyo: true, repeat: -1, ease: 'Sine.inOut', delay: (p.x * 91) % 1500 });
       if (def.glow) {
         // a soft halo over lamps and crystals
@@ -393,11 +395,13 @@ export class VorldScene extends Phaser.Scene {
     if (r.balloon) this.balloon(role, r.balloonText ?? '', 1800);
   }
 
+  /** A collision zone for the founder, which the crew walks around too. */
+  addSolid(x: number, y: number, w: number, h: number) { this.solids.add(this.add.zone(x, y, w, h)); this.barriers.addCentered(x, y, w, h); }
   /** Is a map point standing room for a member (ground, path, plaza or bridge, outside every home)? */
   walkable(x: number, y: number) {
     const c = this.plan.ground[Math.floor(y / T)]?.[Math.floor(x / T)];
     if (!c || !'0123pPb'.includes(c)) return false;
-    return !this.homeRects.some((r) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h);
+    return !this.homeRects.some((r) => x > r.x && x < r.x + r.w && y > r.y && y < r.y + r.h) && !this.barriers.blocked(x, y);
   }
   placeCrewAtHome() {
     for (const n of this.npcs.values()) {
@@ -415,6 +419,12 @@ export class VorldScene extends Phaser.Scene {
   moveMember(n: Npc, distance: number) {
     if (!n.target) { this.routes.delete(n.id); this.routeJobs.delete(n.id); return; }
     const walkable = (x: number, y: number) => this.walkable(x, y);
+    if (!walkable(n.sprite.x, n.sprite.y)) {      // pushed into a prop's edge (by someone else, or a new map): step out to the nearest free spot, or no route can start
+      for (let r = 2; r <= 24; r += 2) {
+        const free = [[r, 0], [-r, 0], [0, r], [0, -r], [r, r], [-r, r], [r, -r], [-r, -r]].map(([dx, dy]) => ({ x: n.sprite.x + dx, y: n.sprite.y + dy })).find((p) => walkable(p.x, p.y));
+        if (free) { n.sprite.setPosition(free.x, free.y); break; }
+      }
+    }
     let route = this.routes.get(n.id);
     if (route?.points[0] && !clearWalk(n.sprite, route.points[0], walkable)) { this.routes.delete(n.id); route = undefined; }
     const now = performance.now();

@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.19.1 - 2026-11-20
+
+- Crew walking to you no longer cut through props, the Party Hall's pillar or house walls: the walking test now knows everything you bump into, so routes go around it
+
 ## 0.19.0 - 2026-11-20
 
 - Parties get a shared folder (parties/<id>/shared) that is kept after the party: files the founder attaches, pictures from tools and files a member names in share are copied there, the room says who shared what and where, every member reads it with its own tools, and an Open folder button shows it
