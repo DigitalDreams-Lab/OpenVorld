@@ -98,6 +98,21 @@ export function mentionOf(ctx, text, members, self = null) {
   return best?.id ?? null;
 }
 
+/** `@all`, `@everyone`, `@everybody`, `@team` or `@crew` in the founder's message (code blocks do not count), unless a member goes by that name. */
+const ALL_WORDS = /(?:^|[^\p{L}\p{N}_])@(all|everyone|everybody|team|crew)(?![\p{L}\p{N}_])/iu;
+export function asksEveryone(ctx, text, members) {
+  const hit = ALL_WORDS.exec(String(text ?? '').replace(/```[\s\S]*?```/g, ' ').replace(/`[^`]*`/g, ' '));
+  if (!hit) return false;
+  const word = hit[1].toLowerCase();
+  return !members.some((id) => { const m = ctx.member(id); return m && [m.name, m.name.split(/\s+/)[0]].some((a) => a.toLowerCase() === word); });
+}
+
+/** Who answers a founder's message: everyone, in the party's order, for `@all`; else the first @mentioned member, else the leader. Only the founder can ask everyone. */
+export function founderSpeakers(ctx, text, members) {
+  if (asksEveryone(ctx, text, members)) return [...members];
+  return [mentionOf(ctx, text, members) ?? members[0]];
+}
+
 /** The room as plain lines, newest last: what the member is told to react to. */
 function transcript(ctx, tid) {
   const { message_chars: max, room_events: n } = cfg(ctx);
@@ -144,7 +159,7 @@ export async function runParty(ctx, tid, text, files, emit) {
   const game = gameFor(ctx), notes = [];
   game.event('chat.sent').xp('chat_message', notes);
   const n0 = game.check(notes); if (n0.length) emit({ type: 'game', notes: n0, state: game.snapshot() });
-  await chain(ctx, tid, party, members, mentionOf(ctx, msg, members) ?? members[0], files, emit);
+  await chain(ctx, tid, party, members, founderSpeakers(ctx, msg, members), files, emit);
 }
 
 /** The founder answered a writ of a member in the room: that member carries on. */
@@ -153,35 +168,38 @@ export async function resumeParty(ctx, tid, role, emit) {
   const party = getParty(ctx, thread.party);
   const members = party.members.filter((m) => ctx.member(m));
   if (!members.includes(role) || partyBusy(tid)) return;
-  await chain(ctx, tid, party, members, role, [], emit);
+  const waiting = (thread.queue ?? []).filter((m) => members.includes(m) && m !== role);   // @all: the others still wait for their turn
+  await chain(ctx, tid, party, members, [role, ...waiting], [], emit);
 }
 
 async function chain(ctx, tid, party, members, first, files, emit) {
   chains.add(tid); stopped.delete(tid);
   const { max_turns: cap } = cfg(ctx);
   const spoke = new Set();
-  let speaker = first, turns = 0, paused = false, limit = false, ok = true;
+  const queue = [first].flat().filter(Boolean), asked = new Set(queue);   // asked: the founder's own picks, who also get the attached files
+  let turns = 0, paused = false, limit = false, ok = true;
   // A conversation brings the party to the founder. Keep them there between replies instead of
   // replacing each member's movement queue with a trip to the hall and another trip home.
   emit({ type: 'party.gather', thread: tid, party: party.id, members });
   try {
-    while (speaker && !stopped.has(tid)) {
+    while (queue.length && !stopped.has(tid)) {
+      const speaker = queue.shift();
       if (turns >= cap) { limit = true; break; }
       turns++;
-      updateThread(ctx, tid, { speaker });
-      const r = await runTurn(ctx, tid, '', emit, turns === 1 ? files : [], { fromFounder: false, role: speaker, prompt: roomPrompt(ctx, party, tid, speaker), record: false })
+      updateThread(ctx, tid, { speaker, queue: [...queue] });
+      const r = await runTurn(ctx, tid, '', emit, asked.delete(speaker) ? files : [], { fromFounder: false, role: speaker, prompt: roomPrompt(ctx, party, tid, speaker), record: false })
         .catch((e) => ({ ok: false, error: e.message }));
       if (!r.ok) { ok = false; break; }
       spoke.add(speaker);
-      if (openWrits(ctx, tid).some((w) => w.role === speaker)) { paused = true; break; }
+      if (openWrits(ctx, tid).some((w) => w.role === speaker)) { paused = true; break; }   // the queue stays saved on the thread: answering the writ carries on with the rest
       const next = mentionOf(ctx, r.shown, members, speaker);
       if (next) gameFor(ctx).event('party.handoff');
-      speaker = next;
+      if (next && !queue.includes(next)) queue.push(next);
     }
   } finally {
     chains.delete(tid);
     const wasStopped = stopped.delete(tid);
-    try { updateThread(ctx, tid, { speaker: null, state: 'waiting' }); } catch { /* the chat was deleted */ }
+    try { updateThread(ctx, tid, { speaker: null, state: 'waiting', queue: paused ? queue : [] }); } catch { /* the chat was deleted */ }
     if (limit) appendEvent(ctx, tid, { type: 'party.paused', turns, text: `The party paused after ${turns} turns. Say "continue" to let it carry on.` });
     if (ok && !paused && !limit && !wasStopped && spoke.size) {
       const game = gameFor(ctx), notes = [];

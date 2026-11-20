@@ -37,7 +37,7 @@ vorlds/<id>/
 | --- | --- |
 | `index.mjs` | HTTP routes and the WebSocket. Binds to 127.0.0.1, requires the per-launch token on every call, and checks Host. |
 | `vorld.mjs` | Loads packs, lists and creates vorlds, and builds the vorld context (`ctx`) every other module receives. |
-| `parties.mjs` | Parties and their shared room: save a party, run a room (the leader answers, `@Name` hands over, no mention ends the job), pause on a writ, join the founder and stay nearby between messages. |
+| `parties.mjs` | Parties and their shared room: save a party, run a room (the leader answers, `@Name` hands over, `@all` from the founder asks everyone, no mention ends the job), pause on a writ, join the founder and stay nearby between messages. |
 | `threads.mjs` | Conversations as JSONL event logs. |
 | `agents/runner.mjs` | One turn for one member: builds the system prompt, picks the driver and stores the reply as ordered steps. |
 | `agents/drivers/` | `claude.mjs`, `codex.mjs`, `antigravity.mjs`, `opencode.mjs` (headless CLIs), `command.mjs` (any other harness a pack describes: prompt in, reply out), `openai.mjs` (HTTP plus an engine-run tool loop) and `scripted.mjs` (no brain yet). CLIs start through `cross-spawn`, so Windows `.cmd` shims work too, which is also why no argument may hold a newline (`cmd.exe` cuts the command line there): Claude Code reads its system prompt from a temporary file, and Codex and OpenCode get their prompts on stdin. |
@@ -65,10 +65,10 @@ The founder reads, edits and removes all of it in the member's settings (Memory)
 
 ### A party room
 
-1. The founder writes in a party chat (a thread of kind `party`, one shared transcript with every message tagged by speaker). `runParty` stores the message and picks the first speaker: the member the founder `@mentions`, else the leader (the first member).
+1. The founder writes in a party chat (a thread of kind `party`, one shared transcript with every message tagged by speaker). `runParty` stores the message and picks the speakers: every member in party order when the founder writes `@all` (or `@everyone`, `@team`, `@crew`; a code block, an email or a member with that name does not count), else the member the founder `@mentions`, else the leader (the first member). Only the founder can ask everyone: an `@all` in a member's reply is not a mention. The members still waiting are kept on the thread (`queue`).
 2. Each speaker gets one turn through `runTurn` with `role` set to them and a prompt made of the party's goal, its members and the latest room messages. Room turns keep no CLI session of their own; the transcript is the memory.
 3. When the reply arrives, the next speaker is the first teammate `@mentioned` in it (never yourself, never inside code). No mention ends the job. `party.max_turns` (default 12) stops a ping-pong; the room says it paused and a "continue" resumes it.
-4. A member who asks for access pauses the room at a writ card. Answering it calls `resumeParty` for that member.
+4. A member who asks for access pauses the room at a writ card. Answering it calls `resumeParty` for that member, and the members still waiting from an `@all` take their turns after it.
 5. When the room starts, a `party.gather` event brings its members to the founder. They stay nearby between replies until dismissed, rather than walking away to the hall or home. A finished job earns `party.job_done` and XP.
 
 ## Client (`engine/client/src`)

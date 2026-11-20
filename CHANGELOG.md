@@ -2,6 +2,14 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.18.0 - 2026-11-20
+
+- Chats: a button in the chat header makes the member chat or party room wider (up to 70% of the screen); the choice is kept in this browser
+
+## 0.17.0 - 2026-11-20
+
+- Parties: @all (or @everyone, @team, @crew) in your message gives every member a turn, in party order; it completes in the composer and shows how many will answer; a writ in the middle keeps the others waiting
+
 ## 0.16.3 - 2026-11-20
 
 - Pages with very large response headers (Google, YouTube) load in the crew browser: pages now load natively and redirects are checked inside Chrome, popups included
