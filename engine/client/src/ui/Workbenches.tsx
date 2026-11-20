@@ -73,7 +73,7 @@ export function Workbenches({ id }: { id: string }) {
   );
 }
 
-function TypedFolder({ initial, onUse, onCancel }: { initial: string; onUse: (p: string) => void; onCancel: () => void }) {
+export function TypedFolder({ initial, onUse, onCancel }: { initial: string; onUse: (p: string) => void; onCancel: () => void }) {
   const [p, setP] = useState(initial);
   return (
     <>
