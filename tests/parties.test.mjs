@@ -185,3 +185,55 @@ test('answering a writ while the member is still mid-turn still carries the work
     for (let i = 0; i < 200 && (P.partyBusy(tid) || getThread(ctx, tid).state === 'working'); i++) await new Promise((r) => setTimeout(r, 25));
   }
 });
+
+test('@all: the founder can ask everyone; a code block, an email or a member named like it does not', () => {
+  const { ctx, ada, bo, cy } = crewOf();
+  const all = [ada, bo, cy];
+  for (const word of ['@all', '@everyone', '@Everybody', '@team', '@crew']) assert.deepEqual(P.founderSpeakers(ctx, `${word} please check this`, all), all, word);
+  assert.deepEqual(P.founderSpeakers(ctx, 'Thanks @all!', all), all, 'punctuation after it is fine');
+  assert.deepEqual(P.founderSpeakers(ctx, 'run `@all` or ```\n@all\n``` in code', all), [ada], 'code is not a mention');
+  assert.deepEqual(P.founderSpeakers(ctx, 'write to name@all.example', all), [ada], 'an email is not a mention');
+  assert.deepEqual(P.founderSpeakers(ctx, 'hello @allison', all), [ada], 'a longer word is not a mention');
+  assert.deepEqual(P.founderSpeakers(ctx, 'everyone, what do you think?', all), [ada], 'only the @ form asks everyone');
+  assert.deepEqual(P.founderSpeakers(ctx, '@Cy first', all), [cy], 'one @mention still picks one member');
+  assert.deepEqual(P.founderSpeakers(ctx, 'no mention', all), [ada], 'no mention: the leader');
+  assert.deepEqual(P.founderSpeakers(ctx, '@all and @Cy', all), all, 'everyone wins over one name');
+  const named = makeVorld({ name: 'Team Test', crew: [{ name: 'Team', job: 'Lead' }, { name: 'Bo', job: 'Editor' }] });
+  const [lead, bo2] = named.crew.filter((c) => c.role === 'agent').map((c) => c.id);
+  assert.deepEqual(P.founderSpeakers(named, '@Team hello', [lead, bo2]), [lead], 'a member called Team is a person, not the crew');
+});
+
+test('@all in the room: everyone answers in order, an @all in a reply asks nobody, and a writ in the middle keeps the others waiting', async (t) => {
+  const { startServer, call, newVorld } = await import('./helpers/server.mjs');
+  await startServer(t);
+  const { id, root } = await newVorld({ template: 'blank', crew: [{ name: 'Ada', job: 'Writer' }, { name: 'Bo', job: 'Editor' }, { name: 'Cy', job: 'Checker' }], brain: { provider: 'openai-compatible', model: 'party-test' } });
+  const ctx = vorldCtx(id, { fresh: true });
+  saveVorld(ctx, (d) => { d.providers = [{ id: 'openai-compatible', base_url: 'https://example.invalid/v1' }]; });
+  const [ada, bo, cy] = ctx.crew.filter((c) => c.role === 'agent').map((c) => c.id);
+  const p = (await call('POST', `${root}/parties`, { name: 'Trio', goal: 'g', members: [ada, bo, cy] })).data;
+  const tid = (await call('POST', `${root}/parties/${p.added}/chats`, {})).data.id;
+  const notes = fs.mkdtempSync(path.join(os.tmpdir(), 'ov-notes-'));
+  const spoke = [];
+  let boAsked = false;
+  t.mock.method(globalThis, 'fetch', async (_url, options) => {
+    const body = JSON.stringify(JSON.parse(options.body).messages);
+    const who = [ada, bo, cy].find((m) => body.includes(`You are ${ctx.member(m).name} in the party`));
+    spoke.push(who);
+    if (who === ada) return sse('Hi from Ada. @all keep it short.');   // a member's @all must not ask everyone again
+    if (who === bo && !boAsked) { boAsked = true; return sse('I need to read a folder.\n```ov\n{"access":[{"capability":"fs.read","scope":' + JSON.stringify(notes) + ',"why":"to read it"}]}\n```'); }
+    return sse(`Done from ${ctx.member(who).name}.`);
+  });
+  const settle = async (done) => { for (let i = 0; i < 300 && !done(); i++) await new Promise((r) => setTimeout(r, 20)); };
+
+  await call('POST', `${root}/threads/${tid}/messages`, { text: '@all status please' });
+  await settle(() => getThread(ctx, tid).queue?.length === 1 && !P.partyBusy(tid));
+  assert.deepEqual(spoke, [ada, bo], 'Ada answered, Bo asked for a writ and the room paused');
+  assert.deepEqual(getThread(ctx, tid).queue, [cy], 'Cy is still waiting for the turn');
+
+  const ask = readEvents(ctx, tid).find((e) => e.type === 'writ.request');
+  assert.ok(ask, 'Bo\'s request is in the room');
+  assert.equal((await call('POST', `${root}/threads/${tid}/writs/${ask.id}`, { answer: 'once' })).status, 200);
+  await settle(() => spoke.length >= 4 && !P.partyBusy(tid));
+  assert.deepEqual(spoke, [ada, bo, bo, cy], 'after the answer Bo carries on, then Cy gets the turn Ada\'s @all did not give twice');
+  assert.deepEqual(getThread(ctx, tid).queue ?? [], [], 'nobody is left waiting');
+});

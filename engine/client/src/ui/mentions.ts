@@ -15,3 +15,7 @@ export function activeMention(text: string, caret: number): ActiveMention | null
 export function mentionSuggestions(members: MentionMember[], query: string): MentionMember[] {
   return members.filter(m => m.name.toLocaleLowerCase().startsWith(query) || m.id.toLocaleLowerCase().startsWith(query)).slice(0, 8);
 }
+
+/** The pseudo-member that completes to `@all`: in a party room it asks every member (the engine decides, see parties.mjs). */
+export const EVERYONE: MentionMember = { id: 'all', name: 'all', job: 'Everyone in this party' };
+export const asksEveryone = (text: string) => /(?:^|[^\p{L}\p{N}_])@(all|everyone|everybody|team|crew)(?![\p{L}\p{N}_])/iu.test(text.replace(/```[\s\S]*?```/g, ' ').replace(/`[^`]*`/g, ' '));
