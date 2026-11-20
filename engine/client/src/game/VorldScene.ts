@@ -40,6 +40,7 @@ export class VorldScene extends Phaser.Scene {
   rotationReactions = new Map<string, { target: Phaser.GameObjects.Sprite; tween: Phaser.Tweens.Tween }>();
   solids!: Phaser.Physics.Arcade.StaticGroup;
   prompt!: Phaser.GameObjects.Text;
+  private labelDirection?: HTMLElement;
   near: string | null = null;
   unsub: Array<() => void> = [];
   walkT = 0;
@@ -65,6 +66,7 @@ export class VorldScene extends Phaser.Scene {
   init(data: { vorld: any; position?: {x:number;y:number} }) { this.vorld = data.vorld; this.startPosition = data.position ?? null; }
 
   create() {
+    this.labelDirection = document.createElement('bdi');
     this.npcs.clear(); this.routes.clear(); this.unsub = []; this.near = null; this.walkTo = null; this.homeRects = []; this.barriers.clear(); this.beeTask = null; this.beeReturn = false;
     this.navigation = undefined; this.routeJobs.clear(); this.failedRoutes.clear(); this.founderMoving = false;
     this.companionOffset = undefined;
@@ -94,7 +96,9 @@ export class VorldScene extends Phaser.Scene {
     pillar.on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; play('ui.open'); emit('parties'); });
     this.terminal = { x: pillar.x, y: pillar.y + 6 };
     this.addSolid(pillar.x, pillar.y - 4, Math.min(28, pillarSize.w - 4), 8);
-    this.add.text(pillar.x, pillar.y - pillarSize.h - 6, this.vorld.theme.buildings?.party_hall ?? 'Party Hall', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999).setInteractive({ cursor: 'pointer' })
+    const hallSign = this.add.text(pillar.x, pillar.y - pillarSize.h - 6, '', this.labelStyle(pal, 7)).setOrigin(0.5).setDepth(9999);
+    this.setMapLabel(hallSign, this.vorld.theme.buildings?.party_hall ?? 'Party Hall');
+    hallSign.setInteractive({ cursor: 'pointer' })
       .on('pointerdown', (p: Phaser.Input.Pointer) => { if (!this.isOnCanvas(p)) return; play('ui.open'); emit('parties'); });
 
     // homes take the plan's plots in crew order (a crew larger than the map's plots has no house for the rest)
@@ -189,6 +193,15 @@ export class VorldScene extends Phaser.Scene {
     return { fontFamily: bodyFont(), fontStyle: '700', fontSize: `${Math.max(L.min ?? 4, (size + 1) * k).toFixed(2)}px`, color: pal.parchment ?? '#fff', stroke: pal.ink ?? '#000', strokeThickness: (L.stroke ?? 2.5) * Math.min(1, k + 0.15), resolution: ZOOM * window.devicePixelRatio * 1.5 };
   }
 
+  private setMapLabel(label: Phaser.GameObjects.Text, text: string) {
+    if (label.text === text) return;
+    if (this.labelDirection) {
+      this.labelDirection.textContent = text;
+      label.setRTL(this.labelDirection.matches(':dir(rtl)'));
+    }
+    label.setText(text);
+  }
+
   addHome(c: any, slot: { x: number; y: number }, pal: any, i: number) {
     const look = c.look;
     makeMember(this, `npc-${c.id}`, c.id);
@@ -278,8 +291,8 @@ export class VorldScene extends Phaser.Scene {
       const c: any = byId.get(n.id);
       if (!c) continue;
       n.data = c;
-      n.label.setText(c.name);
-      n.sign.setText(c.home);
+      this.setMapLabel(n.label, c.name);
+      this.setMapLabel(n.sign, c.home);
       if (!n.built) { n.built = true; this.buildUp(n.building, true); }
       if (n.mark) { n.mark.destroy(); n.mark = undefined; }
       const mark = this.attention.has(n.id) ? '!' : this.browsing.has(n.id) ? '🌐' : null;
@@ -746,7 +759,7 @@ export class VorldScene extends Phaser.Scene {
       // at the terminal they spread out, so first names fit
       n.label.setPosition(n.sprite.x, n.sprite.y + 2).setVisible(n.sprite.visible && n.mode !== 'summoned');
       const want = n.mode === 'gather' ? n.data.name.split(/\s+/)[0] : n.data.name;
-      if (n.label.text !== want) n.label.setText(want);
+      this.setMapLabel(n.label, want);
       if (n.mark) n.mark.setX(n.sprite.x);
       if (dp < bestD) { bestD = dp; best = n.id; }
     }
@@ -763,7 +776,7 @@ export class VorldScene extends Phaser.Scene {
     }
     if (best) {
       const n = this.npcs.get(best)!;
-      this.prompt.setVisible(true).setPosition(n.sprite.x, n.sprite.y - n.sprite.displayHeight - 4).setText(`E · ${n.data.name}`);
+      this.prompt.setVisible(true).setPosition(n.sprite.x, n.sprite.y - n.sprite.displayHeight - 4).setText(`E · \u2068${n.data.name}\u2069`);
     } else this.prompt.setVisible(false);
   }
 }

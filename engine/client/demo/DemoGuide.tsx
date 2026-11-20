@@ -4,7 +4,7 @@ import { useEffect, useState, useSyncExternalStore } from 'react';
 import { setState, useStore } from '../src/store';
 import { play } from '../src/audio/sfx';
 import { api } from './api';
-import { EMBED, IDS, getPhase, setPhase, subscribePhase } from './engine';
+import { EMBED, IDS, createThread, getPhase, setPhase, subscribePhase, threads } from './engine';
 
 const DOWNLOAD = 'https://github.com/DigitalDreams-Lab/OpenVorld/releases/latest';
 /** The full-page demo (from the website's hero, where the demo runs in a small window). */
@@ -29,6 +29,7 @@ export function DemoGuide() {
 
   const openRoom = () => setState({ partyId: IDS.party, talkingTo: null, modal: null });
   const start = async () => {
+    if (!threads.has(IDS.room)) IDS.room = createThread({ kind: 'party', party: IDS.party }).id;
     play('ui.open'); if (!EMBED) openRoom(); setPhase('running');
     try { await api(`/vorlds/${IDS.vorld}/threads/${IDS.room}/messages`, { body: { text: FIRST_MESSAGE } }); }
     catch { setPhase('idle'); }

@@ -45,6 +45,6 @@ export function MessageFiles({files}:{files?:Attachment[]}) {
   if(!files?.length)return null;
   return <div className="message-files">{files.map(f=><div className="message-file" key={f.id}>
     {(f.type.startsWith('image/')||['image','svg'].includes(previewKind(f.name)??''))&&<MessageImage src={f.url} alt={f.name}/>}
-    <FileLink url={f.url} name={f.name}>{f.name}</FileLink><small>{fileSize(f.size)}</small>
+    <FileLink url={f.url} name={f.name}><bdi>{f.name}</bdi></FileLink><small>{fileSize(f.size)}</small>
   </div>)}</div>;
 }

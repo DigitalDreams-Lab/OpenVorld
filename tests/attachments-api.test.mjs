@@ -32,4 +32,14 @@ test('the authenticated upload/download/message routes keep files in their own c
   assert.ok(loaded.events.some(e=>e.type==='agent.text'));
   assert.equal((await call('GET',root+`/threads/${thread.id}/file?path=${encodeURIComponent('/etc/passwd')}`)).status,403);
   assert.equal((await call('GET',saved.data.url)).status,200,'chats keep their files');
+  const chatUrl = root + `/threads/${thread.id}`;
+  assert.equal((await call('DELETE', chatUrl, undefined, {}, false)).status, 401);
+  assert.equal((await call('DELETE', chatUrl)).status, 200);
+  assert.equal((await call('GET', chatUrl)).status, 404);
+  assert.equal((await call('POST', chatUrl + '/messages', { text: 'hello again' })).status, 404);
+  assert.equal((await call('GET', saved.data.url)).status, 404);
+  assert.equal(fs.existsSync(path.join(ctx.dir, 'threads', `${thread.id}.jsonl`)), false);
+  assert.equal(fs.existsSync(path.join(ctx.dir, 'threads', `${thread.id}.files`)), false);
+  assert.equal(fs.readFileSync(original, 'utf8'), 'Original reference');
+  assert.deepEqual((await call('GET', root + '/threads')).data.map((t) => t.id), [other.id]);
 });

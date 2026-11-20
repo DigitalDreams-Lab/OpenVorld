@@ -145,13 +145,23 @@ test('the API: form a party, open a chat, write in it, and the room answers', as
   assert.deepEqual((await call('GET', `${root}/parties/${pid}/chats`)).data.map((c) => c.id), [chat.id]);
   assert.equal((await call('POST', `${root}/parties/nope-nope/chats`, {})).status, 404);
 
-  t.mock.method(globalThis, 'fetch', async () => sse('Roses. @Bo polish it.'));
+  let resume;
+  const pending = new Promise((resolve) => { resume = resolve; });
+  t.mock.method(globalThis, 'fetch', async () => { await pending; return sse('Roses. @Bo polish it.'); });
   assert.equal((await call('POST', `${root}/threads/${chat.id}/messages`, { text: 'Write a poem' })).status, 200);
+  try {
+    assert.equal((await call('DELETE', `${root}/threads/${chat.id}`)).status, 409);
+  } finally {
+    resume();
+  }
   for (let i = 0; i < 100 && (P.partyBusy(chat.id) || readEvents(ctx, chat.id).filter((e) => e.type === 'agent.text').length < 2); i++) await new Promise((r) => setTimeout(r, 20));
   const said = readEvents(ctx, chat.id).filter((e) => e.type === 'agent.text').map((e) => e.role);
   assert.deepEqual(said.slice(0, 2), [ada, bo], 'the leader answered and the teammate she mentioned answered next');
   assert.ok(said.length <= 12, 'the room stopped by itself');
   while (P.partyBusy(chat.id)) await new Promise((r) => setTimeout(r, 20));
+
+  assert.equal((await call('DELETE', `${root}/threads/${chat.id}`)).status, 200);
+  assert.deepEqual((await call('GET', `${root}/parties/${pid}/chats`)).data, []);
 
   const removed = await call('DELETE', `${root}/parties/${pid}`);
   assert.deepEqual(removed.data.parties, []);

@@ -25,12 +25,25 @@ function writeIndex(ctx, list) {
 }
 
 export function listThreads(ctx, role, kind) {
-  return readIndex(ctx).filter((t) => (!role || t.role === role) && (!kind || t.kind === kind)).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
+  return readIndex(ctx).filter((t) => !t.deleting && (!role || t.role === role) && (!kind || t.kind === kind)).sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
 export function getThread(ctx, id) {
-  const t = readIndex(ctx).find((x) => x.id === id);
+  const t = readIndex(ctx).find((x) => x.id === id && !x.deleting);
   if (!t) throw Object.assign(new Error('thread not found'), { status: 404 });
   return t;
+}
+export function deleteThread(ctx, id) {
+  const list = readIndex(ctx);
+  const thread = list.find((t) => t.id === id);
+  if (!thread || !/^[a-f0-9-]{36}$/i.test(id) || !['chat', 'party'].includes(thread.kind)) throw Object.assign(new Error('chat not found'), { status: 404 });
+  // Hide the chat before touching its files. Keep the marker if cleanup fails so DELETE can finish on retry.
+  if (!thread.deleting) {
+    thread.deleting = true;
+    writeIndex(ctx, list);
+  }
+  fs.rmSync(path.join(dirOf(ctx), `${id}.jsonl`), { force: true });
+  fs.rmSync(path.join(dirOf(ctx), `${id}.files`), { recursive: true, force: true });
+  writeIndex(ctx, list.filter((t) => t.id !== id));
 }
 export function createThread(ctx, { role, kind = 'chat', title, ...extra }) {
   const now = new Date().toISOString();
@@ -40,7 +53,7 @@ export function createThread(ctx, { role, kind = 'chat', title, ...extra }) {
 }
 export function updateThread(ctx, id, patch) {
   const list = readIndex(ctx);
-  const i = list.findIndex((x) => x.id === id);
+  const i = list.findIndex((x) => x.id === id && !x.deleting);
   if (i < 0) throw Object.assign(new Error('thread not found'), { status: 404 });
   list[i] = { ...list[i], ...patch, updated_at: new Date().toISOString() };
   writeIndex(ctx, list);

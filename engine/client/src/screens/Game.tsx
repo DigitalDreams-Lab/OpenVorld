@@ -67,6 +67,15 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
       if (m.type === 'connection.restored') { setState((s) => ({ threadsVersion: s.threadsVersion + 1, live: {} })); void refreshVorld(); void loadOpenWrits(wid); }
       if (m.type === 'vorld') void refreshVorld().catch((e) => toast({ kind: 'error', title: e.message }));
       if (m.type === 'thread.event') handleThreadEvent(m);
+      if (m.type === 'thread.deleted') {
+        setOpenWrits((list) => list.filter((w) => w.thread !== m.thread));
+        setState((s) => {
+          const live = { ...s.live };
+          delete live[m.thread];
+          const activityNotes = Object.fromEntries(Object.entries(s.activityNotes).filter(([, note]) => note.thread !== m.thread));
+          return { live, activityNotes, threadsVersion: s.threadsVersion + 1 };
+        });
+      }
       if (m.type === 'party.gather') emit('summon', { ids: m.members });
       if (m.type === 'browser') handleBrowser(m);
       if (m.type === 'profile') setState(s => ({ vorld: s.vorld ? { ...s.vorld, profile: m.profile } : s.vorld }));

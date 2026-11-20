@@ -48,7 +48,7 @@ export function HtmlPreview({ source, title = 'HTML preview', fileUrl }: { sourc
 
 export function TablePreview({ text, delimiter = ',' }: { text: string; delimiter?: string }) {
   const rows = tableRows(text, delimiter);
-  return <div className="table-preview"><div className="md-table"><table><thead><tr>{rows[0]?.map((cell, i) => <th key={i}>{cell || `Column ${i + 1}`}</th>)}</tr></thead><tbody>{rows.slice(1).map((row, i) => <tr key={i}>{row.map((cell, j) => <td key={j}>{cell}</td>)}</tr>)}</tbody></table></div>{rows.length >= 101 && <small>Showing the first 100 rows.</small>}</div>;
+  return <div className="table-preview"><div className="md-table"><table><thead><tr>{rows[0]?.map((cell, i) => <th key={i} dir="auto">{cell || `Column ${i + 1}`}</th>)}</tr></thead><tbody>{rows.slice(1).map((row, i) => <tr key={i}>{row.map((cell, j) => <td key={j} dir="auto">{cell}</td>)}</tr>)}</tbody></table></div>{rows.length >= 101 && <small>Showing the first 100 rows.</small>}</div>;
 }
 
 export function InlinePreview({ kind, source, language, thread }: { kind: PreviewKind; source: string; language?: string; thread?: string }) {
@@ -78,7 +78,7 @@ export function PreviewDialog({ name, onClose, children, download }: { name: str
   }, [onClose]);
   return createPortal(<div className="file-preview-bg" role="presentation" onPointerDown={event => event.stopPropagation()} onClick={event => { if (event.target === event.currentTarget) onClose(); }}>
     <section className="file-preview-dialog" role="dialog" aria-modal="true" aria-label={`Preview ${name}`} onClick={event => event.stopPropagation()}>
-      <header><strong title={name}>{name}</strong><span>{download}<button ref={close} type="button" className="btn small" onClick={onClose}>Close preview ✕</button></span></header>
+      <header><strong dir="auto" title={name}>{name}</strong><span>{download}<button ref={close} type="button" className="btn small" onClick={onClose}>Close preview ✕</button></span></header>
       <div className="file-preview-body">{children}</div>
     </section>
   </div>, document.body);
@@ -113,6 +113,6 @@ export function FilePreview({ url, name, onClose, download }: { url: string; nam
       : content.kind === 'audio' ? <audio controls preload="metadata" src={content.object} onError={()=>setError('This audio format cannot play here. Download it to open it.')}>Audio preview unavailable.</audio>
       : content.kind === 'video' ? <video controls preload="metadata" src={content.object} onError={()=>setError('This video format cannot play here. Download it to open it.')}>Video preview unavailable.</video>
       : content.kind === 'pdf' ? <iframe className="pdf-preview" title={`${name} preview`} referrerPolicy="no-referrer" src={content.object} />
-      : <pre className="file-preview-text">{content.text}</pre>}
+      : <pre className="file-preview-text" dir={content.kind === 'text' ? 'auto' : 'ltr'}>{content.text}</pre>}
   </PreviewDialog>;
 }

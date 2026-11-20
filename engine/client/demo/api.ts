@@ -2,7 +2,7 @@
 // the demo engine instead of the local OpenVorld server. Reads come from what the real engine made; the story's turns
 // come from scenario.ts; anything that would change the vorld politely says it is a demo.
 import { DEMO_ONLY, F, IDS, append, createThread, files, gameState, listThreads, listen, openWrits, sendEvent, threadOf } from './engine';
-import { chatMessage, partyMessage, stop, writAnswered } from './scenario';
+import { chatMessage, deleteDemoChat, partyMessage, stop, writAnswered } from './scenario';
 
 const ART = `${import.meta.env.BASE_URL}art/`;
 const fail = (message: string, status = 400) => Object.assign(new Error(message), { status });
@@ -28,6 +28,7 @@ const routes: Route[] = [
     return createThread({ role: b.role, kind: 'chat', title: null, bench });
   }],
   ['GET', new RegExp(`^${V}/threads/([^/]+)$`), (m) => { const t = threadOf(m[1]); return { thread: t.thread, events: [...t.events] }; }],
+  ['DELETE', new RegExp(`^${V}/threads/([^/]+)$`), (m) => deleteDemoChat(m[1])],
   ['POST', new RegExp(`^${V}/threads/([^/]+)/messages$`), (m, b) => {
     const t = threadOf(m[1]), text = String(b?.text ?? '').trim();
     if (!text) throw fail('empty message');

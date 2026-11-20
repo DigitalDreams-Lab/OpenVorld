@@ -22,7 +22,7 @@ export function RequestDialog() {
   return <dialog ref={dialog} className="modal panel request-dialog" aria-label={`${who}'s request`}
     onPointerDown={event => event.stopPropagation()} onClick={event => event.stopPropagation()}
     onKeyDown={event => { if (event.key === 'Escape') event.stopPropagation(); }} onCancel={event => { event.preventDefault(); close(); }}>
-    <header className="row between"><h2>{who}'s request</h2><IconButton icon="close" title="Close request" onClick={close} /></header>
+    <header className="row between"><h2><bdi>{who}</bdi>'s request</h2><IconButton icon="close" title="Close request" onClick={close} /></header>
     <WritCard key={ask.id} ask={ask} wid={wid} thread={ask.thread} who={who} />
   </dialog>;
 }
@@ -34,6 +34,6 @@ export function PendingRequests({ role, threads }: { role?: string; threads?: st
   if (!requests.length) return null;
   return <div className="pending-requests" aria-label="Pending approvals">{requests.map(ask => {
     const who = memberOf(ask.role)?.name ?? ask.role;
-    return <button key={ask.id} type="button" className="btn small primary" title={ask.scope} aria-label={`${who}: review request for ${ask.scope}`} onClick={() => openRequest(ask)}>{who}: review request</button>;
+    return <button key={ask.id} type="button" className="btn small primary" title={ask.scope} aria-label={`${who}: review request for ${ask.scope}`} onClick={() => openRequest(ask)}><bdi>{who}</bdi>: review request</button>;
   })}</div>;
 }

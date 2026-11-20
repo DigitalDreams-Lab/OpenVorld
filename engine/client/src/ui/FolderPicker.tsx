@@ -69,7 +69,7 @@ export function FolderPicker({ value, onChange, capability = 'fs.write', placeho
           <ul className="fp-list" role="listbox" aria-label="Folders">
             {list?.error && <li className="fp-note">{list.error}</li>}
             {list?.entries.map((e) => (
-              <li key={e.path}><button type="button" className="fp-item" onClick={() => go(e.path)}><span aria-hidden>▸</span><span className="fp-name">{e.name}</span>{!e.ok && <span className="fp-lock" title={str('folder.locked', {}, 'Can never be shared with a crew member')}>🔒</span>}</button></li>
+              <li key={e.path}><button type="button" className="fp-item" onClick={() => go(e.path)}><span aria-hidden>▸</span><span className="fp-name" dir="auto">{e.name}</span>{!e.ok && <span className="fp-lock" title={str('folder.locked', {}, 'Can never be shared with a crew member')}>🔒</span>}</button></li>
             ))}
           </ul>
         </div>

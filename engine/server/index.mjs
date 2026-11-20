@@ -9,7 +9,7 @@ import { WebSocketServer } from 'ws';
 import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMember, detected, migrateVorlds, addYourselfMessage } from './vorld.mjs';
 import { atlasFor, sheetImage } from './art.mjs';
 import { gameFor } from './game.mjs';
-import { listThreads, createThread, getThread, updateThread, readEvents, appendEvent } from './threads.mjs';
+import { listThreads, createThread, deleteThread, getThread, updateThread, readEvents, appendEvent } from './threads.mjs';
 import { runTurn, stopTurn, stopAllTurns, activeTurnCount, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
 import { openShared } from './party-files.mjs';
 import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, stopAllParties, partyBusy } from './parties.mjs';
@@ -281,17 +281,26 @@ route('POST', '/api/vorlds/:id/threads', async ({ p, req }) => {
 });
 // the active workbench of a chat: picked on the new chat page, locked once the chat has begun (its CLI session belongs to that folder)
 route('PUT', '/api/vorlds/:id/threads/:tid', async ({ p, req }) => {
-  const ctx = W(p), t = getThread(ctx, p.tid), { bench } = await body(req);
+  const { bench } = await body(req), ctx = W(p), t = getThread(ctx, p.tid);
   if (t.kind !== 'chat') fail('only a chat has a workbench');
   if (!benchesOf(ctx, t.role).some((x) => x.id === bench)) fail('unknown workbench');
   if (readEvents(ctx, p.tid).some((e) => e.type === 'founder.message')) fail('this chat has begun, so its workbench stays');
   return updateThread(ctx, p.tid, { bench });
 });
 route('GET', '/api/vorlds/:id/threads/:tid', ({ p }) => { const ctx = W(p); return { thread: getThread(ctx, p.tid), events: readEvents(ctx, p.tid) }; });
+const chatUploads = new Map();
+route('DELETE', '/api/vorlds/:id/threads/:tid', ({ p }) => {
+  const ctx = W(p);
+  if (partyBusy(p.tid) || isWorking(p.tid)) fail('Stop this chat before deleting it.', 409);
+  if (chatUploads.has(p.tid)) fail('Wait for uploads to finish before deleting this chat.', 409);
+  deleteThread(ctx, p.tid);
+  emitTo(p.id)({ type: 'thread.deleted', thread: p.tid });
+  return { ok: true };
+});
 route('POST', '/api/vorlds/:id/threads/:tid/messages', async ({ p, req }) => {
+  const { text, attachments } = await body(req);
   const ctx = W(p), thread = getThread(ctx, p.tid);
   if (isWorking(p.tid) || partyBusy(p.tid)) fail(thread.kind === 'party' ? 'the party is still working' : 'this crew member is still working', 409);
-  const { text, attachments } = await body(req);
   const msg = String(text ?? '').trim(), files = resolveAttachments(ctx, p.tid, attachments);
   if (!msg && !files.length) fail('empty message');
   if (msg.length > 20000) fail('message too long', 413);
@@ -305,11 +314,21 @@ async function sendFile(res, file, download = false) {
   if (file.kind === 'reference') return pipeline(fs.createReadStream(file.path), res);
   res.end(file.data ?? fs.readFileSync(file.path));
 }
-route('POST', '/api/vorlds/:id/threads/:tid/references', async ({ p, req }) => { const ctx = W(p); getThread(ctx, p.tid); return addReferences(ctx, p.tid, (await body(req)).paths); });
+route('POST', '/api/vorlds/:id/threads/:tid/references', async ({ p, req }) => {
+  const { paths } = await body(req), ctx = W(p);
+  getThread(ctx, p.tid);
+  return addReferences(ctx, p.tid, paths);
+});
 route('POST', '/api/vorlds/:id/threads/:tid/attachments', async ({ p, req }) => {
   const ctx = W(p); getThread(ctx, p.tid);
   let name; try { name = decodeURIComponent(req.headers['x-file-name'] ?? 'attachment'); } catch { fail('Invalid file name'); }
-  return saveAttachmentStream(ctx, p.tid, name, req);
+  chatUploads.set(p.tid, (chatUploads.get(p.tid) ?? 0) + 1);
+  try { return await saveAttachmentStream(ctx, p.tid, name, req); }
+  finally {
+    const remaining = chatUploads.get(p.tid) - 1;
+    if (remaining) chatUploads.set(p.tid, remaining);
+    else chatUploads.delete(p.tid);
+  }
 });
 route('GET', '/api/vorlds/:id/threads/:tid/attachments/:aid', ({ p, q, res }) => sendFile(res, getAttachment(W(p), p.tid, p.aid), q.has('download')));
 route('POST', '/api/vorlds/:id/threads/:tid/file-access', async ({ p, req }) => allowReplyFile(W(p), p.tid, (await body(req)).path));
@@ -323,6 +342,7 @@ route('GET', '/api/vorlds/:id/writs/open', ({ p }) => {
 });
 route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
   const ctx = W(p), emit = emitTo(p.id), game = gameFor(ctx), b = await body(req);
+  const thread = getThread(ctx, p.tid);
   const events = readEvents(ctx, p.tid), ask = events.find((e) => e.type === 'writ.request' && e.id === p.wid);
   if (!ask) fail('unknown request', 404);
   if (events.some((e) => e.type === 'writ.answered' && e.id === p.wid)) fail('already answered', 409);
@@ -341,7 +361,6 @@ route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
     game.event('writ.granted').xp('writ_granted', notes);
   }
   const ev = appendEvent(ctx, p.tid, { type: 'writ.answered', id: p.wid, role: ask.role, answer: b.answer, scope });
-  const thread = getThread(ctx, p.tid);
   emit({ type: 'thread.event', thread: p.tid, role: ask.role, kind: thread.kind, party: thread.party, ev });
   const n = game.check(notes); if (n.length) emit({ type: 'game', notes: n, state: game.snapshot() });
   // pick the work back up once the member is idle (the founder may answer while their last turn is still ending) and no

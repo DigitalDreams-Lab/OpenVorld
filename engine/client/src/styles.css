@@ -17,6 +17,7 @@ html, body, #root { margin: 0; height: 100%; background: var(--ink); color: var(
 .logo { font-family: var(--logo-font); font-weight: 400 !important; letter-spacing: .02em; }
 .btn, .option, .thread-tab, .chip { font-weight: 700; }
 button, input, select, textarea { font-family: inherit; font-size: inherit; }
+[dir="auto"] { text-align: start; }
 .fatal { color: var(--parchment); padding: 40px; font-size: 18px; }
 .muted { opacity: .7; }
 .error { color: var(--danger); margin: 8px 0; }
@@ -131,11 +132,21 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .project-folder p { margin: 0; font-size: 12px; }
 .project-folder .btn { justify-self: start; }
 .project-folder { gap: 4px; padding: 6px 10px; } .pf-row { display: flex; gap: 8px; align-items: center; min-width: 0; } .pf-path { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; }
-.thread-tabs { padding: 8px 10px; border-bottom: 2px dashed color-mix(in srgb, var(--ink) 40%, transparent); display: grid; gap: 6px; }
-.thread-list { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; }
-.thread-tab { flex: none; max-width: 200px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border: 2px solid var(--ink); background: #fffaf0; padding: 3px 8px; cursor: pointer; font-size: 13px; }
+.thread-tabs { flex: none; display: flex; align-items: flex-start; gap: 6px; padding: 8px 10px; border-bottom: 2px dashed color-mix(in srgb, var(--ink) 40%, transparent); }
+.thread-list { display: flex; gap: 6px; min-width: 0; overflow-x: auto; scrollbar-width: thin; }
+.thread-list:empty { display: none; }
+.thread-tab { display: flex; flex: none; max-width: 200px; height: 32px; border: 2px solid var(--ink); background: #fffaf0; font-size: 13px; }
 .thread-tab.on { background: var(--gold); }
-.st-dot { display: inline-block; width: 7px; height: 7px; margin-right: 5px; background: var(--turquoise); }
+.thread-tab button { display: flex; align-items: center; border: 0; background: transparent; color: var(--ink); font: inherit; cursor: pointer; }
+.thread-tab button:not(:disabled):hover { background: color-mix(in srgb, currentColor 9%, transparent); }
+.thread-tab button:focus-visible { outline: 2px solid var(--lapis); outline-offset: -2px; }
+.thread-select { min-width: 0; gap: 5px; padding: 0 8px; }
+.thread-title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.thread-tab .thread-delete { flex: none; padding: 0 6px; border-inline-start: 1px solid var(--ink); }
+.thread-tab .thread-delete:not(:disabled):hover { color: var(--danger); }
+.thread-delete:disabled { opacity: .45; cursor: default; }
+.btn.thread-add { justify-content: center; width: 32px; height: 32px; padding: 0; font-size: 20px; }
+.st-dot { flex: none; width: 7px; height: 7px; background: var(--turquoise); }
 .st-working .st-dot { background: var(--gold); animation: blink .6s steps(1) infinite; } .st-waiting_founder .st-dot { background: var(--danger); } .st-resolved .st-dot { background: #777; }
 .empty { padding: 30px; text-align: center; }
 .convo { flex: 1; display: flex; flex-direction: column; min-height: 0; }
@@ -149,7 +160,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .log.err, .log.test\.fail, .log.tool\.error { color: var(--danger); } .log.sealed { color: var(--lapis); text-align: center; padding: 6px 0; }
 .dots { letter-spacing: 2px; }
 .options { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 12px; }
-.option { border: 2px solid var(--ink); background: color-mix(in srgb, var(--gold) 35%, #fffaf0); padding: 4px 9px; cursor: pointer; font-size: 14px; text-align: left; }
+.option { border: 2px solid var(--ink); background: color-mix(in srgb, var(--gold) 35%, #fffaf0); padding: 4px 9px; cursor: pointer; font-size: 14px; text-align: start; }
 .option:hover { background: var(--gold); }
 .composer { border-top: 3px solid var(--ink); padding: 8px 10px; display: grid; grid-template-columns: 1fr auto; gap: 6px; background: color-mix(in srgb, var(--parchment) 90%, var(--ink)); }
 .composer textarea { resize: vertical; min-width: 0; min-height: 70px; max-height: 220px; border: 2px solid var(--ink); padding: 6px 8px; background: #fffaf0; font-size: 15px; color: var(--ink); }
@@ -257,16 +268,16 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .thinking-text { font-size: 13px; font-style: italic; opacity: .75; white-space: pre-wrap; margin: 2px 0 6px 28px; max-height: 220px; overflow: auto; }
 .plan { font-size: 13px; padding: 4px 6px; }
 .plan-head { font-weight: 600; display: flex; gap: 6px; align-items: center; margin-bottom: 2px; }
-.plan-item { display: flex; gap: 6px; padding-left: 4px; } .plan-item.completed { opacity: .6; text-decoration: line-through; } .plan-item.in_progress { font-weight: 600; }
+.plan-item { display: flex; gap: 6px; padding-inline-start: 4px; } .plan-item.completed { opacity: .6; text-decoration: line-through; } .plan-item.in_progress { font-weight: 600; }
 .box { width: 14px; flex: none; }
 
 /* ---- Markdown in bubbles ---- */
 .md > :first-child { margin-top: 0; } .md > :last-child { margin-bottom: 0; }
-.md p { margin: 0 0 8px; } .md ul, .md ol { margin: 0 0 8px; padding-left: 20px; } .md li { margin: 2px 0; }
+.md p { margin: 0 0 8px; } .md ul, .md ol { margin: 0 0 8px; padding-inline-start: 20px; } .md li { margin: 2px 0; }
 
 .md :not(pre) > code { font-family: var(--code); font-size: .86em; background: color-mix(in srgb, var(--ink) 9%, transparent); padding: 1px 4px; border-radius: 3px; white-space: break-spaces; }
 .md pre.code { margin: 6px 0 8px; }
-.md blockquote { margin: 0 0 8px; padding-left: 10px; border-left: 3px solid var(--gold); opacity: .85; }
+.md blockquote { margin: 0 0 8px; padding-inline-start: 10px; border-inline-start: 3px solid var(--gold); opacity: .85; }
 .md a { color: var(--lapis); text-decoration: underline; text-underline-offset: 2px; overflow-wrap: anywhere; } .md hr { border: 0; border-top: 2px dashed color-mix(in srgb, var(--ink) 25%, transparent); margin: 10px 0; }
 
 @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: none; opacity: 1; } } @keyframes breathe { 50% { background: color-mix(in srgb, var(--gold) 25%, transparent); } }
@@ -284,7 +295,7 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .md del { opacity: .7; }
 .md-table { overflow-x: auto; max-width: 100%; margin: 10px 0; }
 .md table { border-collapse: collapse; width: max-content; min-width: 100%; font-size: .92em; }
-.md th, .md td { border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent); padding: 6px 9px; text-align: left; max-width: 300px; }
+.md th, .md td { border: 1px solid color-mix(in srgb, var(--ink) 30%, transparent); padding: 6px 9px; text-align: start; max-width: 300px; }
 .md th { background: color-mix(in srgb, var(--gold) 18%, transparent); font-weight: 800; }
 .md tbody tr:nth-child(even) { background: color-mix(in srgb, var(--ink) 4%, transparent); }
 .code-block { margin: 8px 0; min-width: 0; max-width: 100%; border: 1px solid var(--ink); border-radius: 4px; overflow: hidden; background: #1f1a26; color: #efe6d2; }
@@ -330,8 +341,8 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .file-preview-body audio { display: block; width: 100%; margin: 24px 0; }
 .file-preview-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; font: 12px/1.6 var(--mono); tab-size: 2; }
 .table-preview { width: 100%; overflow: auto; }
-.table-preview table { border-collapse: collapse; width: 100%; font-size: 12px; text-align: left; }
-.table-preview th, .table-preview td { border: 1px solid #d8dce1; padding: 6px 9px; max-width: 380px; overflow-wrap: anywhere; }
+.table-preview table { border-collapse: collapse; width: 100%; font-size: 12px; }
+.table-preview th, .table-preview td { border: 1px solid #d8dce1; padding: 6px 9px; text-align: start; max-width: 380px; overflow-wrap: anywhere; }
 .table-preview th { position: sticky; top: 0; background: #edf1f5; }
 @media (max-width: 640px) { .file-preview-bg { padding: 8px; } .file-preview-dialog { max-height: calc(100dvh - 16px); } .file-preview-dialog > header { align-items: flex-start; flex-direction: column; } }
 .pending-files { display: flex; flex-wrap: wrap; gap: 6px; grid-column: 1 / -1; max-height: 160px; overflow: auto; }

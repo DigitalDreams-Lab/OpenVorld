@@ -120,7 +120,7 @@ export function AgentBalloons() {
           }
         }} onPointerDown={event => event.stopPropagation()}>
         <span className="ab-heading">
-          <strong>{member.name}</strong>
+          <strong dir="auto">{member.name}</strong>
           <span className="ab-heading-right">
             <span
               className={`ab-state ${activity.kind === 'done' ? 'ab-state-dismiss' : ''}`}
@@ -147,7 +147,7 @@ export function AgentBalloons() {
             )}
           </span>
         </span>
-        <span className="ab-text">{activity.text}</span>
+        <span className="ab-text" dir="auto">{activity.text}</span>
         {activity.image && (
           <img
             className="ab-browser"
@@ -177,7 +177,7 @@ export function AgentBalloons() {
         )}
       </button>;
     })}
-    {spoken.map(x => <div key={x.id} className="agent-balloon speech" role="status" aria-label={`${crew.find(c => c.id === x.role)?.name ?? ''}: ${x.text}`}
+    {spoken.map(x => <div key={x.id} className="agent-balloon speech" dir="auto" role="status" aria-label={`${crew.find(c => c.id === x.role)?.name ?? ''}: ${x.text}`}
       ref={element => { if (element) elements.current.set(`${x.role}~${x.id}`, element); else elements.current.delete(`${x.role}~${x.id}`); }} style={{ visibility: 'hidden' } as CSSProperties}>{x.text}</div>)}
   </div>;
 }
@@ -202,9 +202,9 @@ function AskBalloon({ member, ask, more, register }: { member: any; ask: OpenWri
   const stop = (event: { stopPropagation: () => void }) => event.stopPropagation();
   return <div className={`agent-balloon ask risk-${ask.risk ?? cap?.risk ?? 'medium'}`} role="group" aria-label={`${member.name} asks for access`}
     ref={register} style={{ visibility: 'hidden' } as CSSProperties} onPointerDown={stop} onClick={stop}>
-    <span className="ab-heading"><strong>{member.name}</strong><span className="ab-state">Needs your OK{more > 0 ? ` · +${more}` : ''}</span></span>
+    <span className="ab-heading"><strong dir="auto">{member.name}</strong><span className="ab-state">Needs your OK{more > 0 ? ` · +${more}` : ''}</span></span>
     <span className="ab-text">{str('writ.asks', {}, 'Asks to')} {(cap?.label ?? ask.capability).toLowerCase()} <code>{ask.scope}</code></span>
-    {ask.why && <span className="ab-why">“{ask.why}”</span>}
+    {ask.why && <span className="ab-why" dir="auto">“{ask.why}”</span>}
     <span className="ab-actions">
       {needsCard
         ? <button type="button" className="btn small primary" onClick={() => openRequest(ask)}>Open the request</button>

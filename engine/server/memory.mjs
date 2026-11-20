@@ -62,7 +62,8 @@ export function dropNote(ctx, id, nid) { const list = notes(ctx, id).filter((x) 
 /** The member's chat summaries, newest first, each with its chat's current title. */
 export function chats(ctx, id) {
   const titles = new Map(listThreads(ctx).map((t) => [t.id, t.title]));
-  return load(ctx, id, 'chats.json').map((s) => ({ ...s, title: titles.get(s.chat) ?? null })).sort((a, b) => b.at.localeCompare(a.at));
+  return load(ctx, id, 'chats.json').filter((s) => titles.has(s.chat))
+    .map((s) => ({ ...s, title: titles.get(s.chat) ?? null })).sort((a, b) => b.at.localeCompare(a.at));
 }
 function setSummary(ctx, id, chat, text) {
   const summary = clip(text, cfg(ctx).summary_chars ?? 600);

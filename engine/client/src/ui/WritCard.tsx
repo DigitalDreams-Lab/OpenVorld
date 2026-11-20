@@ -47,9 +47,9 @@ export function WritCard({ ask, answered, wid, thread, who }: { ask: WritEvent; 
   }
   return (
     <div className={`writ-card risk-${ask.risk ?? cap?.risk ?? 'medium'}`} role="group" aria-label={`${who} asks for access`}>
-      <div className="writ-head"><span className="writ-seal" aria-hidden>📜</span><b>{who}</b> {str('writ.asks', {}, 'asks to')} {cap?.label ?? ask.capability}<span className="writ-risk">{cap?.risk ?? ask.risk}</span></div>
+      <div className="writ-head"><span className="writ-seal" aria-hidden>📜</span><b dir="auto">{who}</b> {str('writ.asks', {}, 'asks to')} {cap?.label ?? ask.capability}<span className="writ-risk">{cap?.risk ?? ask.risk}</span></div>
       <code className="writ-scope">{scope}</code>
-      {ask.why && <p className="writ-why">“{ask.why}”</p>}
+      {ask.why && <p className="writ-why" dir="auto">“{ask.why}”</p>}
       {needs.ui}
       {isFolder && (changing
         ? <FolderPicker value={scope} onChange={setScope} capability={ask.capability} label="Folder to share" />

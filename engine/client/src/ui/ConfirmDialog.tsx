@@ -26,7 +26,7 @@ export function useConfirm(): [(a: Ask) => Promise<boolean>, ReactElement | null
         <h3>{open.title}</h3>
         {open.body && <p className="muted">{open.body}</p>}
         {open.input && <label className="confirm-input"><span>{open.input.label}</span>
-          <textarea ref={box} rows={4} maxLength={open.input.max} value={text} placeholder={open.input.placeholder} onChange={(e) => setText(e.target.value)} /></label>}
+          <textarea dir="auto" ref={box} rows={4} maxLength={open.input.max} value={text} placeholder={open.input.placeholder} onChange={(e) => setText(e.target.value)} /></label>}
         <div className="row end">
           <button className="btn" onClick={() => answer(false)}>{open.cancel ?? 'Cancel'}</button>
           <button ref={ok} className={`btn ${open.danger ? 'danger' : 'primary'}`} onClick={() => answer(true)}>{open.ok ?? 'OK'}</button>
