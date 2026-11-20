@@ -401,3 +401,14 @@ test('the in-app browser frees only the founder: the member keeps needing writs,
   await hub.closeInteractive(ctx, 'ada');
   await assert.rejects(hub.interact(ctx, 'ada', { type: 'reload' }), /no interactive browser session/);
 });
+
+test('the in-app browser window sits on a backdrop the stylesheet defines, with a way to close it', async () => {
+  const fs = await import('node:fs');
+  const css = fs.readFileSync(new URL('../engine/client/src/styles.css', import.meta.url), 'utf8');
+  const modal = fs.readFileSync(new URL('../engine/client/src/ui/BrowserModal.tsx', import.meta.url), 'utf8');
+  const panel = fs.readFileSync(new URL('../engine/client/src/ui/MemberPanel.tsx', import.meta.url), 'utf8');
+  const backdrop = modal.match(/<div className="([\w-]+)" onClick=\{\(\) => void stopInteractive\(true\)\}/)?.[1];
+  assert.ok(backdrop && css.includes(`.${backdrop} {`), `the backdrop class "${backdrop}" has no CSS, so the window cannot be closed`);
+  assert.match(modal, /aria-label="Close browser preview"/);
+  assert.match(panel, /closeBrowser/, 'the member panel can close the browser');
+});

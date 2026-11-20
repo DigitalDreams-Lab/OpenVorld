@@ -27,6 +27,11 @@ export function MemberPanel({ id }: { id: string }) {
   if (!m) return null;
   const following = useStore((s) => s.following.includes(id));
   const browser = useStore((s) => s.browsers[id]);
+  const closeBrowser = async () => {
+    play('ui.click');
+    try { await api(`/vorlds/${wid}/browser/${id}`, { method: 'DELETE' }); } catch (e: any) { toast({ kind: 'error', title: e.message }); return; }
+    setState((s) => { const next = { ...s.browsers }; delete next[id]; return { browsers: next }; });
+  };
   const newChat = async () => {
     play('ui.open');
     try { const t = await api(`/vorlds/${wid}/threads`, { body: { role: id } }); setThreads((x) => [t, ...(x ?? [])]); setActive(t.id); }
@@ -66,6 +71,7 @@ export function MemberPanel({ id }: { id: string }) {
               <button type="button" className="btn small primary" onClick={() => { play('ui.open'); openBrowserModal({ role: id, interactive: true }); }}>
                 {browser.needsHuman ? 'Take over' : 'Interact'}
               </button>
+              <button type="button" className="btn small" title={`Close ${m.name}'s browser`} onClick={closeBrowser}>Close</button>
             </div>
           </div>
         </div>
