@@ -1,14 +1,14 @@
-version: 0.19.3
+version: 0.19.5
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.3/OpenVorld-0.19.3-linux-x86_64.AppImage
-    sha512: xgXRVnUk+i/zl022fureuusnNEZu267v3HY9PkOOSaH8rTV9KFdjUmgixmTIves1i7PGMmQg0/C4+MQyJ0m2kA==
-    size: 185649304
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.3/OpenVorld-0.19.3-linux-x86_64.AppImage
-sha512: xgXRVnUk+i/zl022fureuusnNEZu267v3HY9PkOOSaH8rTV9KFdjUmgixmTIves1i7PGMmQg0/C4+MQyJ0m2kA==
-releaseNotes: "- The member panel no longer shows the job description (more room
-  for the chat); a new agent always keeps its own workbench, and the optional
-  Initial folder you pick in the New agent dialog becomes an extra workbench its
-  chats start on; a chat's workbench list no longer shows the agent's own
-  workbench as a choice: None means only its own workbench, then the agent's
-  folders, and Add folder adds one to the agent's folders"
-releaseDate: 2026-11-20T13:40:07.707Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.5/OpenVorld-0.19.5-linux-x86_64.AppImage
+    sha512: 4SzK+HaOdSXCKX6ZsW1JO+iSEIrMDycEHB8GqAYm2MWd216WQuTeliegnDHgF2aZsMN4rvA/qi4wY267gCXjxw==
+    size: 185649286
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.5/OpenVorld-0.19.5-linux-x86_64.AppImage
+sha512: 4SzK+HaOdSXCKX6ZsW1JO+iSEIrMDycEHB8GqAYm2MWd216WQuTeliegnDHgF2aZsMN4rvA/qi4wY267gCXjxw==
+releaseNotes: >-
+  - Cover the active direct chat deletion guard and verify that deletion removes
+  the log and uploads after the reply finishes.
+
+  - Keep the demo guide beside the chat so it leaves room for the composer in
+  short windows.
+releaseDate: 2026-11-20T16:03:56.971Z
