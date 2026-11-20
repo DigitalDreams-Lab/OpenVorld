@@ -46,7 +46,6 @@ export function MemberPanel({ id }: { id: string }) {
         <div className="cp-who">
           <div className="cp-name" title={m.name}>{m.name}</div>
           <div className="cp-job"><span className="job-tag">{m.role === 'companion' ? 'Companion' : m.job || 'Agent'}</span></div>
-          {m.function && <div className="cp-title">{m.function}</div>}
           <div className="cp-meta"><span className="brain">{m.brain_label ?? 'no brain yet'}</span></div>
         </div>
         <div className="cp-actions">

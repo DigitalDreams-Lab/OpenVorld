@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.19.3 - 2026-11-20
+
+- The member panel no longer shows the job description (more room for the chat); a new agent always keeps its own workbench, and the optional Initial folder you pick in the New agent dialog becomes an extra workbench its chats start on
+
 ## 0.19.1 - 2026-11-20
 
 - Crew walking to you no longer cut through props, the Party Hall's pillar or house walls: the walking test now knows everything you bump into, so routes go around it

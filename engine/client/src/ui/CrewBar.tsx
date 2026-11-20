@@ -79,7 +79,7 @@ function AddAgent({ onClose }: { onClose: () => void }) {
     <div className="modal-bg" onPointerDown={(e) => e.stopPropagation()} onClick={onClose}>
       <form className="modal panel add-agent" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()} onSubmit={(e) => { e.preventDefault(); void add(); }}>
         <header className="row between"><h2>New agent</h2><IconButton icon="close" title="Close" onClick={onClose} /></header>
-        <p className="muted">An agent is a name, a job title and a job description. It uses your companion's brain and Main bench unless you pick another folder.</p>
+        <p className="muted">An agent is a name, a job title and a job description. It uses your companion's brain unless you pick another.</p>
         <div className="add-agent-face-row">
           <div className="add-agent-preview">
             <Portrait avatar={f.avatar} size={54} />
@@ -104,14 +104,14 @@ function AddAgent({ onClose }: { onClose: () => void }) {
           <label className="grow">Model<ModelPicker wid={wid} provider={f.brain.provider} name={f.brain.name} tier="balanced" value={f.brain.model || undefined} onChange={(model) => setF({ ...f, brain: { ...f.brain, model: model ?? '' } })} /></label>
         </div>
         <section className="project-folder">
-          <b>Main workbench</b>
+          <b>Initial folder <span className="muted">(optional)</span></b>
           <div className="pf-row">
-            <code className="pf-path" title={ws}>{tail(ws)}</code>
-            <button type="button" className="btn small" onClick={pickFolder}>Change</button>
-            {folder && <button type="button" className="btn small" onClick={() => { setFolder(''); setTyping(false); }}>Use the default</button>}
+            {folder ? <code className="pf-path" title={folder}>{tail(folder)}</code> : <span className="muted">None: chats start on its own workbench</span>}
+            <button type="button" className="btn small" onClick={pickFolder}>{folder ? 'Change' : 'Choose a folder'}</button>
+            {folder && <button type="button" className="btn small" onClick={() => { setFolder(''); setTyping(false); }}>Clear</button>}
           </div>
           {typing && <FolderPicker label="Folder" value={folder} onChange={setFolder} capability="fs.write" />}
-          <p className="muted small">Can read and change files here, and read the project folder. Anything else needs a writ you approve.</p>
+          <p className="muted small">{f.name.trim() || 'The agent'} always has a workbench of its own. A folder you pick here is where its chats start: it can read and change files there, and read the project folder. Anything else needs a writ you approve.</p>
         </section>
         <div className="row end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn primary" disabled={busy || !f.name.trim()}>Add to crew</button></div>
       </form>

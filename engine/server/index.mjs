@@ -144,7 +144,8 @@ route('POST', '/api/vorlds/:id/crew', async ({ p, req }) => {
   let added;
   const next = saveVorld(ctx, (d) => {
     const m = cleanMember({ brain: d.crew.find((c) => c.role === 'companion')?.brain, ...b }, new Set(['founder', ...d.crew.map((c) => c.id)]));
-    if (folder) m.benches = [{ id: 'main', name: 'Main bench', path: folder }];
+    // an initial folder is an extra workbench the member's chats start on; its own Main bench is never replaced
+    if (folder) { const name = path.basename(folder) || 'Folder', id = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24) || 'folder'; m.benches = [{ id: id === 'main' ? 'folder' : id, name, path: folder }]; m.default_bench = m.benches[0].id; }
     d.crew.push(m); added = m.id;
   });
   const game = gameFor(next), n = game.check([]);

@@ -73,7 +73,11 @@ test('the crew API: add, edit, brain, remove; the companion stays', async (t) =>
   const addedAda = added.data.crew.find((c) => c.id === 'ada');
   assert.equal(addedAda.avatar, 'agent_4');
   assert.deepEqual(addedAda.brain, { provider: 'claude-code', model: 'opus' });
-  assert.deepEqual(addedAda.benches.map((b) => [b.id, b.path, b.chosen]), [['main', ws, true]]);
+  // the initial folder is an extra workbench that chats start on; the agent keeps its own Main bench
+  assert.deepEqual(addedAda.benches.map((b) => [b.id, b.chosen, b.default]), [['main', false, false], [path.basename(ws).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 24), true, true]]);
+  assert.equal(addedAda.benches[1].path, ws);
+  assert.equal(addedAda.benches.find((b) => b.default).id, addedAda.benches[1].id, 'chats start on the initial folder');
+  assert.notEqual(addedAda.benches[0].path, ws, 'its own workbench is not the picked folder');
   const edited = await call('PUT', `${root}/crew/ada`, { job: 'Editor', avatar: 'agent_9', brain: { provider: 'claude-code', model: 'sonnet' } });
   const ada = edited.data.crew.find((c) => c.id === 'ada');
   assert.equal(ada.job, 'Editor');
