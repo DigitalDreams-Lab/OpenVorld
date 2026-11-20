@@ -92,7 +92,6 @@ export function MemberSettings({ id }: { id: string }) {
             <label>Job title<input className="field" value={f.job} maxLength={40} placeholder="e.g. Writer" onChange={(e) => setF({ ...f, job: e.target.value })} /></label>
             {c.role === 'agent' && <label>Job description<textarea className="field" rows={3} value={f.function} maxLength={400} placeholder="What they do for you" onChange={(e) => setF({ ...f, function: e.target.value })} /></label>}
             <label>Personality<input className="field" value={f.personality} maxLength={200} placeholder="How they speak (optional)" onChange={(e) => setF({ ...f, personality: e.target.value })} /></label>
-            {c.role === 'companion' && <label>Looks like<select className="field" value={f.form} onChange={(e) => setF({ ...f, form: e.target.value })}><option value="creature">a bee</option><option value="robot">a robot</option><option value="person">a person</option></select></label>}
             <div className="row">
               <label className="grow">Brain<select className="field" value={brainValue} onChange={(e) => { const [provider, name] = e.target.value.split('#'); setF({ ...f, brain: { provider, name: name || undefined, model: '' } }); }}>
                 {choices.length ? choices.map((p) => <option key={p.value} value={p.value}>{p.label}</option>) : <option value={brainValue}>{failed ? 'Cannot reach the server, retrying…' : 'Loading…'}</option>}</select></label>
