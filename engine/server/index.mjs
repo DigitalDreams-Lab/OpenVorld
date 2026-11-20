@@ -375,9 +375,21 @@ route('POST', '/api/vorlds/:id/fs/pick', async ({ p, req }) => {
   try { return { path: checkFolder(ctx, b.capability === 'fs.read' ? 'fs.read' : 'fs.write', chosen) }; } catch (e) { fail(e.message); }
 });
 
-// the crew browser: the latest frame (for a panel opened later), and the tool bridge Claude Code and Codex call
+// the crew browser: the latest frame (for a panel opened later), interactive in-app takeover, and the tool bridge
 route('GET', '/api/vorlds/:id/browser/:role', ({ p }) => browse.latest(W(p), p.role) ?? {});
 route('DELETE', '/api/vorlds/:id/browser/:role', async ({ p }) => { await browse.close(W(p), p.role); return { ok: true }; });
+route('POST', '/api/vorlds/:id/browser/:role/interactive', async ({ p, req }) => {
+  const ctx = W(p), b = await body(req); memberOr404(ctx, p.role);
+  try { return await browse.openInteractive(ctx, p.role, { url: String(b.url ?? '').trim(), signed: !!b.signed, emit: emitTo(p.id) }); } catch (e) { fail(e.message); }
+});
+route('POST', '/api/vorlds/:id/browser/:role/interact', async ({ p, req }) => {
+  const ctx = W(p), b = await body(req); memberOr404(ctx, p.role);
+  try { return await browse.interact(ctx, p.role, b); } catch (e) { fail(e.message); }
+});
+route('DELETE', '/api/vorlds/:id/browser/:role/interactive', async ({ p }) => {
+  const ctx = W(p); memberOr404(ctx, p.role);
+  return browse.closeInteractive(ctx, p.role, { emit: emitTo(p.id) });
+});
 route('POST', '/api/vorlds/:id/browser/:role/:tool', async ({ p, q, req }) => {
   const ctx = W(p), emit = emitTo(p.id);
   if (!ctx.member(p.role)) fail('unknown crew member', 404);

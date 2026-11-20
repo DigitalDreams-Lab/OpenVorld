@@ -3,11 +3,13 @@ import { useSyncExternalStore } from 'react';
 
 export type Toast = { id: number; kind: 'deed' | 'level' | 'xp' | 'info' | 'error'; title: string; body?: string; xp?: number; icon?: string };
 export type Live = { role?: string; thread?: string; kind?: string; party?: string; steps: any[]; working: boolean; error?: string | null; updatedAt?: number };
-export type BrowserFrame = { url?: string; title?: string; image?: string; active?: boolean; signed?: boolean; at?: number };
+export type BrowserHumanNeed = { kind: 'captcha' | 'login'; reason: string };
+export type BrowserFrame = { url?: string; title?: string; image?: string; active?: boolean; signed?: boolean; interactive?: boolean; needsHuman?: BrowserHumanNeed | null; at?: number };
+export type BrowserModalTarget = { role: string; interactive?: boolean; url?: string; signed?: boolean };
 export type ActivityNote = { text: string; at: number; error?: boolean; party?: string; thread?: string };
 /** A request for access still waiting for the founder. The member walks over and asks in a balloon over their head. */
 export type OpenWrit = { id: string; thread: string; role: string; capability: string; scope: string; why?: string; risk?: string; signin?: boolean };
-export type Modal = null | 'parties' | 'deeds' | 'settings' | 'member' | 'add' | 'request';
+export type Modal = null | 'parties' | 'deeds' | 'settings' | 'member' | 'add' | 'request' | 'browser';
 
 type State = {
   vorldId: string | null;
@@ -24,9 +26,10 @@ type State = {
   following: string[];                // crew members walking with the founder right now (the map reports them)
   openWrits: OpenWrit[];              // requests for access waiting for the founder
   request: OpenWrit | null;          // the exact request being reviewed, including its originating chat
+  browserModal: BrowserModalTarget | null; // which member's browser is open in the big in-app modal
 };
 
-let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, partyId: null, partyEdit: null, toasts: [], live: {}, browsers: {}, activityNotes: {}, threadsVersion: 0, following: [], openWrits: [], request: null };
+let state: State = { vorldId: null, vorld: null, talkingTo: null, modal: null, partyId: null, partyEdit: null, toasts: [], live: {}, browsers: {}, activityNotes: {}, threadsVersion: 0, following: [], openWrits: [], request: null, browserModal: null };
 const subs = new Set<() => void>();
 export const getState = () => state;
 export function setState(patch: Partial<State> | ((s: State) => Partial<State>)) {
@@ -58,6 +61,7 @@ export const memberOf = (id: string | null | undefined) => state.vorld?.crew?.fi
 /** Escape closes what is on top: a dialog, then a member's chat, then the party room it was opened from. */
 export const closeTop = (s: State): Partial<State> => (s.modal ? { modal: null } : s.talkingTo ? { talkingTo: null } : { partyId: null });
 export const openRequest = (request: OpenWrit) => setState({ request, modal: 'request' });
+export const openBrowserModal = (target: BrowserModalTarget) => setState({ browserModal: target, modal: 'browser' });
 
 // Event bus between React and the Phaser scene.
 type Handler = (payload: any) => void;

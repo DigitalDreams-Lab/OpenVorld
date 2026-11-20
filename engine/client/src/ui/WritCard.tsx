@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { play } from '../audio/sfx';
-import { on, setOpenWrits, setState, str, toast, useStore } from '../store';
+import { on, openBrowserModal, setOpenWrits, setState, str, toast, useStore } from '../store';
 import { FolderPicker, useFolderDialog } from './FolderPicker';
 
 export type WritEvent = { id: string; role: string; capability: string; scope: string; why?: string; risk?: string; signin?: boolean };
@@ -83,7 +83,11 @@ function useNeeds(wid: string, ask: WritEvent, open: boolean): { ready: boolean;
   if (!open || !st) return { ready: !(signin || secret) || !open, value: '', ui: null };
 
   if (signin) {
-    const start = async () => {
+    const startInApp = () => {
+      play('ui.open');
+      openBrowserModal({ role: ask.role, interactive: true, signed: true, url: `https://${ask.scope}` });
+    };
+    const startExternal = async () => {
       setBusy(true);
       try { setSt(await api(`${base}/signin`, { body: { url: `https://${ask.scope}` } })); play('ui.open'); void load(); }
       catch (e: any) { toast({ kind: 'error', title: e.message }); } finally { setBusy(false); }
@@ -94,10 +98,14 @@ function useNeeds(wid: string, ask: WritEvent, open: boolean): { ready: boolean;
         ? <p className="writ-need ok">✓ Signed in to {ask.scope}. You can allow it now.</p>
         : (
           <div className="writ-need">
-            {!st.available ? <p className="error small">Signing in needs Google Chrome or Microsoft Edge installed on this computer.</p> : st.open
-              ? <p className="small">A browser window is open. Sign in to {ask.scope} there, then close the window.</p>
-              : <p className="small">Sign in yourself in a real window. Your password stays with you; only the sign-in is kept, for this crew member.</p>}
-            {st.available && <button className="btn small primary" disabled={busy} onClick={start}>{st.open ? 'Show the window' : `Sign in to ${ask.scope}`}</button>}
+            {!st.available ? <p className="error small">Signing in needs Google Chrome or Microsoft Edge installed on this computer.</p>
+              : <p className="small">Sign in right inside OpenVorld. Your password stays with you; only the sign-in is kept, for this crew member.</p>}
+            {st.available && (
+              <div className="row">
+                <button type="button" className="btn small primary" disabled={busy} onClick={startInApp}>{`Sign in to ${ask.scope}`}</button>
+                <button type="button" className="link small" disabled={busy} onClick={startExternal}>{st.open ? 'Show Chrome window' : 'Open external Chrome instead'}</button>
+              </div>
+            )}
           </div>
         ),
     };

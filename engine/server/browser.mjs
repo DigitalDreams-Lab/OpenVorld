@@ -184,7 +184,10 @@ export async function forgetSignIns(ctx, role) {
 // ---------- sessions ----------
 const rkey = (ctx, role) => `${ctx.id}:${role}`;
 const skey = (ctx, role, kind) => `${rkey(ctx, role)}:${kind}`;
-const stopTimers = (s) => { clearInterval(s.timer); clearTimeout(s.idle); s.timer = s.idle = null; };
+const stopTimers = (s) => {
+  clearInterval(s.timer); clearTimeout(s.idle); clearInterval(s.saveTimer); clearTimeout(s.saveDebounce);
+  s.timer = s.idle = s.saveTimer = s.saveDebounce = null;
+};
 
 async function sessionOf(ctx, role, kind) {
   const key = skey(ctx, role, kind), cfg = cfgOf(ctx);
@@ -193,15 +196,20 @@ async function sessionOf(ctx, role, kind) {
   const browser = await chrome();
   const ua = `Mozilla/5.0 (${process.platform === 'darwin' ? 'Macintosh; Intel Mac OS X 10_15_7' : process.platform === 'win32' ? 'Windows NT 10.0; Win64; x64' : 'X11; Linux x86_64'}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browser.version()} Safari/537.36 OpenVorld/1`;
   const context = await browser.newContext({ viewport: cfg.viewport, acceptDownloads: false, serviceWorkers: 'block', locale: 'en-US', userAgent: ua, permissions: [], ...(kind === 'signed' ? { storageState: loadSession(ctx, role) } : {}) });
-  s = { key, ctx, role, kind, browser, context, page: null, queue: Promise.resolve(), denied: [], hops: 0, last: null, hash: '', timer: null, idle: null, activeUntil: 0, emit: null, cfg };
+  s = { key, ctx, role, kind, browser, context, page: null, queue: Promise.resolve(), denied: [], hops: 0, last: null, hash: '', timer: null, idle: null, saveTimer: null, saveDebounce: null, activeUntil: 0, emit: null, cfg, interactive: false, agentBusy: 0, needsHuman: null };
   context.on('page', (p) => { s.page = p; p.on('dialog', (d) => d.dismiss().catch(() => {})); });
   await context.route('**/*', async (route) => {
     const req = route.request();
     let u; try { u = new URL(req.url()); } catch { return route.abort('blockedbyclient'); }
+    // allow inline/local browser-internal resources (SPAs use blob:/data:/about: for frames, workers and assets)
+    if (/^(data|blob|about):$/i.test(u.protocol)) return route.continue();
     if (!/^https?:$/.test(u.protocol)) return route.abort('blockedbyclient');
     // a blocked page the member asked for is reported; a blocked frame, ad or tracker on an allowed page is just not loaded
     const main = req.resourceType() === 'document' && (() => { try { return !req.frame().parentFrame(); } catch { return true; } })();
     if (!s.cfg.allow_private && await isPrivateHost(u.hostname)) { if (main) s.denied.push({ host: u.hostname, private: true }); return route.abort('blockedbyclient'); }
+    // when the founder is interacting directly in the in-app browser, allow OAuth/CAPTCHA/login navigations (private hosts stay blocked above).
+    // Never while the member is running a tool of their own: the member's pages always need their writs.
+    if (s.interactive && !s.agentBusy) return route.continue();
     if (req.resourceType() !== 'document') return route.continue();
     // pages and frames: the domain must be granted, and redirects are followed HERE, one hop at a time
     if (!allowsHost(domainsOf(s.ctx, s.role, s.kind), u.hostname)) { if (main) s.denied.push({ host: u.hostname, url: u.href }); return route.abort('blockedbyclient'); }
@@ -213,9 +221,10 @@ async function sessionOf(ctx, role, kind) {
     if ([301, 302, 303, 307, 308].includes(resp.status()) && loc) {
       let target; try { target = new URL(loc, u).href; } catch { return route.abort('blockedbyclient'); }
       if (++s.hops > 20) return route.abort('blockedbyclient');
-      const cookie = resp.headers()['set-cookie'];
+      const cookies = resp.headersArray().filter((h) => h.name.toLowerCase() === 'set-cookie').map((h) => h.value);
+      const headers = cookies.length ? { 'set-cookie': cookies.join('\n') } : {};
       // a 0-second refresh is a new navigation (checked again by this handler) and replaces the history entry like a redirect
-      return route.fulfill({ status: 200, contentType: 'text/html', headers: cookie ? { 'set-cookie': cookie } : {}, body: `<!doctype html><meta http-equiv="refresh" content="0;url=${target.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}">` });
+      return route.fulfill({ status: 200, contentType: 'text/html', headers, body: `<!doctype html><meta http-equiv="refresh" content="0;url=${target.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}">` });
     }
     s.hops = 0;
     return route.fulfill({ response: resp });
@@ -244,17 +253,20 @@ export async function closeAll() {
 /** The last frame this member's browser showed (for a panel opened later), or null. */
 export function latest(ctx, role) {
   const list = [...sessions.values()].filter((s) => s.ctx.id === ctx.id && s.role === role && s.last).sort((a, b) => b.last.at - a.last.at);
-  return list[0] ? { ...list[0].last, active: !!list[0].timer, signed: list[0].kind === 'signed' } : null;
+  return list[0] ? { ...list[0].last, active: !!list[0].timer, signed: list[0].kind === 'signed', interactive: !!list[0].interactive, needsHuman: list[0].needsHuman ?? null } : null;
 }
 
 // ---------- the live view ----------
 async function frame(s) {
   if (!s.page || s.page.isClosed()) return;
   try {
-    const buf = await s.page.screenshot({ type: 'jpeg', quality: s.cfg.jpeg_quality, timeout: 4000 });
+    const buf = await s.page.screenshot({ type: 'jpeg', quality: s.interactive ? Math.max(s.cfg.jpeg_quality, 72) : s.cfg.jpeg_quality, timeout: 4000 });
     const hash = crypto.createHash('md5').update(buf).digest('hex');
     s.last = { url: s.page.url(), title: await s.page.title().catch(() => ''), image: buf.toString('base64'), at: Date.now() };
-    if (hash !== s.hash || s.final) { s.hash = hash; s.emit?.({ type: 'browser', role: s.role, ...s.last, active: !!s.timer, signed: s.kind === 'signed' }); }
+    if (hash !== s.hash || s.final || s.interactive) {
+      s.hash = hash;
+      s.emit?.({ type: 'browser', role: s.role, ...s.last, active: !!s.timer || !!s.interactive, signed: s.kind === 'signed', interactive: !!s.interactive, needsHuman: s.needsHuman ?? null });
+    }
   } catch { /* the page is changing; the next frame will do */ }
 }
 /** Keep sending frames while the member is busy; one last frame when it stops. */
@@ -264,10 +276,126 @@ function pulse(s) {
   s.idle = setTimeout(() => closeSession(s), s.cfg.idle_seconds * 1000); s.idle.unref?.();
   if (s.timer) return;
   s.timer = setInterval(async () => {
-    if (Date.now() < s.activeUntil) return frame(s);
+    if (s.interactive || Date.now() < s.activeUntil) return frame(s);
     clearInterval(s.timer); s.timer = null; s.final = true; await frame(s); s.final = false;
-  }, s.cfg.frame_ms);
+  }, s.interactive ? 250 : s.cfg.frame_ms);
   s.timer.unref?.();
+}
+
+/** Detect CAPTCHA, bot-verification, or login walls so the app can gently invite the founder into the in-app browser. */
+export function detectHumanNeeded({ url = '', title = '', text = '', hasCaptchaDom = false } = {}, signed = false) {
+  const hay = `${title}\n${text.slice(0, 2000)}`.toLowerCase();
+  const u = String(url).toLowerCase();
+  if (hasCaptchaDom || /challenges\.cloudflare\.com|\/cdn-cgi\/challenge|recaptcha|hcaptcha|turnstile|arkoselabs|funcaptcha/.test(u)
+    || /\b(verify you are human|just a moment|checking your browser|i'?m not a robot|are you a robot|unusual traffic|complete the security check|human verification|attention required! \| cloudflare|please verify you are a human)\b/.test(hay)) {
+    return { kind: 'captcha', reason: 'Verification or CAPTCHA detected — complete it in the in-app browser' };
+  }
+  if (signed && (/accounts\.google\.com\/(v3\/signin|signin|servicelogin)|\/(login|signin|sign-in|log-in)(\/|\?|$)/.test(u)
+    || /\b(sign in to continue|log in to continue|enter your password|session expired)\b/.test(hay))) {
+    return { kind: 'login', reason: 'This site needs you to sign in — open the in-app browser' };
+  }
+  return null;
+}
+
+/** Save a signed-in interactive session's cookies/storage back to the member's vault and notify the UI. */
+async function persistSignedSession(s) {
+  if (s.kind !== 'signed' || !s.context) return;
+  try {
+    const previous = loadSession(s.ctx, s.role) ?? { cookies: [], origins: [] };
+    const st = await captureSignInStorage(s.context, previous);
+    saveSession(s.ctx, s.role, st);
+    s.emit?.({ type: 'signin', ...signInState(s.ctx, s.role) });
+  } catch { /* context closing */ }
+}
+
+/**
+ * Open or take over a member's browser right inside OpenVorld (no separate Chrome window needed).
+ * Used for expanding the live preview to interact, solving CAPTCHAs/verifications, or signing in to a site.
+ */
+export async function openInteractive(ctx, role, { url = '', signed = false, emit = null } = {}) {
+  const cfg = cfgOf(ctx);
+  if (cfg.enabled === false) fail('the browser is switched off for this vorld');
+  let start = '';
+  if (url) {
+    let u; try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`); } catch { fail('that is not a web address'); }
+    if (!/^https?:$/.test(u.protocol)) fail('only http and https addresses can be opened');
+    if (!cfg.allow_private && await isPrivateHost(u.hostname)) fail(`${u.hostname} is on this computer or network and is always blocked`);
+    start = u.href;
+  }
+  const kind = signed ? 'signed' : (current.get(rkey(ctx, role)) ?? 'plain');
+  const s = await sessionOf(ctx, role, kind);
+  current.set(rkey(ctx, role), kind);
+  s.emit = emit ?? s.emit;
+  s.cfg = cfg;
+  s.interactive = true;
+  s.needsHuman = null;
+  // restart frame timer at interactive cadence
+  clearInterval(s.timer); s.timer = null;
+  pulse(s);
+  if (kind === 'signed' && !s.saveTimer) {
+    s.saveTimer = setInterval(() => { void persistSignedSession(s); }, 3000);
+    s.saveTimer.unref?.();
+  }
+  if (start) {
+    await s.page.goto(start, { timeout: cfg.nav_timeout_seconds * 1000, waitUntil: 'domcontentloaded' }).catch(() => {});
+    if (kind === 'signed') void persistSignedSession(s);
+  }
+  await frame(s);
+  return { url: s.page.url(), title: await s.page.title().catch(() => ''), signed: kind === 'signed', interactive: true, viewport: cfg.viewport, image: s.last?.image ?? null };
+}
+
+/** Forward a single user input event from the in-app browser modal to the live Playwright page. */
+export async function interact(ctx, role, action = {}) {
+  const s = [...sessions.values()].find((x) => x.ctx.id === ctx.id && x.role === role && x.interactive);
+  if (!s?.page || s.page.isClosed()) fail('no interactive browser session is open');
+  s.needsHuman = null;
+  pulse(s);
+  const { width, height } = s.cfg.viewport;
+  const clamp = (n, max) => Math.max(0, Math.min(max, Number(n) || 0));
+  const type = String(action.type ?? '');
+  if (type === 'click') {
+    await s.page.mouse.click(clamp(action.x, width), clamp(action.y, height), { button: action.button === 'right' ? 'right' : 'left', clickCount: action.clickCount === 2 ? 2 : 1 }).catch(() => {});
+  } else if (type === 'wheel') {
+    await s.page.mouse.wheel(Number(action.deltaX) || 0, Number(action.deltaY) || 0).catch(() => {});
+  } else if (type === 'key' && action.key) {
+    await s.page.keyboard.press(String(action.key)).catch(() => {});
+  } else if (type === 'text' && typeof action.text === 'string' && action.text.length) {
+    await s.page.keyboard.insertText(action.text).catch(() => {});
+  } else if (type === 'goto' && action.url) {
+    let u; try { u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(String(action.url)) ? String(action.url) : `https://${action.url}`); } catch { fail('that is not a web address'); }
+    if (!/^https?:$/.test(u.protocol)) fail('only http and https addresses can be opened');
+    if (!s.cfg.allow_private && await isPrivateHost(u.hostname)) fail(`${u.hostname} is on this computer or network and is always blocked`);
+    await s.page.goto(u.href, { timeout: s.cfg.nav_timeout_seconds * 1000, waitUntil: 'domcontentloaded' }).catch(() => {});
+  } else if (type === 'back') {
+    await s.page.goBack({ timeout: 8000 }).catch(() => {});
+  } else if (type === 'forward') {
+    await s.page.goForward({ timeout: 8000 }).catch(() => {});
+  } else if (type === 'reload') {
+    await s.page.reload({ timeout: 15000, waitUntil: 'domcontentloaded' }).catch(() => {});
+  }
+  await frame(s);
+  if (s.kind === 'signed') {
+    clearTimeout(s.saveDebounce);
+    s.saveDebounce = setTimeout(() => { void persistSignedSession(s); }, 600);
+    s.saveDebounce.unref?.();
+  }
+  return { ok: true, url: s.page.url(), title: await s.page.title().catch(() => ''), image: s.last?.image ?? null };
+}
+
+/** Finish interactive mode, save any new sign-ins to the member's vault, and hand control back cleanly. */
+export async function closeInteractive(ctx, role, { emit = null } = {}) {
+  const list = [...sessions.values()].filter((x) => x.ctx.id === ctx.id && x.role === role);
+  for (const s of list) {
+    if (!s.interactive) continue;
+    s.emit = emit ?? s.emit;
+    s.interactive = false;
+    clearInterval(s.saveTimer); clearTimeout(s.saveDebounce);
+    s.saveTimer = s.saveDebounce = null;
+    if (s.kind === 'signed') await persistSignedSession(s);
+    clearInterval(s.timer); s.timer = null;
+    s.final = true; await frame(s); s.final = false;
+  }
+  return { ok: true, signin: signInState(ctx, role) };
 }
 
 // ---------- reading a page ----------
@@ -309,11 +437,14 @@ async function snapshot(s) {
       return `[${i + 1}] button "${text}"${flag}`;
     });
     const max = Math.max(1, document.documentElement.scrollHeight - innerHeight);
-    return { title: document.title, url: location.href, text: document.body?.innerText ?? '', items, percent: Math.min(100, Math.round((scrollY / max) * 100)) };
+    const hasCaptchaDom = !!document.querySelector('iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="challenges.cloudflare.com"], .g-recaptcha, .h-captcha, .cf-turnstile, #challenge-running, #cf-challenge-running');
+    return { title: document.title, url: location.href, text: document.body?.innerText ?? '', items, percent: Math.min(100, Math.round((scrollY / max) * 100)), hasCaptchaDom };
   }, { maxEls, signed, actSource });
+  s.needsHuman = detectHumanNeeded(d, signed);
   const text = d.text.replace(/[ \t]+/g, ' ').replace(/\n\s*\n+/g, '\n\n').trim();
   const body = text.length > maxChars ? `${text.slice(0, maxChars)}\n… (${text.length - maxChars} more characters; use browser_read with scroll to see more)` : text;
-  return `Page: ${d.title || '(no title)'}\nURL: ${d.url}${signed ? '\nSigned in as the founder: be careful, and never act without approval' : ''}\nScrolled: ${d.percent}%\n\n${body || '(no text on this page)'}\n\nElements:\n${d.items.join('\n') || '(none)'}`;
+  const humanNote = s.needsHuman ? `\nNote: ${s.needsHuman.reason}. Do not try to bypass this — ask the founder to open the in-app browser preview to handle it, then continue once they are done.` : '';
+  return `Page: ${d.title || '(no title)'}\nURL: ${d.url}${signed ? '\nSigned in as the founder: be careful, and never act without approval' : ''}${humanNote}\nScrolled: ${d.percent}%\n\n${body || '(no text on this page)'}\n\nElements:\n${d.items.join('\n') || '(none)'}`;
 }
 
 /** Turn pages the browser refused into writ requests, and say so. */
@@ -347,7 +478,9 @@ const IMPL = {
     await s.page.goto(u.href, { timeout: s.cfg.nav_timeout_seconds * 1000, waitUntil: 'domcontentloaded' }).catch((e) => {
       const notes = settle(s, o.onRequest);
       if (notes.length) fail(notes.join('; '));
-      fail(`could not open ${u.href}: ${String(e.message).split('\n')[0].replace(/^page\.goto: /, '')}`);
+      const reason = String(e.message).split('\n')[0].replace(/^page\.goto: /, '');
+      s.needsHuman = { kind: 'captcha', reason: `Could not load ${u.hostname} automatically (${reason}) — open the in-app browser to inspect or sign in` };
+      fail(`could not open ${u.href} automatically (${reason}). The founder can open the in-app browser preview to load or verify it directly.`);
     });
     await settled(s);
     const notes = settle(s, o.onRequest);
@@ -440,8 +573,9 @@ export async function callTool(ctx, role, name, args = {}, { emit = null, onRequ
   // one action at a time per member, in order
   const run = s.queue.then(async () => {
     pulse(s);
+    s.agentBusy++;
     try { return await IMPL[name](s, args, { onRequest }); }
-    finally { await frame(s); }
+    finally { s.agentBusy--; await frame(s); }
   });
   s.queue = run.catch(() => {});
   return run;

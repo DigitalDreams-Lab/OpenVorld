@@ -330,3 +330,74 @@ test('sign-in autosave leaves the window alone across origins and concurrent ope
   await restored.page.goto(`http://localhost:${server.address().port}`);
   assert.equal(await restored.page.evaluate(() => localStorage.getItem('account')), 'second');
 });
+
+test('detectHumanNeeded gently flags CAPTCHAs and signed-in login walls without false positives', () => {
+  assert.equal(hub.detectHumanNeeded({ url: 'https://example.com', title: 'Example Domain', text: 'Welcome to Example.' }, false), null);
+  assert.equal(hub.detectHumanNeeded({ url: 'https://site.example/cdn-cgi/challenge', title: 'Just a moment...', text: 'Verify you are human' }, false)?.kind, 'captcha');
+  assert.equal(hub.detectHumanNeeded({ url: 'https://site.example', title: 'Check', text: '', hasCaptchaDom: true }, false)?.kind, 'captcha');
+  assert.equal(hub.detectHumanNeeded({ url: 'https://accounts.google.com/v3/signin', title: 'Sign in', text: 'Sign in to continue' }, true)?.kind, 'login');
+  assert.equal(hub.detectHumanNeeded({ url: 'https://example.com/login', title: 'Log in', text: 'Enter your password' }, false), null);
+});
+
+test('in-app interactive browser lets the founder click, navigate, and save sign-in cookies without opening external Chrome', { skip: !hub.browserAvailable() }, async (t) => {
+  const prevAllow = process.env.OV_BROWSER_ALLOW_PRIVATE;
+  process.env.OV_BROWSER_ALLOW_PRIVATE = '1';
+  t.after(() => { if (prevAllow === undefined) delete process.env.OV_BROWSER_ALLOW_PRIVATE; else process.env.OV_BROWSER_ALLOW_PRIVATE = prevAllow; });
+  const server = http.createServer((req, res) => {
+    if (req.url === '/logged-in') {
+      res.writeHead(200, { 'content-type': 'text/html', 'set-cookie': 'ov_sid=hello; Path=/' });
+      return res.end('<title>Welcome Back</title><h1>Signed In</h1>');
+    }
+    res.writeHead(200, { 'content-type': 'text/html' });
+    res.end('<title>Login</title><a href="/logged-in" style="display:block;width:200px;height:60px">Sign In</a>');
+  }).listen(0, '127.0.0.1');
+  await new Promise((r) => server.once('listening', r));
+  t.after(async () => { await hub.closeAll(); server.close(); });
+  const base = `http://127.0.0.1:${server.address().port}`;
+  const ctx = makeVorld({ crew: [{ name: 'Stella', job: 'Analyzer', brain: { provider: 'none' } }] });
+  const role = ctx.crew.find((c) => c.name === 'Stella').id;
+  const frames = [];
+  const opened = await hub.openInteractive(ctx, role, { url: base, signed: true, emit: (e) => frames.push(e) });
+  assert.equal(opened.interactive, true);
+  assert.equal(opened.signed, true);
+  assert.ok(opened.image, 'returns an initial JPEG frame');
+  assert.equal(hub.signInWindow(ctx, role), null, 'does not launch an external Chrome sign-in window');
+
+  const clicked = await hub.interact(ctx, role, { type: 'click', x: 50, y: 25 });
+  assert.match(clicked.url, /\/logged-in$/);
+  const done = await hub.closeInteractive(ctx, role, { emit: (e) => frames.push(e) });
+  assert.equal(done.ok, true);
+  assert.ok(hub.sessionSites(ctx, role).length > 0, 'saved sign-in cookie to the member vault');
+  assert.ok(frames.some((f) => f.type === 'signin'), 'emitted signin update for WritCard');
+});
+
+test('the in-app browser frees only the founder: the member keeps needing writs, and keeps its honest name (needs Chrome)', { skip: !hub.findChrome() && 'no Chrome or Edge on this computer' }, async (t) => {
+  process.env.OV_BROWSER_ALLOW_PRIVATE = '1';          // the test page lives on 127.0.0.1
+  const agents = [];
+  const page = http.createServer((req, res) => {
+    agents.push(req.headers['user-agent']);
+    res.setHeader('content-type', 'text/html');
+    if (req.url === '/two') return res.end('<title>Two</title><h1>Second page</h1>');
+    res.end(`<title>Home</title><a href="http://localhost:${page.address().port}/two">Other host</a>`);
+  });
+  await new Promise((r) => page.listen(0, '127.0.0.1', r));
+  t.after(async () => { delete process.env.OV_BROWSER_ALLOW_PRIVATE; await hub.closeAll(); page.close(); });
+  const ctx = crew();
+  const home = `http://127.0.0.1:${page.address().port}/`;
+  grant(ctx, { role: 'ada', capability: 'net.fetch', scope: '127.0.0.1' });
+
+  await assert.rejects(hub.interact(ctx, 'ada', { type: 'reload' }), /no interactive browser session/, 'the founder must open the window first');
+  await hub.openInteractive(ctx, 'ada', { url: home });
+  assert.ok(agents.length && agents.every((ua) => / OpenVorld\/1$/.test(ua)), 'the browser says who it is');
+
+  // the member is still held to its writs, even while the founder's window is open
+  assert.match(await hub.callTool(ctx, 'ada', 'browser_read', {}), /\[1\] link "Other host"/);
+  await assert.rejects(hub.callTool(ctx, 'ada', 'browser_click', { id: 1 }), /no writ for localhost/);
+
+  // the founder is not: they can go to a site the member holds no writ for
+  const moved = await hub.interact(ctx, 'ada', { type: 'goto', url: `http://localhost:${page.address().port}/two` });
+  assert.match(moved.url, /localhost:\d+\/two$/);
+
+  await hub.closeInteractive(ctx, 'ada');
+  await assert.rejects(hub.interact(ctx, 'ada', { type: 'reload' }), /no interactive browser session/);
+});

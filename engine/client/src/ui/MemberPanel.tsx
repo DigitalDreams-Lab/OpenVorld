@@ -1,7 +1,7 @@
 // Talking to one crew member: their chats (newest first) and the open conversation.
 import { useEffect, useState } from 'react';
 import { api } from '../api';
-import { emit, memberOf, setState, str, toast, useStore } from '../store';
+import { emit, memberOf, openBrowserModal, setState, str, toast, useStore } from '../store';
 import { IconButton } from './IconButton';
 import { play } from '../audio/sfx';
 import { Portrait } from './Portrait';
@@ -26,6 +26,7 @@ export function MemberPanel({ id }: { id: string }) {
   }, [wid, id, version]);
   if (!m) return null;
   const following = useStore((s) => s.following.includes(id));
+  const browser = useStore((s) => s.browsers[id]);
   const newChat = async () => {
     play('ui.open');
     try { const t = await api(`/vorlds/${wid}/threads`, { body: { role: id } }); setThreads((x) => [t, ...(x ?? [])]); setActive(t.id); }
@@ -50,6 +51,25 @@ export function MemberPanel({ id }: { id: string }) {
         </div>
       </header>
       <PendingRequests role={id} />
+      {browser?.image && (
+        <div className={`mp-browser ${browser.needsHuman ? 'warn' : ''}`}>
+          <img
+            className="mp-browser-thumb"
+            src={`data:image/jpeg;base64,${browser.image}`}
+            alt={`${m.name}'s browser preview`}
+            onClick={() => { play('ui.open'); openBrowserModal({ role: id, interactive: !!browser.needsHuman }); }}
+          />
+          <div className="mp-browser-info">
+            <div className="mp-browser-title ellip">{browser.needsHuman ? `⚠ ${browser.needsHuman.reason}` : (browser.title || browser.url || 'Browser preview')}</div>
+            <div className="mp-browser-actions">
+              <button type="button" className="btn small" onClick={() => { play('ui.open'); openBrowserModal({ role: id, interactive: false }); }}>Expand</button>
+              <button type="button" className="btn small primary" onClick={() => { play('ui.open'); openBrowserModal({ role: id, interactive: true }); }}>
+                {browser.needsHuman ? 'Take over' : 'Interact'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {!m.brain_label && <p className="no-brain">{m.name} has no brain yet. <button className="link" onClick={() => setState({ modal: 'member' })}>Pick one</button> (Claude Code, Codex, Antigravity, OpenCode or an API model).</p>}
       <div className="thread-tabs">
         <button className="btn small primary" onClick={newChat}>+ {str('ui.new_chat', {}, 'New chat')}</button>

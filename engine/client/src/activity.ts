@@ -24,17 +24,18 @@ export function liveActivityLine(turn: Live): string {
 export function agentActivity(role: string, turns: Record<string, Live>, browser?: BrowserFrame, now = Date.now(), note?: ActivityNote) {
   const turn = Object.values(turns).filter(turn => turn.role === role).sort((a, b) => Number(b.working) - Number(a.working) || (b.updatedAt ?? 0) - (a.updatedAt ?? 0))[0];
   const recent = !!note?.text.trim() && now - note.at < 6000;
-  if (!turn?.working && !browser?.active && !recent) return null;
+  if (!turn?.working && !browser?.active && !browser?.needsHuman && !recent) return null;
   let site = '';
   try { site = new URL(browser?.url ?? '').hostname; } catch { /* No page yet. */ }
-  const text = turn?.working ? liveActivityLine(turn) : recent ? lastActivityLine(note?.text) : '';
+  const text = browser?.needsHuman ? browser.needsHuman.reason : turn?.working ? liveActivityLine(turn) : recent ? lastActivityLine(note?.text) : '';
   const party = turn?.working ? turn.party : note?.party;
   const thread = turn?.working ? turn.thread : note?.thread;
   return {
     text: text || lastActivityLine(browser?.title) || (site ? `Browsing ${site}` : 'Browsing…'),
-    kind: recent && note?.error && !turn?.working && !browser?.active ? 'error' : browser?.active ? 'browser' : turn?.working ? 'work' : 'done',
-    image: browser?.active ? browser.image : undefined,
+    kind: browser?.needsHuman ? 'browser' : recent && note?.error && !turn?.working && !browser?.active ? 'error' : browser?.active ? 'browser' : turn?.working ? 'work' : 'done',
+    image: (browser?.active || browser?.needsHuman) ? browser.image : undefined,
     site, signed: !!browser?.signed,
+    needsHuman: browser?.needsHuman ?? null,
     party,
     thread,
   };
