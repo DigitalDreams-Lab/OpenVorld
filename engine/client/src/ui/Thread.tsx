@@ -9,6 +9,7 @@ import { WritCard } from './WritCard';
 import { ChatComposer, DropHint, useChatDraft } from './ChatComposer';
 import { BenchLine } from './BenchLine';
 import { EVERYONE, asksEveryone } from './mentions';
+import { nearEnd } from './scroll';
 
 /** Saved events of a thread, refetched when a turn ends (threadsVersion) or when `key` changes. */
 export function useThreadEvents(wid: string, tid: string | null) {
@@ -29,6 +30,7 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
   const live = useStore((s) => s.live[tid]);
   const working = !!live?.working;
   const end = useRef<HTMLDivElement>(null);
+  const following = useRef(true);   // the reader is at the end of the chat: new messages follow them down; scrolling up to read stops that until they come back near the end
   const events = data?.events ?? [];
   const thread = data?.thread;
   const m = memberOf(thread?.role);
@@ -39,7 +41,14 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
   const mentionMembers = [...(crew ?? []).filter((c: any) => !party || members?.includes(c.id)), ...(party && (members?.length ?? 0) > 1 ? [EVERYONE] : [])];
   const names = useMemo<string[]>(() => (party ? (crew ?? []).map((c: any) => c.name) : []), [party, crew]);
   const draft = useChatDraft({ wid, thread: tid, working, onEvents: setEvents });
-  useEffect(() => { end.current?.scrollIntoView({ block: 'end' }); }, [events.length, live?.steps]);
+  const seen = useRef(0);
+  useEffect(() => {
+    // sending a message always goes to the end: only when it was just added, not while the reply streams (your message is still the last saved event then)
+    const added = events.length > seen.current;
+    seen.current = events.length;
+    if (added && events[events.length - 1]?.type === 'founder.message') following.current = true;
+    if (following.current) end.current?.scrollIntoView({ block: 'end' });
+  }, [events.length, live?.steps]);
   const lastAgent = useMemo(() => [...events].reverse().find((e: any) => e.type === 'agent.text'), [events]);
   const answered = useMemo(() => new Map<string, any>(events.filter((e: any) => e.type === 'writ.answered').map((e: any) => [e.id, e])), [events]);
   if (error) return <div className="empty" role="alert">Could not load this chat: {error}</div>;
@@ -47,7 +56,7 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
   return (
     <div className={`convo ${draft.dragging ? 'dragging' : ''}`} {...(canSend ? draft.dropHandlers : {})}>
       {draft.dragging && <DropHint />}
-      <div className="messages">
+      <div className="messages" onScroll={(e) => { following.current = nearEnd(e.currentTarget); }}>
         {events.map((e: any, i: number) => {
           if (e.type === 'founder.message') return <div key={i} className="msg me"><Markdown text={e.text} thread={tid} /><MessageFiles files={e.attachments} /></div>;
           if (e.type === 'agent.text') return <AgentTurn key={i} role={e.role ?? thread.role} steps={e.steps} text={e.text} mood={e.meta?.mood} did={e.meta?.did} noted={e.meta?.noted} thread={tid} {...(party ? { speaker: speakerName(e.role), job: memberOf(e.role)?.job, mentions: names } : {})} />;

@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.18.1 - 2026-11-20
+
+- Chats no longer jump to the end while you read older messages: new messages follow you down only when you are near the end, and sending a message always goes to the end
+
 ## 0.18.0 - 2026-11-20
 
 - Chats: a button in the chat header makes the member chat or party room wider (up to 70% of the screen); the choice is kept in this browser
