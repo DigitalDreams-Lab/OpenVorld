@@ -1,11 +1,14 @@
-version: 0.19.1
+version: 0.19.3
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.1/OpenVorld-0.19.1-mac-arm64.zip
-    sha512: ZdpTe6MVwNxd/FQS4myRywqxN1/7mycKNkL5FUhP0Df/1i7Mr656BpTJTO/NCDWfAqVbeSlhsvLwAu039R94sw==
-    size: 177885065
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.1/OpenVorld-0.19.1-mac-arm64.zip
-sha512: ZdpTe6MVwNxd/FQS4myRywqxN1/7mycKNkL5FUhP0Df/1i7Mr656BpTJTO/NCDWfAqVbeSlhsvLwAu039R94sw==
-releaseNotes: "- Crew walking to you no longer cut through props, the Party
-  Hall's pillar or house walls: the walking test now knows everything you bump
-  into, so routes go around it"
-releaseDate: 2026-11-20T13:32:00.004Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.3/OpenVorld-0.19.3-mac-arm64.zip
+    sha512: d3gi/bl3qwpLav6Cc8fTSRBjm1i0BmjRB88txL/32cyliEZkOkQmTsiEYareKvAKGQxJHev8yLfy0ZhRi6KK0g==
+    size: 177885668
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.3/OpenVorld-0.19.3-mac-arm64.zip
+sha512: d3gi/bl3qwpLav6Cc8fTSRBjm1i0BmjRB88txL/32cyliEZkOkQmTsiEYareKvAKGQxJHev8yLfy0ZhRi6KK0g==
+releaseNotes: "- The member panel no longer shows the job description (more room
+  for the chat); a new agent always keeps its own workbench, and the optional
+  Initial folder you pick in the New agent dialog becomes an extra workbench its
+  chats start on; a chat's workbench list no longer shows the agent's own
+  workbench as a choice: None means only its own workbench, then the agent's
+  folders, and Add folder adds one to the agent's folders"
+releaseDate: 2026-11-20T13:46:40.902Z
