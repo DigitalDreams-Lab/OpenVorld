@@ -1,11 +1,13 @@
-version: 0.18.0
+version: 0.19.0
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-mac-arm64.zip
-    sha512: dW8TYwCc/9O78ox0BR6ObEN1IWCTmf1/nJZIbH+cQhEC6e8Br+FshUFI13Er0jaRwYwRFIRxrgW20RgTyDWFlw==
-    size: 177880458
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-mac-arm64.zip
-sha512: dW8TYwCc/9O78ox0BR6ObEN1IWCTmf1/nJZIbH+cQhEC6e8Br+FshUFI13Er0jaRwYwRFIRxrgW20RgTyDWFlw==
-releaseNotes: "- Chats: a button in the chat header makes the member chat or
-  party room wider (up to 70% of the screen); the choice is kept in this
-  browser"
-releaseDate: 2026-11-20T11:58:07.980Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.0/OpenVorld-0.19.0-mac-arm64.zip
+    sha512: uW1p7CKRrP/nBq5Kr/CED6gFA9S1wbfAMalqROuPbdADTPPMkW7UmAPzNlVKO+vREtSmzqihDaUxDjzkuKC1nw==
+    size: 177884606
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.0/OpenVorld-0.19.0-mac-arm64.zip
+sha512: uW1p7CKRrP/nBq5Kr/CED6gFA9S1wbfAMalqROuPbdADTPPMkW7UmAPzNlVKO+vREtSmzqihDaUxDjzkuKC1nw==
+releaseNotes: "- Parties get a shared folder (parties/<id>/shared) that is kept
+  after the party: files the founder attaches, pictures from tools and files a
+  member names in share are copied there, the room says who shared what and
+  where, every member reads it with its own tools, and an Open folder button
+  shows it"
+releaseDate: 2026-11-20T13:01:47.292Z

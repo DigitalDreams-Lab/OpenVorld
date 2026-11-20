@@ -1,11 +1,13 @@
-version: 0.18.0
+version: 0.19.0
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-linux-x86_64.AppImage
-    sha512: MnE2tTAqxeD4uwsABD3+ZqepkP1ShcXT3GNj/3uLfStTbG/yy7TwIdc3Fcb+IIF8L1JLW8HkvBtjOJzZ/XypBw==
-    size: 185641102
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-linux-x86_64.AppImage
-sha512: MnE2tTAqxeD4uwsABD3+ZqepkP1ShcXT3GNj/3uLfStTbG/yy7TwIdc3Fcb+IIF8L1JLW8HkvBtjOJzZ/XypBw==
-releaseNotes: "- Chats: a button in the chat header makes the member chat or
-  party room wider (up to 70% of the screen); the choice is kept in this
-  browser"
-releaseDate: 2026-11-20T11:52:45.325Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.0/OpenVorld-0.19.0-linux-x86_64.AppImage
+    sha512: 4s2w+Nyej8bA/9U+XDzqbnym3uJjg60TvBLGfJSAUuCdK86ZKwY4sisWcfcRTkkI4M6SBfhMsPxB25qFDVclkg==
+    size: 185645092
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.0/OpenVorld-0.19.0-linux-x86_64.AppImage
+sha512: 4s2w+Nyej8bA/9U+XDzqbnym3uJjg60TvBLGfJSAUuCdK86ZKwY4sisWcfcRTkkI4M6SBfhMsPxB25qFDVclkg==
+releaseNotes: "- Parties get a shared folder (parties/<id>/shared) that is kept
+  after the party: files the founder attaches, pictures from tools and files a
+  member names in share are copied there, the room says who shared what and
+  where, every member reads it with its own tools, and an Open folder button
+  shows it"
+releaseDate: 2026-11-20T12:56:45.294Z

@@ -1,11 +1,13 @@
-version: 0.18.0
+version: 0.19.0
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-win-x64.exe
-    sha512: /zBsedLl3iCOPCINawtUgHdoLw2QlvGop2R7MnEHVePkMiCCE2b5bE6ZhvMDPx6Ri2+I52kaZxyrLYxSZ6taVw==
-    size: 177441180
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-win-x64.exe
-sha512: /zBsedLl3iCOPCINawtUgHdoLw2QlvGop2R7MnEHVePkMiCCE2b5bE6ZhvMDPx6Ri2+I52kaZxyrLYxSZ6taVw==
-releaseNotes: "- Chats: a button in the chat header makes the member chat or
-  party room wider (up to 70% of the screen); the choice is kept in this
-  browser"
-releaseDate: 2026-11-20T11:53:00.321Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.0/OpenVorld-0.19.0-win-x64.exe
+    sha512: M7ntW+wWhDbdAyjwDBP8dTh0czV8OrK7YPzyoP6WCHZgtKkr2WiKB05Jb/5rs8KiBIcGXrZDI/0hCxHVdRfdxA==
+    size: 177445146
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.0/OpenVorld-0.19.0-win-x64.exe
+sha512: M7ntW+wWhDbdAyjwDBP8dTh0czV8OrK7YPzyoP6WCHZgtKkr2WiKB05Jb/5rs8KiBIcGXrZDI/0hCxHVdRfdxA==
+releaseNotes: "- Parties get a shared folder (parties/<id>/shared) that is kept
+  after the party: files the founder attaches, pictures from tools and files a
+  member names in share are copied there, the room says who shared what and
+  where, every member reads it with its own tools, and an Open folder button
+  shows it"
+releaseDate: 2026-11-20T12:57:31.919Z
