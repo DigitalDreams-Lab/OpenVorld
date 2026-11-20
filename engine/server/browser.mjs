@@ -189,6 +189,47 @@ const stopTimers = (s) => {
   s.timer = s.idle = s.saveTimer = s.saveDebounce = null;
 };
 
+/**
+ * Inspect Document HTTP redirects inside Chromium's native network stack (CDP Fetch Response stage) so we never
+ * proxy pages through Node's `route.fetch()` (whose 16KB header limit causes `ERR_FAILED` on Google/YouTube/etc.),
+ * while still blocking redirects to private IPs or ungranted domains before Chrome ever connects to the target.
+ */
+const guards = new WeakMap();   // page -> the promise of its redirect guard: a page is guarded once, and nothing loads before that is done
+const guardOf = (s, page) => { if (!guards.has(page)) guards.set(page, attachRedirectGuard(s, page)); return guards.get(page); };
+async function attachRedirectGuard(s, page) {
+  let cdp;
+  try { cdp = await s.context.newCDPSession(page); } catch { return; }
+  let mainFrameId = null;
+  try { mainFrameId = (await cdp.send('Page.getFrameTree')).frameTree.frame.id; } catch {}
+  await cdp.send('Fetch.enable', { patterns: [{ resourceType: 'Document', requestStage: 'Response' }] }).catch(() => {});
+  cdp.on('Fetch.requestPaused', async (ev) => {
+    const failReq = (reason = 'BlockedByClient') => cdp.send('Fetch.failRequest', { requestId: ev.requestId, errorReason: reason }).catch(() => {});
+    const cont = () => cdp.send('Fetch.continueResponse', { requestId: ev.requestId }).catch(() => {});
+    if (ev.responseErrorReason) return failReq(ev.responseErrorReason);
+    const loc = ev.responseHeaders?.find((h) => h.name.toLowerCase() === 'location')?.value;
+    if (![301, 302, 303, 307, 308].includes(ev.responseStatusCode) || !loc) {
+      if (ev.frameId === mainFrameId) s.hops = 0;
+      return cont();
+    }
+    const main = !mainFrameId || ev.frameId === mainFrameId;
+    let target;
+    try { target = new URL(loc, ev.request.url); } catch { return failReq(); }
+    if (!/^https?:$/.test(target.protocol)) return failReq();
+    if (++s.hops > 20) return failReq();
+    if (!s.cfg.allow_private && await isPrivateHost(target.hostname)) {
+      if (main) s.denied.push({ host: target.hostname, private: true });
+      return failReq();
+    }
+    if (!s.interactive || s.agentBusy) {
+      if (!allowsHost(domainsOf(s.ctx, s.role, s.kind), target.hostname)) {
+        if (main) s.denied.push({ host: target.hostname, url: target.href });
+        return failReq();
+      }
+    }
+    return cont();
+  });
+}
+
 async function sessionOf(ctx, role, kind) {
   const key = skey(ctx, role, kind), cfg = cfgOf(ctx);
   let s = sessions.get(key);
@@ -196,14 +237,20 @@ async function sessionOf(ctx, role, kind) {
   const browser = await chrome();
   const ua = `Mozilla/5.0 (${process.platform === 'darwin' ? 'Macintosh; Intel Mac OS X 10_15_7' : process.platform === 'win32' ? 'Windows NT 10.0; Win64; x64' : 'X11; Linux x86_64'}) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${browser.version()} Safari/537.36 OpenVorld/1`;
   const context = await browser.newContext({ viewport: cfg.viewport, acceptDownloads: false, serviceWorkers: 'block', locale: 'en-US', userAgent: ua, permissions: [], ...(kind === 'signed' ? { storageState: loadSession(ctx, role) } : {}) });
-  s = { key, ctx, role, kind, browser, context, page: null, queue: Promise.resolve(), denied: [], hops: 0, last: null, hash: '', timer: null, idle: null, saveTimer: null, saveDebounce: null, activeUntil: 0, emit: null, cfg, interactive: false, agentBusy: 0, needsHuman: null };
-  context.on('page', (p) => { s.page = p; p.on('dialog', (d) => d.dismiss().catch(() => {})); });
-  await context.route('**/*', async (route) => {
+  s = { key, ctx, role, kind, browser, context, page: null, queue: Promise.resolve(), denied: [], hops: 0, last: null, hash: '', timer: null, idle: null, saveTimer: null, saveDebounce: null, activeUntil: 0, emit: null, cfg, interactive: false, agentBusy: 0, needsHuman: null, waiting: [] };
+  context.on('page', (p) => { s.page = p; p.on('dialog', (d) => d.dismiss().catch(() => {})); const g = guardOf(s, p); for (const w of s.waiting.splice(0)) w(g); });
+  const guardRoute = async (route) => {
     const req = route.request();
     let u; try { u = new URL(req.url()); } catch { return route.abort('blockedbyclient'); }
     // allow inline/local browser-internal resources (SPAs use blob:/data:/about: for frames, workers and assets)
     if (/^(data|blob|about):$/i.test(u.protocol)) return route.continue();
     if (!/^https?:$/.test(u.protocol)) return route.abort('blockedbyclient');
+    // a page loads nothing until its redirect guard is attached, or its first redirect would go unchecked. A popup's first request
+    // comes before its page exists (frame() throws): then wait for that page to appear and for its guard.
+    if (req.resourceType() === 'document') {
+      try { await guardOf(s, req.frame().page()); }
+      catch { await new Promise((r) => { s.waiting.push(r); setTimeout(r, 3000); }); }
+    }
     // a blocked page the member asked for is reported; a blocked frame, ad or tracker on an allowed page is just not loaded
     const main = req.resourceType() === 'document' && (() => { try { return !req.frame().parentFrame(); } catch { return true; } })();
     if (!s.cfg.allow_private && await isPrivateHost(u.hostname)) { if (main) s.denied.push({ host: u.hostname, private: true }); return route.abort('blockedbyclient'); }
@@ -211,25 +258,16 @@ async function sessionOf(ctx, role, kind) {
     // Never while the member is running a tool of their own: the member's pages always need their writs.
     if (s.interactive && !s.agentBusy) return route.continue();
     if (req.resourceType() !== 'document') return route.continue();
-    // pages and frames: the domain must be granted, and redirects are followed HERE, one hop at a time
+    // pages and frames: the domain must be granted (redirects are checked natively by attachRedirectGuard)
     if (!allowsHost(domainsOf(s.ctx, s.role, s.kind), u.hostname)) { if (main) s.denied.push({ host: u.hostname, url: u.href }); return route.abort('blockedbyclient'); }
     // a form submission (POST) while signed in changes things as the founder
     if (s.kind === 'signed' && !['GET', 'HEAD'].includes(req.method()) && !holds(s.ctx, s.role, 'net.act', u.hostname)) { if (main) s.denied.push({ host: u.hostname, url: u.href, act: true }); return route.abort('blockedbyclient'); }
-    let resp;
-    try { resp = await route.fetch({ maxRedirects: 0, timeout: 30000 }); } catch { return route.abort('failed'); }
-    const loc = resp.headers().location;
-    if ([301, 302, 303, 307, 308].includes(resp.status()) && loc) {
-      let target; try { target = new URL(loc, u).href; } catch { return route.abort('blockedbyclient'); }
-      if (++s.hops > 20) return route.abort('blockedbyclient');
-      const cookies = resp.headersArray().filter((h) => h.name.toLowerCase() === 'set-cookie').map((h) => h.value);
-      const headers = cookies.length ? { 'set-cookie': cookies.join('\n') } : {};
-      // a 0-second refresh is a new navigation (checked again by this handler) and replaces the history entry like a redirect
-      return route.fulfill({ status: 200, contentType: 'text/html', headers, body: `<!doctype html><meta http-equiv="refresh" content="0;url=${target.replace(/&/g, '&amp;').replace(/"/g, '&quot;')}">` });
-    }
-    s.hops = 0;
-    return route.fulfill({ response: resp });
-  });
+    return route.continue();
+  };
+  // a request still waiting when the browser closes is not an error
+  await context.route('**/*', (route) => guardRoute(route).catch((e) => { if (!/closed/i.test(String(e?.message))) throw e; }));
   s.page = await context.newPage();
+  await guardOf(s, s.page);
   sessions.set(key, s);
   return s;
 }
