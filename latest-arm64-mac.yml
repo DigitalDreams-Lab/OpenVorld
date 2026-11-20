@@ -1,11 +1,11 @@
-version: 0.16.1
+version: 0.16.2
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.1/OpenVorld-0.16.1-mac-arm64.zip
-    sha512: KJHYyzCVVhXbnoVGQvqBxLbIQyOoZGev8zz0zIWaeAs8IaGT8C27603mJpF/bBI/1Fp+O9Haug/lm4e7KVa/9g==
-    size: 177878107
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.1/OpenVorld-0.16.1-mac-arm64.zip
-sha512: KJHYyzCVVhXbnoVGQvqBxLbIQyOoZGev8zz0zIWaeAs8IaGT8C27603mJpF/bBI/1Fp+O9Haug/lm4e7KVa/9g==
-releaseNotes: "- The in-app browser window sits on a real backdrop again (it had
-  the wrong class, so it had no close button in reach), and the member panel can
-  close a member's browser"
-releaseDate: 2026-11-20T09:07:19.394Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.2/OpenVorld-0.16.2-mac-arm64.zip
+    sha512: KAjRZwKm5icgFBeQoI7bqsumZxgmx/eVIqXvT8d4AK0gFubQAZSeegM1DOYEm3fZcUlkzmLE8QMYACBU/xYSKQ==
+    size: 177878465
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.2/OpenVorld-0.16.2-mac-arm64.zip
+sha512: KAjRZwKm5icgFBeQoI7bqsumZxgmx/eVIqXvT8d4AK0gFubQAZSeegM1DOYEm3fZcUlkzmLE8QMYACBU/xYSKQ==
+releaseNotes: "- A crew member can close its own browser when it is done (new
+  browser_close tool for every brain); it stays open if you are using the
+  window"
+releaseDate: 2026-11-20T09:16:15.452Z
