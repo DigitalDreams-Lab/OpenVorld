@@ -546,6 +546,14 @@ export async function callTool(ctx, role, name, args = {}, { emit = null, onRequ
   if (!isBrowserTool(name)) fail(`unknown tool ${name}`);
   const cfg = cfgOf(ctx);
   if (cfg.enabled === false) fail('the browser is switched off for this vorld');
+  // closing needs no page, and never starts a browser
+  if (name === 'browser_close') {
+    const mine = [...sessions.values()].filter((x) => x.ctx.id === ctx.id && x.role === role);
+    if (!mine.length) return 'No browser was open.';
+    if (mine.some((x) => x.interactive)) return 'The founder is using the browser window right now, so it stays open. Carry on, or finish and tell them you are done.';
+    await close(ctx, role);
+    return 'Browser closed. Use browser_open if you need a page again.';
+  }
   let kind;
   // before opening Chrome at all: a page the member has no writ for, or that is private, never starts a browser
   if (name === 'browser_open') {
