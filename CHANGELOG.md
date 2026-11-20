@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.16.3 - 2026-11-20
+
+- Pages with very large response headers (Google, YouTube) load in the crew browser: pages now load natively and redirects are checked inside Chrome, popups included
+
 ## 0.16.2 - 2026-11-20
 
 - A crew member can close its own browser when it is done (new browser_close tool for every brain); it stays open if you are using the window

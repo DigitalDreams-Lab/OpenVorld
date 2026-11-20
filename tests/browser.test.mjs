@@ -371,6 +371,50 @@ test('in-app interactive browser lets the founder click, navigate, and save sign
   assert.ok(frames.some((f) => f.type === 'signin'), 'emitted signin update for WritCard');
 });
 
+test('pages with >16KB HTTP headers (like YouTube/Google) load natively without ERR_FAILED', { skip: !hub.findChrome() && 'no Chrome or Edge on this computer' }, async (t) => {
+  const prevAllow = process.env.OV_BROWSER_ALLOW_PRIVATE;
+  process.env.OV_BROWSER_ALLOW_PRIVATE = '1';
+  const big = 'x'.repeat(20 * 1024);
+  const srv = http.createServer((_req, res) => {
+    res.writeHead(200, { 'content-type': 'text/html', 'x-huge-csp-like': big });
+    res.end('<title>Big Headers</title><h1>Loaded cleanly</h1>');
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  t.after(async () => {
+    if (prevAllow === undefined) delete process.env.OV_BROWSER_ALLOW_PRIVATE; else process.env.OV_BROWSER_ALLOW_PRIVATE = prevAllow;
+    await hub.closeAll();
+    srv.close();
+  });
+  const ctx = crew();
+  grant(ctx, { role: 'ada', capability: 'net.fetch', scope: '127.0.0.1' });
+  const read = await hub.callTool(ctx, 'ada', 'browser_open', { url: `http://127.0.0.1:${srv.address().port}/` });
+  assert.match(read, /Page: Big Headers[\s\S]*Loaded cleanly/);
+});
+
+test('a long redirect chain loads, and a popup\'s first redirect is checked too (needs Chrome)', { skip: !hub.findChrome() && 'no Chrome or Edge on this computer' }, async (t) => {
+  process.env.OV_BROWSER_ALLOW_PRIVATE = '1';
+  let secretHits = 0;
+  const srv = http.createServer((req, res) => {
+    res.setHeader('content-type', 'text/html');
+    const hop = /^\/hop\/(\d+)$/.exec(req.url);
+    if (hop) { res.statusCode = 302; res.setHeader('location', Number(hop[1]) ? `/hop/${hop[1] - 1}` : '/end'); return res.end(); }
+    if (req.url === '/end') return res.end('<title>End</title><h1>Chain done</h1>');
+    if (req.url === '/out') { res.statusCode = 302; res.setHeader('location', `http://localhost:${srv.address().port}/secret`); return res.end(); }
+    if (req.url === '/secret') { secretHits++; return res.end('secret'); }
+    res.end('<title>Home</title><h1>Home</h1><button onclick="window.open(\'/out\')">Pop</button>');
+  });
+  await new Promise((r) => srv.listen(0, '127.0.0.1', r));
+  t.after(async () => { delete process.env.OV_BROWSER_ALLOW_PRIVATE; await hub.closeAll(); srv.close(); });
+  const ctx = crew();
+  grant(ctx, { role: 'ada', capability: 'net.fetch', scope: '127.0.0.1' });
+  const base = `http://127.0.0.1:${srv.address().port}`;
+  assert.match(await hub.callTool(ctx, 'ada', 'browser_open', { url: `${base}/hop/15` }), /Chain done/, '15 redirects are fine (the limit is 20)');
+  await hub.callTool(ctx, 'ada', 'browser_open', { url: base });
+  await hub.callTool(ctx, 'ada', 'browser_click', { id: 1 }).catch(() => {});
+  await new Promise((r) => setTimeout(r, 800));
+  assert.equal(secretHits, 0, 'a popup\'s redirect to a site without a writ never even reaches that site');
+});
+
 test('the in-app browser frees only the founder: the member keeps needing writs, and keeps its honest name (needs Chrome)', { skip: !hub.findChrome() && 'no Chrome or Edge on this computer' }, async (t) => {
   process.env.OV_BROWSER_ALLOW_PRIVATE = '1';          // the test page lives on 127.0.0.1
   const agents = [];
