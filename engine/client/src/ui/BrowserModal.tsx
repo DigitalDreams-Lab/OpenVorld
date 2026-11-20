@@ -175,7 +175,7 @@ export function BrowserModal() {
   };
 
   return (
-    <div className="modal-backdrop" onClick={() => void stopInteractive(true)}>
+    <div className="modal-bg" onClick={() => void stopInteractive(true)}>
       <div className="panel modal browser-modal" role="dialog" aria-label={`${member?.name ?? 'Crew'} browser`} onClick={(e) => e.stopPropagation()}>
         <header className="bm-head">
           <div className="bm-title">
