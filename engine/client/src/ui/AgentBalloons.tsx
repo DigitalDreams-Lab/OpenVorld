@@ -3,7 +3,7 @@ import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from
 import { agentActivity } from '../activity';
 import { api } from '../api';
 import { play } from '../audio/sfx';
-import { emit, on, openRequest, setOpenWrits, setState, str, toast, useStore, type OpenWrit } from '../store';
+import { emit, on, openBrowserModal, openRequest, setOpenWrits, setState, str, toast, useStore, type OpenWrit } from '../store';
 
 type Anchors = { width: number; height: number; positions: Record<string, { x: number; y: number; feet: number }> };
 export function AgentBalloons() {
@@ -148,8 +148,33 @@ export function AgentBalloons() {
           </span>
         </span>
         <span className="ab-text">{activity.text}</span>
-        {activity.image && <img className="ab-browser" src={`data:image/jpeg;base64,${activity.image}`} alt={`${member.name}'s live browser preview`} onLoad={place} />}
-        {activity.kind === 'browser' && activity.site && <span className="ab-site">{activity.signed ? '🔒 ' : '🌐 '}{activity.site}<span>View only</span></span>}
+        {activity.image && (
+          <img
+            className="ab-browser"
+            src={`data:image/jpeg;base64,${activity.image}`}
+            alt={`${member.name}'s live browser preview — click to expand`}
+            title="Click to expand browser preview or interact"
+            onLoad={place}
+            onClick={(e) => {
+              e.stopPropagation();
+              play('ui.open');
+              openBrowserModal({ role: member.id, interactive: !!activity.needsHuman });
+            }}
+          />
+        )}
+        {activity.kind === 'browser' && activity.site && (
+          <span
+            className={`ab-site ${activity.needsHuman ? 'ab-site-warn' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              play('ui.open');
+              openBrowserModal({ role: member.id, interactive: !!activity.needsHuman });
+            }}
+          >
+            {activity.signed ? '🔒 ' : '🌐 '}{activity.site}
+            <span>{activity.needsHuman ? 'Needs you ↗' : 'Expand ↗'}</span>
+          </span>
+        )}
       </button>;
     })}
     {spoken.map(x => <div key={x.id} className="agent-balloon speech" role="status" aria-label={`${crew.find(c => c.id === x.role)?.name ?? ''}: ${x.text}`}

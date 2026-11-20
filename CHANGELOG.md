@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.16.0 - 2026-11-20
+
+- The crew browser opens inside OpenVorld: expand a member's live preview, click, scroll and type in it, and sign in to a site without a separate Chrome window (your sign-in is saved for that member). A CAPTCHA or login wall now shows a "needs you" note on the balloon. Your window never loosens the member's own writs, and the browser keeps its honest OpenVorld/1 name
+
 ## 0.15.1 - 2026-11-19
 
 - Windows: the crew browser tools reach Claude Code members again (its system prompt was passed as a multi-line argument, which cmd.exe cut off together with --allowedTools; it now comes from a temporary file), and Chrome or Edge are found per user and in any Program Files folder

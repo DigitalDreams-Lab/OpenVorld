@@ -18,6 +18,7 @@ import { PartyPanel } from '../ui/PartyPanel';
 import { Deeds } from '../ui/Deeds';
 import { Settings } from '../ui/Settings';
 import { RequestDialog } from '../ui/Requests';
+import { BrowserModal } from '../ui/BrowserModal';
 import { Toasts } from '../ui/Toasts';
 import { AgentBalloons } from '../ui/AgentBalloons';
 import { lastActivityLine } from '../activity';
@@ -104,6 +105,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
       {vorld && modal === 'deeds' && <Deeds />}
       {vorld && modal === 'settings' && <Settings />}
       {vorld && modal === 'request' && <RequestDialog />}
+      {vorld && modal === 'browser' && <BrowserModal />}
       {vorld && modal === 'member' && talkingTo && <MemberSettings key={`settings:${talkingTo}`} id={talkingTo} />}
       <Toasts />
       {vorld && !talkingTo && !partyId && !modal && <div className="hint">WASD or click to walk · E to talk · the Party Hall stands in the plaza</div>}
@@ -119,7 +121,14 @@ function handleBrowser(m: any) {
   setState((s) => {
     const next = { ...s.browsers };
     if (m.closed) delete next[m.role];
-    else next[m.role] = { ...next[m.role], ...(m.image ? { url: m.url, title: m.title, image: m.image, signed: !!m.signed } : {}), active: !!m.active, at: Date.now() };
+    else next[m.role] = {
+      ...next[m.role],
+      ...(m.image ? { url: m.url, title: m.title, image: m.image, signed: !!m.signed } : {}),
+      active: !!m.active,
+      interactive: !!m.interactive,
+      needsHuman: m.needsHuman ?? null,
+      at: Date.now(),
+    };
     return { browsers: next };
   });
   const b = getState().browsers;
