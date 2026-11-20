@@ -52,12 +52,12 @@ export function Settings() {
       <div className="modal panel settings" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
         <header className="row between"><div className="settings-brand"><BrandIcon size={44} /><div><h2>Settings</h2><span className="muted small">OpenVorld · v{APP_VERSION}</span></div></div><IconButton icon="close" title="Close" onClick={close} /></header>
         <h3>Your profile</h3>
-        <label>Your name<input className="field" autoComplete="nickname" value={profile.name} maxLength={80} placeholder="What should the crew call you?" onChange={event => setProfile({ ...profile, name: event.target.value })} /></label>
-        <label><span id="profile-about-label">About me</span><textarea aria-labelledby="profile-about-label" className="field" rows={3} value={profile.about} maxLength={2000} placeholder="Your role, interests, and how you like to work." onChange={event => setProfile({ ...profile, about: event.target.value })} /></label>
+        <label>Your name<input className="field" dir="auto" autoComplete="nickname" value={profile.name} maxLength={80} placeholder="What should the crew call you?" onChange={event => setProfile({ ...profile, name: event.target.value })} /></label>
+        <label><span id="profile-about-label">About me</span><textarea dir="auto" aria-labelledby="profile-about-label" className="field" rows={3} value={profile.about} maxLength={2000} placeholder="Your role, interests, and how you like to work." onChange={event => setProfile({ ...profile, about: event.target.value })} /></label>
         <p className="muted small">Shared across your vorlds in this data folder. Your crew uses this as context when you work together.</p>
         <h3>Vorld</h3>
-        <label>Name<input className="field" value={w.name} maxLength={60} onChange={(e) => setW({ ...w, name: e.target.value })} /></label>
-        <label>What it is for<textarea className="field" rows={2} value={w.about} maxLength={400} placeholder="The project, company or activity this vorld runs. Every crew member reads this." onChange={(e) => setW({ ...w, about: e.target.value })} /></label>
+        <label>Name<input className="field" dir="auto" value={w.name} maxLength={60} onChange={(e) => setW({ ...w, name: e.target.value })} /></label>
+        <label>What it is for<textarea className="field" dir="auto" rows={2} value={w.about} maxLength={400} placeholder="The project, company or activity this vorld runs. Every crew member reads this." onChange={(e) => setW({ ...w, about: e.target.value })} /></label>
 
         <h3>Brains</h3>
         <p className="muted">Found on this computer: {s.detected.map((d: any) => d.label).join(', ') || 'no agent CLI'} <button className="link" onClick={async () => { const d = await api('/detect', { body: {} }).catch(() => null); if (d) setS({ ...s, detected: d }); }}>look again</button>. Pick each member's brain in their settings (⚙).</p>

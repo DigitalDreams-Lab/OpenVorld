@@ -95,9 +95,9 @@ function AddAgent({ onClose }: { onClose: () => void }) {
             />
           </div>
         </div>
-        <label>Name<input className="field" autoFocus value={f.name} maxLength={40} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
-        <label>Job title<input className="field" value={f.job} maxLength={40} placeholder="e.g. Researcher" onChange={(e) => setF({ ...f, job: e.target.value })} /></label>
-        <label>Job description<textarea className="field" rows={3} value={f.function} maxLength={400} placeholder="What they do for you" onChange={(e) => setF({ ...f, function: e.target.value })} /></label>
+        <label>Name<input className="field" dir="auto" autoFocus value={f.name} maxLength={40} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
+        <label>Job title<input className="field" dir="auto" value={f.job} maxLength={40} placeholder="e.g. Researcher" onChange={(e) => setF({ ...f, job: e.target.value })} /></label>
+        <label>Job description<textarea className="field" dir="auto" rows={3} value={f.function} maxLength={400} placeholder="What they do for you" onChange={(e) => setF({ ...f, function: e.target.value })} /></label>
         <div className="row">
           <label className="grow">Brain<select className="field" value={brainValue} onChange={(e) => { const [provider, name] = e.target.value.split('#'); setF({ ...f, brain: { provider, name: name || undefined, model: '' } }); }}>
             {choices.length ? choices.map((p) => <option key={p.value} value={p.value}>{p.label}</option>) : <option value={brainValue}>{failed ? 'Cannot reach the server, retrying…' : 'Loading…'}</option>}</select></label>
@@ -111,7 +111,7 @@ function AddAgent({ onClose }: { onClose: () => void }) {
             {folder && <button type="button" className="btn small" onClick={() => { setFolder(''); setTyping(false); }}>Clear</button>}
           </div>
           {typing && <FolderPicker label="Folder" value={folder} onChange={setFolder} capability="fs.write" />}
-          <p className="muted small">{f.name.trim() || 'The agent'} always has a workbench of its own. A folder you pick here is where its chats start: it can read and change files there, and read the project folder. Anything else needs a writ you approve.</p>
+          <p className="muted small"><bdi>{f.name.trim() || 'The agent'}</bdi> always has a workbench of its own. A folder you pick here is where its chats start: it can read and change files there, and read the project folder. Anything else needs a writ you approve.</p>
         </section>
         <div className="row end"><button type="button" className="btn" onClick={onClose}>Cancel</button><button className="btn primary" disabled={busy || !f.name.trim()}>Add to crew</button></div>
       </form>

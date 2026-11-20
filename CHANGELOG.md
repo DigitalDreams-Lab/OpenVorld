@@ -2,6 +2,15 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.19.5 - 2026-11-20
+
+- Cover the active direct chat deletion guard and verify that deletion removes the log and uploads after the reply finishes.
+- Keep the demo guide beside the chat so it leaves room for the composer in short windows.
+
+## 0.19.4 - 2026-11-20
+
+- Right-to-left text in chats and party rooms; chat tabs with delete (the chat's log and attachments are removed, a party's shared folder stays); a chat cannot be deleted while it is working or uploading
+
 ## 0.19.3 - 2026-11-20
 
 - The member panel no longer shows the job description (more room for the chat); a new agent always keeps its own workbench, and the optional Initial folder you pick in the New agent dialog becomes an extra workbench its chats start on; a chat's workbench list no longer shows the agent's own workbench as a choice: None means only its own workbench, then the agent's folders, and Add folder adds one to the agent's folders

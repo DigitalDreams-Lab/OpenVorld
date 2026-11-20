@@ -39,13 +39,13 @@ export function Workbenches({ id }: { id: string }) {
       <p className="muted section-note">
         The folders {c.name} works in: they can read and change files on a workbench, and read the project folder; anything else needs a writ.
         {home && <> {c.name} always has a home workbench{home.chosen ? '' : ' of their own'}, <code title={home.path}>{tail(home.path)}</code> (<button className="link-btn" disabled={choosing} onClick={() => move(home)}>change folder</button>{home.chosen && <>, <button className="link-btn" onClick={() => put('main', { path: null })}>use the default place</button></>}).</>}
-        {' '}Every chat starts on {start && start.id !== 'main' ? <><b>{start.name}</b> (<button className="link-btn" onClick={() => put('main', { default: true })}>start at home instead</button>)</> : 'the home workbench'} and stays there.
+        {' '}Every chat starts on {start && start.id !== 'main' ? <><b dir="auto">{start.name}</b> (<button className="link-btn" onClick={() => put('main', { default: true })}>start at home instead</button>)</> : 'the home workbench'} and stays there.
       </p>
       {home && typing === home.id && <TypedFolder initial={home.path} onUse={(p) => { setTyping(null); void put('main', { path: p }); }} onCancel={() => setTyping(null)} />}
       {others.map((b: any) => (
         <div key={b.id} className="bench">
           <div className="bench-head">
-            <b className="bench-name">{b.name}</b>
+            <b className="bench-name" dir="auto">{b.name}</b>
             {b.default && <span className="chip">default</span>}
           </div>
           <code className="pf-path" title={b.path}>{tail(b.path)}</code>
@@ -60,7 +60,7 @@ export function Workbenches({ id }: { id: string }) {
       {!adding && typing !== '+' && <button className="btn small" onClick={() => setAdding({ name: '', path: '' })}>+ Add a workbench</button>}
       {(adding || typing === '+') && (
         <div className="bench">
-          <input className="field" placeholder="Name, e.g. Website" maxLength={40} value={adding?.name ?? ''} onChange={(e) => setAdding({ name: e.target.value, path: adding?.path ?? '' })} />
+          <input className="field" dir="auto" placeholder="Name, e.g. Website" maxLength={40} value={adding?.name ?? ''} onChange={(e) => setAdding({ name: e.target.value, path: adding?.path ?? '' })} />
           <div className="pf-row">
             <code className="pf-path">{adding?.path ? tail(adding.path) : 'no folder yet'}</code>
             <button className="btn small" disabled={choosing} onClick={pickNew}>Pick folder</button>

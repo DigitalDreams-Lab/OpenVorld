@@ -1,12 +1,12 @@
 // "Surprise for Buzz": the demo's script. The crew plans a secret birthday party for Buzz, the vorld's companion bee.
 // Every turn is played through the same live events a real brain produces (turn.start, thinking, plan, tool, delta,
 // writ.request, turn.done), so the real client shows it exactly as it would show Claude Code or Codex at work.
-import { F, IDS, PROJECT, append, command, files, member, reactions, send, sendEvent, setPhase, sleep, updateThread } from './engine';
+import { F, IDS, PROJECT, append, command, files, member, reactions, send, sendEvent, setPhase, sleep, threadOf, threads, updateThread } from './engine';
 import { BEE_FACTS_URL, PAGE_TEXT, frame } from './frames';
 import { INVITATION } from './invitation';
 
 const CREW = [IDS.mira, IDS.sage, IDS.jules];
-let busy = false, finished = false, run = 0;
+let activeRoom: string | null = null, finished = false, run = 0;
 let waiting: { thread: string; id: string } | null = null;
 const given = new Set<string>();
 /** A game moment (XP, deeds, levels) computed by the real rules at build time; each one happens once per visit. */
@@ -24,7 +24,7 @@ type Kit = {
 };
 async function turn(tid: string, role: string, meta: any, body: (k: Kit) => Promise<void>) {
   const mine = run, steps: any[] = [];
-  const alive = () => { if (mine !== run) throw new Stopped(); };
+  const alive = () => { if (mine !== run || !threads.has(tid)) throw new Stopped(); };
   const ev = (e: any) => { alive(); sendEvent(tid, role, e); };
   const grow = (t: 'text' | 'thinking', text: string) => { const last = steps[steps.length - 1]; if (last?.t === t) last.text += text; else steps.push({ t, text }); };
   const stream = async (t: 'text' | 'thinking', text: string) => {
@@ -66,10 +66,10 @@ const link = (name: string) => `${PROJECT}/${name}`;
 
 // ---------- the party room ----------
 export async function partyMessage(tid: string) {
-  if (busy) throw fail('the party is still working', 409);
+  if (activeRoom) throw fail('the party is still working', 409);
   if (waiting) return quick(tid, IDS.mira, 'Jules is waiting for your OK on the request above. 🙂 Press **Allow once** and we can carry on!');
   if (finished) return quick(tid, IDS.mira, 'Buzz is still smiling. 😄 The party is over, but you can play the demo again from the top!');
-  busy = true; setPhase('running');
+  activeRoom = tid; setPhase('running');
   const mine = ++run;
   try {
     await sleep(400); moment('chat');
@@ -100,7 +100,7 @@ export async function partyMessage(tid: string) {
     waiting = { thread: tid, id: ask.id };
     if (mine === run) setPhase('writ');
   } catch (e) { if (!(e instanceof Stopped)) throw e; }
-  finally { busy = false; updateThread(tid, { speaker: null, state: 'waiting' }); }
+  finally { activeRoom = null; updateThread(tid, { speaker: null, state: 'waiting' }); }
 }
 
 async function browse() {
@@ -113,7 +113,7 @@ async function browse() {
 /** The founder answered Jules's request (the route already saved and sent writ.answered). */
 export async function writAnswered(tid: string, answer: string) {
   if (!waiting || waiting.thread !== tid) return;
-  waiting = null; busy = true;
+  waiting = null; activeRoom = tid;
   const mine = ++run;
   try {
     if (answer === 'deny') {
@@ -142,7 +142,7 @@ export async function writAnswered(tid: string, answer: string) {
     finished = true;
     if (mine === run) setPhase('done');
   } catch (e) { if (!(e instanceof Stopped)) throw e; }
-  finally { busy = false; updateThread(tid, { speaker: null, state: 'waiting' }); }
+  finally { activeRoom = null; updateThread(tid, { speaker: null, state: 'waiting' }); }
 }
 
 /** The finale: the crew runs to Buzz (who is always by your side), shouts and dances. Then the real deed and level toasts. */
@@ -158,10 +158,10 @@ async function surprise() {
 
 /** A short reply that is not part of the story (a message while the party waits, or after it). */
 async function quick(tid: string, role: string, text: string) {
-  busy = true;
+  activeRoom = tid;
   try { await sleep(500); await turn(tid, role, { mood: 'happy' }, (k) => k.say(text)); }
   catch (e) { if (!(e instanceof Stopped)) throw e; }
-  finally { busy = false; }
+  finally { activeRoom = null; }
 }
 
 // ---------- a private chat with one member ----------
@@ -187,9 +187,22 @@ export async function chatMessage(tid: string, role: string) {
 
 /** Stop pressed in a chat: the turn ends where it is, and the crew goes home. */
 export function stop(tid: string) {
-  if (!busy && !chatting.has(tid)) return;
+  if (activeRoom !== tid && !chatting.has(tid)) return;
   run++; chatting.delete(tid);
   sendEvent(tid, null, { type: 'turn.error', message: 'Stopped.' });
   home();
   if (!finished && !waiting) setPhase('idle');
+}
+
+export function deleteDemoChat(tid: string) {
+  threadOf(tid);
+  if (activeRoom === tid || chatting.has(tid)) throw fail('Stop this chat before deleting it.', 409);
+  threads.delete(tid);
+  if (waiting?.thread === tid) {
+    waiting = null;
+    setPhase('idle');
+    home();
+  }
+  send({ type: 'thread.deleted', thread: tid });
+  return { ok: true };
 }

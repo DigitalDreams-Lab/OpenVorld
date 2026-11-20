@@ -2,6 +2,7 @@ import { Children, isValidElement, useCallback, useState, type ReactNode } from 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import type { Root, RootContent } from 'hast';
 import { getState } from '../store';
 import { FileLink, MessageImage } from './MessageFiles';
 import { codePreviewKind, fileName, previewKind, rawMarkup } from '../previews';
@@ -25,6 +26,29 @@ function localUrl(url:string, thread?:string) {
   return root+'file?path='+encodeURIComponent(name);
 }
 const textContent=(node:ReactNode):string=>Children.toArray(node).map(child=>isValidElement<{children?:ReactNode}>(child)?textContent(child.props.children):String(child)).join('');
+
+const proseBlocks = new Set(['p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6', 'ul', 'ol', 'li', 'blockquote', 'table', 'th', 'td']);
+const proseContainers = new Set(['ul', 'ol', 'blockquote', 'table']);
+function rehypeDirection() {
+  return (root: Root) => {
+    function visit(node: Root | RootContent, inheritsDirection = false) {
+      if (node.type === 'element') {
+        if (node.tagName === 'pre') return;
+        if (!inheritsDirection && proseBlocks.has(node.tagName)) node.properties.dir = 'auto';
+        if (node.tagName === 'code') node.properties.dir = 'ltr';
+      }
+      if (!('children' in node)) return;
+      // Auto direction ignores children with their own dir. Let the first item, paragraph or
+      // header cell supply the direction of its list, quote or table.
+      const usesFirstBlock = inheritsDirection || (node.type === 'element' && proseContainers.has(node.tagName));
+      const first = usesFirstBlock
+        ? node.children.find((child) => child.type === 'element' || (child.type === 'text' && child.value.trim()))
+        : undefined;
+      node.children.forEach((child) => visit(child, child === first));
+    }
+    visit(root);
+  };
+}
 /** The Clipboard API needs a secure context and a granted permission (the desktop app must allow it; a LAN host on plain http has none); fall back to the selection copy that Cmd+C uses. */
 export async function copyText(text:string) {
   try{await navigator.clipboard.writeText(text);return;}catch{/* fall through */}
@@ -40,13 +64,13 @@ function CodeBlock({children,thread}:{children?:ReactNode;thread?:string}) {
   const code=Children.toArray(children).find(isValidElement) as React.ReactElement<{className?:string}>|undefined;
   const language=code?.props.className?.match(/language-([\w+-]+)/)?.[1]??'text';
   const source=textContent(children).replace(/\n$/,''),kind=codePreviewKind(language,source);
-  return <div className="code-block"><div className="code-toolbar"><span>{language}</span><span className="code-actions">{kind&&<><button type="button" onClick={()=>setPreview(!preview)} aria-pressed={preview}>{preview?'Source':'Preview'}</button><button type="button" onClick={()=>setExpanded(true)}>Expand preview</button></>}<button type="button" onClick={async()=>{try{await copyText(source);setCopied(true);setError('');setTimeout(()=>setCopied(false),1800);}catch{setError('Could not copy');}}}>{error|| (copied?'Copied ✓':'Copy')}</button></span></div>{preview&&kind?<div className="inline-preview"><InlinePreview kind={kind} source={source} language={language} thread={thread}/></div>:<pre className="code">{children}</pre>}
+  return <div className="code-block" dir="ltr"><div className="code-toolbar"><span>{language}</span><span className="code-actions">{kind&&<><button type="button" onClick={()=>setPreview(!preview)} aria-pressed={preview}>{preview?'Source':'Preview'}</button><button type="button" onClick={()=>setExpanded(true)}>Expand preview</button></>}<button type="button" onClick={async()=>{try{await copyText(source);setCopied(true);setError('');setTimeout(()=>setCopied(false),1800);}catch{setError('Could not copy');}}}>{error|| (copied?'Copied ✓':'Copy')}</button></span></div>{preview&&kind?<div className="inline-preview"><InlinePreview kind={kind} source={source} language={language} thread={thread}/></div>:<pre className="code">{children}</pre>}
     {expanded&&<PreviewDialog name={`${language} preview`} onClose={closeExpanded}><InlinePreview kind={kind} source={source} language={language} thread={thread}/></PreviewDialog>}
   </div>;
 }
 export function Markdown({text,thread}:{text:string;thread?:string}) {
   if(rawMarkup(text))return <HtmlPreview source={text}/>;
-  return <div className="md"><ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[[rehypeHighlight,{detect:false}]]} skipHtml urlTransform={markdownUrl} components={{
+  return <div className="md"><ReactMarkdown remarkPlugins={[remarkGfm]} rehypePlugins={[rehypeDirection,[rehypeHighlight,{detect:false}]]} skipHtml urlTransform={markdownUrl} components={{
     a:({href,children})=>{
       if(!href)return <span>{children}</span>;
       if(/^(?:https?:|mailto:|#)/i.test(href))return <a href={href} target={href.startsWith('#')?undefined:'_blank'} rel="noopener noreferrer">{children}</a>;
@@ -54,12 +78,12 @@ export function Markdown({text,thread}:{text:string;thread?:string}) {
     },
     img:({src,alt})=>{if(typeof src!=='string'||!src)return <span>{alt}</span>;const url=/^https?:\/\//i.test(src)?src:localUrl(src,thread);return url?<MessageImage src={url} alt={alt??'Image'}/>:<span>{alt}</span>;},
     // a link to a picture also shows the picture, under the paragraph it is in (the link itself stays in the sentence)
-    p:({children})=>{
+    p:({children,dir})=>{
       const pictures=Children.toArray(children).flatMap(c=>{const href=isValidElement<{href?:string}>(c)?c.props.href:undefined;return href&&!/^(?:https?:|mailto:|#)/i.test(href)&&['image','svg'].includes(previewKind(fileName(href))??'')?[{href,alt:textContent((c as React.ReactElement<{children?:ReactNode}>).props.children)}]:[];});
-      if(!pictures.length)return <p>{children}</p>;
-      return <><p>{children}</p>{pictures.map(({href,alt})=>{const url=localUrl(href,thread);return url?<div className="image-link" key={url}><MessageImage src={url} alt={alt||fileName(href)} soft/></div>:null;})}</>;
+      if(!pictures.length)return <p dir={dir}>{children}</p>;
+      return <><p dir={dir}>{children}</p>{pictures.map(({href,alt})=>{const url=localUrl(href,thread);return url?<div className="image-link" key={url}><MessageImage src={url} alt={alt||fileName(href)} soft/></div>:null;})}</>;
     },
     pre:({children})=><CodeBlock thread={thread}>{children}</CodeBlock>,
-    table:({children})=><div className="md-table"><table>{children}</table></div>,
+    table:({children,dir})=><div className="md-table"><table dir={dir}>{children}</table></div>,
   }}>{text}</ReactMarkdown></div>;
 }

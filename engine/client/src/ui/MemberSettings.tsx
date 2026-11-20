@@ -70,7 +70,7 @@ export function MemberSettings({ id }: { id: string }) {
   return (
     <div className="modal-bg" onPointerDown={(e) => e.stopPropagation()} onClick={close}>
       <div className="modal panel member-settings" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
-        <header className="row between"><h2>{f.name} <small>{c.role === 'companion' ? 'companion' : 'agent'}</small></h2><IconButton icon="close" title="Close" onClick={close} /></header>
+        <header className="row between"><h2><bdi>{f.name}</bdi> <small>{c.role === 'companion' ? 'companion' : 'agent'}</small></h2><IconButton icon="close" title="Close" onClick={close} /></header>
         <div className="cs-grid">
           <div className="cs-preview">
             <Portrait role={id} avatar={c.role === 'agent' ? f.avatar : undefined} size={96} />
@@ -88,10 +88,10 @@ export function MemberSettings({ id }: { id: string }) {
             )}
           </div>
           <div className="cs-fields">
-            <label>Name<input className="field" value={f.name} maxLength={40} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
-            <label>Job title<input className="field" value={f.job} maxLength={40} placeholder="e.g. Writer" onChange={(e) => setF({ ...f, job: e.target.value })} /></label>
-            {c.role === 'agent' && <label>Job description<textarea className="field" rows={3} value={f.function} maxLength={400} placeholder="What they do for you" onChange={(e) => setF({ ...f, function: e.target.value })} /></label>}
-            <label>Personality<input className="field" value={f.personality} maxLength={200} placeholder="How they speak (optional)" onChange={(e) => setF({ ...f, personality: e.target.value })} /></label>
+            <label>Name<input className="field" dir="auto" value={f.name} maxLength={40} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
+            <label>Job title<input className="field" dir="auto" value={f.job} maxLength={40} placeholder="e.g. Writer" onChange={(e) => setF({ ...f, job: e.target.value })} /></label>
+            {c.role === 'agent' && <label>Job description<textarea className="field" dir="auto" rows={3} value={f.function} maxLength={400} placeholder="What they do for you" onChange={(e) => setF({ ...f, function: e.target.value })} /></label>}
+            <label>Personality<input className="field" dir="auto" value={f.personality} maxLength={200} placeholder="How they speak (optional)" onChange={(e) => setF({ ...f, personality: e.target.value })} /></label>
             <div className="row">
               <label className="grow">Brain<select className="field" value={brainValue} onChange={(e) => { const [provider, name] = e.target.value.split('#'); setF({ ...f, brain: { provider, name: name || undefined, model: '' } }); }}>
                 {choices.length ? choices.map((p) => <option key={p.value} value={p.value}>{p.label}</option>) : <option value={brainValue}>{failed ? 'Cannot reach the server, retrying…' : 'Loading…'}</option>}</select></label>

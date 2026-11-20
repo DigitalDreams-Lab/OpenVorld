@@ -43,8 +43,8 @@ export function Onboarding({ boot, onDone, onCancel }: { boot: any; onDone: (id:
         <h1 className="logo small">New vorld</h1>
 
         <section>
-          <label>Name<input className="field" autoFocus value={name} maxLength={60} placeholder="e.g. Lantern Tea Co." onChange={(e) => setName(e.target.value)} /></label>
-          <label>What is it for?<textarea className="field" rows={2} value={about} maxLength={400} placeholder="The project, company or activity your crew works on. Every crew member reads this." onChange={(e) => setAbout(e.target.value)} /></label>
+          <label>Name<input className="field" dir="auto" autoFocus value={name} maxLength={60} placeholder="e.g. Lantern Tea Co." onChange={(e) => setName(e.target.value)} /></label>
+          <label>What is it for?<textarea className="field" dir="auto" rows={2} value={about} maxLength={400} placeholder="The project, company or activity your crew works on. Every crew member reads this." onChange={(e) => setAbout(e.target.value)} /></label>
         </section>
 
         <section>
@@ -76,9 +76,9 @@ export function Onboarding({ boot, onDone, onCancel }: { boot: any; onDone: (id:
           <h3>Your crew</h3>
           {crew.map((a, i) => (
             <div key={i} className="ob-agent">
-              <input className="field" value={a.name} maxLength={40} placeholder="Name" onChange={(e) => setAgent(i, { name: e.target.value })} />
-              <input className="field" value={a.job} maxLength={40} placeholder="Job title" onChange={(e) => setAgent(i, { job: e.target.value })} />
-              <input className="field grow" value={a.function} maxLength={400} placeholder="What they do" onChange={(e) => setAgent(i, { function: e.target.value })} />
+              <input className="field" dir="auto" value={a.name} maxLength={40} placeholder="Name" onChange={(e) => setAgent(i, { name: e.target.value })} />
+              <input className="field" dir="auto" value={a.job} maxLength={40} placeholder="Job title" onChange={(e) => setAgent(i, { job: e.target.value })} />
+              <input className="field grow" dir="auto" value={a.function} maxLength={400} placeholder="What they do" onChange={(e) => setAgent(i, { function: e.target.value })} />
               <button type="button" className="x" aria-label={`Remove ${a.name}`} onClick={() => setCrew((c) => c.filter((_, k) => k !== i))}>✕</button>
             </div>
           ))}
@@ -88,7 +88,7 @@ export function Onboarding({ boot, onDone, onCancel }: { boot: any; onDone: (id:
         <section className="ob-row">
           <div>
             <h3>Your companion</h3>
-            <label>Name<input className="field" value={companion.name} maxLength={40} onChange={(e) => setCompanion({ ...companion, name: e.target.value })} /></label>
+            <label>Name<input className="field" dir="auto" value={companion.name} maxLength={40} onChange={(e) => setCompanion({ ...companion, name: e.target.value })} /></label>
           </div>
           <div>
             <h3>Brain</h3>

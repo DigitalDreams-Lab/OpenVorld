@@ -270,6 +270,7 @@ export function openWrits(ctx, threadId) {
  * already hold, never for scopes that can never be granted). Answered through POST .../writs/:id.
  */
 export function requestAccess(ctx, thread, role, asks, send) {
+  getThread(ctx, thread.id);
   const seen = new Set();
   const caps = ctx.packs.byKind.permissions?.permissions?.capabilities ?? {};
   const open = openWrits(ctx, thread.id);

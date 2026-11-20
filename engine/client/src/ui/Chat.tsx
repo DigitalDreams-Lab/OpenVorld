@@ -45,13 +45,13 @@ export function AgentTurn({ role, steps, text, mood, did, noted, speaker, job, l
       {hint ? <button type="button" className="who" title={hint} tabIndex={-1} aria-hidden onClick={open}>{portrait}</button> : portrait}      {/* the name is the one tab stop */}
       <div className="turn-body">
         {speaker && (hint
-          ? <button type="button" className="speaker who" title={hint} onClick={open}><b>{speaker}</b>{job && <span className="job-tag">{job}</span>}</button>
-          : <b className="speaker">{speaker}{job && <span className="job-tag">{job}</span>}</b>)}
+          ? <button type="button" className="speaker who" title={hint} onClick={open}><b dir="auto">{speaker}</b>{job && <span className="job-tag" dir="auto">{job}</span>}</button>
+          : <b className="speaker"><bdi>{speaker}</bdi>{job && <span className="job-tag" dir="auto">{job}</span>}</b>)}
         {blocks.map((b, i) => b.kind === 'text'
           ? <div key={i} className="bubble"><Markdown text={b.text} thread={thread} />{live && i === blocks.length - 1 && <span className="caret">▌</span>}</div>
           : <Activity key={i} steps={b.steps} live={!!live && i === blocks.length - 1} root={root} />)}
-        {did && did.length > 0 && <div className="turn-did" title="What they did in the vorld">{did.map((d, i) => <span key={i}>{d}</span>)}</div>}
-        {noted && noted.length > 0 && <div className="turn-did noted" title={str('memory.noted', {}, 'Kept in their notebook')}>{noted.map((d, i) => <span key={i}>{d}</span>)}</div>}
+        {did && did.length > 0 && <div className="turn-did" title="What they did in the vorld">{did.map((d, i) => <span key={i} dir="auto">{d}</span>)}</div>}
+        {noted && noted.length > 0 && <div className="turn-did noted" title={str('memory.noted', {}, 'Kept in their notebook')}>{noted.map((d, i) => <span key={i} dir="auto">{d}</span>)}</div>}
         {live && !blocks.length && <div className="bubble"><span className="dots">…</span><span className="caret">▌</span></div>}
         {live && blocks.length > 0 && !lastIsText && <div className="turn-working"><span className="spin" /> {str('chat.working', {}, 'working')}…</div>}
       </div>
@@ -115,7 +115,7 @@ function ToolRow({ step, root }: { step: Extract<Step, { t: 'tool' }>; root?: st
       </button>
       {open && (
         <div className="tool-detail">
-          {step.detail?.note && <div className="tool-note">{step.detail.note}</div>}
+          {step.detail?.note && <div className="tool-note" dir="auto">{step.detail.note}</div>}
           {step.detail?.edits?.map((e: any, i: number) => <Diff key={i} old={e.old} next={e.new} />)}
           {step.detail?.write != null && <pre className="code add">{step.detail.write}</pre>}
           {step.output?.trim() && <pre className={`code out ${step.status === 'error' ? 'bad' : ''}`}>{step.output.trim()}</pre>}
@@ -143,10 +143,10 @@ function Thinking({ text, icon, live }: { text: string; icon?: string; live: boo
       <button className="tool-line" onClick={() => setOpen(!open)}>
         <span className="tool-ico">{icon ? <Icon name={icon} size={16} /> : '…'}</span>
         <span className="tool-verb">{str('chat.thinking', {}, 'Thinking')}</span>
-        <span className="tool-target prose">{open ? '' : first}</span>
+        <span className="tool-target prose" dir="auto">{open ? '' : first}</span>
         <span className="tool-state">{live ? <span className="spin" /> : null}<span className="chev">{open ? '▾' : '▸'}</span></span>
       </button>
-      {open && <div className="thinking-text">{text.trim()}</div>}
+      {open && <div className="thinking-text" dir="auto">{text.trim()}</div>}
     </div>
   );
 }
@@ -156,7 +156,7 @@ function Plan({ items, icon }: { items: { text: string; status: string }[]; icon
   return (
     <div className="plan">
       <div className="plan-head">{icon && <Icon name={icon} size={16} />} {str('chat.plan', {}, 'Plan')} <span className="muted">{done}/{items.length}</span></div>
-      {items.map((x, i) => <div key={i} className={`plan-item ${x.status}`}><span className="box">{x.status === 'completed' ? '☑' : x.status === 'in_progress' ? '◐' : '☐'}</span>{x.text}</div>)}
+      {items.map((x, i) => <div key={i} className={`plan-item ${x.status}`} dir="auto"><span className="box">{x.status === 'completed' ? '☑' : x.status === 'in_progress' ? '◐' : '☐'}</span><span>{x.text}</span></div>)}
     </div>
   );
 }

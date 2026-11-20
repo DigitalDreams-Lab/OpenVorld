@@ -64,14 +64,14 @@ export function ChatComposer({draft,placeholder,working,onStop,extra,children,hi
   };
   return <div className="composer">
     {draft.files.length>0&&<div className="pending-files" aria-label="Files to send">{draft.files.map(f=><div className="pending-file" key={f.id}>
-      {f.preview&&<img src={f.preview} alt={f.name}/>}<span><b>{f.name}</b><small>{fileSize(f.size)}{f.uploaded?' · Ready':''}</small></span><button className="x" disabled={draft.busy} aria-label={`Remove ${f.name}`} onClick={()=>draft.remove(f.id)}>✕</button>
+      {f.preview&&<img src={f.preview} alt={f.name}/>}<span><b dir="auto">{f.name}</b><small>{fileSize(f.size)}{f.uploaded?' · Ready':''}</small></span><button className="x" disabled={draft.busy} aria-label={`Remove ${f.name}`} onClick={()=>draft.remove(f.id)}>✕</button>
     </div>)}</div>}
     {draft.error&&<div className="composer-error" role="alert">{draft.error} Your draft is kept; you can retry.</div>}
     <div className="composer-input">
       {suggestions.length>0&&<div id={listId} className="mention-suggestions" role="listbox" aria-label="Mention crew members">
-        {suggestions.map((m,i)=><button type="button" id={`${listId}-${i}`} key={m.id} role="option" aria-selected={i===active} className={i===active?'selected':''} onPointerDown={e=>e.preventDefault()} onClick={()=>insert(m)}><strong>@{m.name}</strong>{m.job&&<small>{m.job}</small>}</button>)}
+        {suggestions.map((m,i)=><button type="button" id={`${listId}-${i}`} key={m.id} role="option" aria-selected={i===active} className={i===active?'selected':''} onPointerDown={e=>e.preventDefault()} onClick={()=>insert(m)}><strong dir="auto">@{m.name}</strong>{m.job&&<small dir="auto">{m.job}</small>}</button>)}
       </div>}
-      <textarea ref={textarea} aria-label={placeholder} aria-autocomplete="list" aria-controls={suggestions.length?listId:undefined} aria-expanded={suggestions.length>0} aria-activedescendant={suggestions.length?`${listId}-${active}`:undefined} value={draft.text} placeholder={placeholder} rows={2} disabled={draft.busy}
+      <textarea ref={textarea} dir="auto" aria-label={placeholder} aria-autocomplete="list" aria-controls={suggestions.length?listId:undefined} aria-expanded={suggestions.length>0} aria-activedescendant={suggestions.length?`${listId}-${active}`:undefined} value={draft.text} placeholder={placeholder} rows={2} disabled={draft.busy}
         onChange={e=>{draft.setText(e.target.value);setCaret(e.target.selectionStart);setSelected(0);setDismissed(false);}}
         onSelect={e=>setCaret(e.currentTarget.selectionStart)}
         onBlur={()=>setDismissed(true)} onFocus={()=>setDismissed(false)}

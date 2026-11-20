@@ -36,9 +36,9 @@ export function PartyHall() {
                 {parties.map((p) => (
                   <div key={p.id} className="party-item">
                     <button type="button" className="party-open" aria-label={`Open ${p.name} chat`} onClick={() => open(p.id)}>
-                      <span className="party-title">{p.name}</span>
+                      <span className="party-title" dir="auto">{p.name}</span>
                       <span className="party-crew">{p.members.map((m: string, i: number) => <span key={m} className={i === 0 ? 'lead' : ''} title={i === 0 ? 'leader' : ''}><Portrait role={m} size={28} /></span>)}</span>
-                      {p.goal && <span className="party-goal muted">{p.goal}</span>}
+                      {p.goal && <span className="party-goal muted" dir="auto">{p.goal}</span>}
                     </button>
                     <div className="row party-item-actions"><button className="btn small primary" onClick={() => open(p.id)}>Open chat</button><button className="btn small" onClick={() => setState({ partyEdit: p.id })}>Edit</button></div>
                   </div>
@@ -76,14 +76,14 @@ function PartyForm({ party, onDone }: { party: any; onDone: (openId?: string) =>
   };
   return (
     <form className="party-form" onSubmit={(e) => { e.preventDefault(); void save(); }}>
-      <label>Name<input className="field" autoFocus value={name} maxLength={60} placeholder="e.g. Launch crew" onChange={(e) => setName(e.target.value)} /></label>
-      <label>Goal<textarea className="field" rows={3} value={goal} maxLength={2000} placeholder="What this party is here to get done" onChange={(e) => setGoal(e.target.value)} /></label>
+      <label>Name<input className="field" dir="auto" autoFocus value={name} maxLength={60} placeholder="e.g. Launch crew" onChange={(e) => setName(e.target.value)} /></label>
+      <label>Goal<textarea className="field" dir="auto" rows={3} value={goal} maxLength={2000} placeholder="What this party is here to get done" onChange={(e) => setGoal(e.target.value)} /></label>
       <div>
         <b className="small">Members</b> <span className="muted small">(the first one you pick leads)</span>
         <div className="party-pick">
           {crew.map((c) => {
             const at = members.indexOf(c.id);
-            return <button type="button" key={c.id} className={`chip ${at >= 0 ? 'on' : ''}`} onClick={() => toggle(c.id)}>{at === 0 ? '♛ ' : at > 0 ? `${at + 1}. ` : ''}{c.name}{c.job ? ` · ${c.job}` : ''}</button>;
+            return <button type="button" key={c.id} className={`chip ${at >= 0 ? 'on' : ''}`} onClick={() => toggle(c.id)}>{at === 0 ? '♛ ' : at > 0 ? `${at + 1}. ` : ''}<bdi>{c.name}</bdi>{c.job && <> · <bdi>{c.job}</bdi></>}</button>;
           })}
         </div>
       </div>

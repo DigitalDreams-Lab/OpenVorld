@@ -17,13 +17,22 @@ const render=text=>renderToStaticMarkup(React.createElement(Markdown,{text,threa
 
 test('chat renders clickable named/bare links, nested formatting, tables, tasks and highlighted code',()=>{
   const html=render('## Release\n\n[Take **A**](https://suno.com/song/example) and https://example.com/test.\n\n1. First\n   - Nested **item**\n2. Next\n\n- [x] Shipped\n- [ ] Reviewed\n\n| File | State |\n| --- | --- |\n| `app.ts` | Ready |\n\n```js\nconst ready = true;\n```');
-  assert.match(html,/<h2>Release<\/h2>/);
+  assert.match(html,/<h2 dir="auto">Release<\/h2>/);
   assert.match(html,/<a href="https:\/\/suno.com\/song\/example"[^>]*>Take <strong>A<\/strong><\/a>/);
   assert.match(html,/href="https:\/\/example.com\/test"/);
-  assert.match(html,/<ol>[\s\S]*<ul>[\s\S]*Nested <strong>item<\/strong>/);
+  assert.match(html,/<ol dir="auto">[\s\S]*<ul dir="auto">[\s\S]*Nested <strong>item<\/strong>/);
   assert.match(html,/type="checkbox"[^>]*checked/);
-  assert.match(html,/<th>File<\/th>/);assert.match(html,/<td>Ready<\/td>/);
+  assert.match(html,/<th>File<\/th>/);assert.match(html,/<td dir="auto">Ready<\/td>/);
   assert.match(html,/class="hljs-keyword">const/);assert.match(html,/>Copy<\/button>/);
+});
+
+test('chat prose detects direction by block while code keeps its own direction', () => {
+  const html = render('سلام! اوضاع **YBee** چطوره؟\n\nEnglish with עברית inside.\n\n> سلام با `npm test`\n\n- פריט ראשון\n\n```js\nconsole.log("سلام");\n```');
+  assert.match(html, /<p dir="auto">سلام! اوضاع <strong>YBee<\/strong> چطوره؟<\/p>/);
+  assert.match(html, /<p dir="auto">English with עברית inside\.<\/p>/);
+  assert.match(html, /<blockquote dir="auto">\s*<p>سلام با <code dir="ltr">npm test<\/code>/);
+  assert.match(html, /<ul dir="auto">\s*<li>פריט ראשון<\/li>/);
+  assert.match(html, /<div class="code-block" dir="ltr">/);
 });
 
 test('chat escapes HTML, blocks executable URLs and serves local file links through the authenticated conversation route',()=>{

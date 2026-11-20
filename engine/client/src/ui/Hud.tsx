@@ -15,9 +15,9 @@ export function Hud({ onExit }: { onExit: () => void }) {
       <div className="hud-left panel">
         <button type="button" className="hud-profile" title="Edit your profile" onClick={() => open('settings')}><Portrait role="founder" size={40} /></button>
         <div>
-          <div className="hud-title" title={vorld.profile?.name ? `${vorld.profile.name} · ${st.title}` : st.title}><span className="ellip">{vorld.profile?.name || st.title}</span><span className="lv">Lv {st.level}</span></div>
+          <div className="hud-title" title={vorld.profile?.name ? `${vorld.profile.name} · ${st.title}` : st.title}><span className="ellip" dir="auto">{vorld.profile?.name || st.title}</span><span className="lv">Lv {st.level}</span></div>
           <div className="xpbar" title={`${st.xp} XP / ${st.xpNext}`}><i style={{ width: `${pct}%` }} /></div>
-          <div className="hud-sub"><span className="ellip">{vorld.vorld.name}</span>{vorld.profile?.name && <small className="hud-rank"> · {st.title}</small>}</div>
+          <div className="hud-sub"><span className="ellip" dir="auto">{vorld.vorld.name}</span>{vorld.profile?.name && <small className="hud-rank"> · {st.title}</small>}</div>
         </div>
       </div>
       <div className="hud-right">

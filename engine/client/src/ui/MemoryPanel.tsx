@@ -20,11 +20,11 @@ export function MemoryPanel({ id }: { id: string }) {
       <p className="muted small">What {c.name} keeps between chats, in their house on this computer. They add to it themselves; you can correct or remove anything.</p>
       {m.notes.length === 0 && m.chats.length === 0 && <p className="muted small">Nothing remembered yet.</p>}
       {m.notes.map((n: any) => editing && editing.id === n.id
-        ? <div key={n.id} className="pf-row"><input className="field grow" value={editing.text} maxLength={300} autoFocus onChange={(e) => setEditing({ id: n.id, text: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') void saveEdit(); if (e.key === 'Escape') setEditing(null); }} /><button className="btn small primary" onClick={saveEdit}>Save</button></div>
-        : <div key={n.id} className="pf-row"><span className="pf-path note" title={n.text}>📝 {n.text}</span><button className="btn small" onClick={() => setEditing({ id: n.id, text: n.text })}>Edit</button><button className="btn small" onClick={() => run(`/notes/${n.id}`, { method: 'DELETE' })}>Remove</button></div>)}
+        ? <div key={n.id} className="pf-row"><input className="field grow" dir="auto" value={editing.text} maxLength={300} autoFocus onChange={(e) => setEditing({ id: n.id, text: e.target.value })} onKeyDown={(e) => { if (e.key === 'Enter') void saveEdit(); if (e.key === 'Escape') setEditing(null); }} /><button className="btn small primary" onClick={saveEdit}>Save</button></div>
+        : <div key={n.id} className="pf-row"><span className="pf-path note" dir="auto" title={n.text}>📝 {n.text}</span><button className="btn small" onClick={() => setEditing({ id: n.id, text: n.text })}>Edit</button><button className="btn small" onClick={() => run(`/notes/${n.id}`, { method: 'DELETE' })}>Remove</button></div>)}
       {m.chats.length > 0 && <div className="small muted">Chat summaries</div>}
       {m.chats.map((s: any) => (
-        <div key={s.chat} className="pf-row"><span className="pf-path" title={s.summary}>💬 <b>{s.title ?? 'Chat'}</b> {s.summary}</span><button className="btn small" title="Remove this summary. The chat itself stays." onClick={() => run(`/chats/${s.chat}`, { method: 'DELETE' })}>Remove</button></div>
+        <div key={s.chat} className="pf-row"><span className="pf-path" title={s.summary}>💬 <b dir="auto">{s.title ?? 'Chat'}</b> <bdi>{s.summary}</bdi></span><button className="btn small" title="Remove this summary. The chat itself stays." onClick={() => run(`/chats/${s.chat}`, { method: 'DELETE' })}>Remove</button></div>
       ))}
     </section>
   );
