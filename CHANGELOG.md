@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.19.2 - 2026-11-20
+
+- Removed the Looks like dropdown from onboarding and the companion's settings: it never changed the companion's art, only how it moves
+
 ## 0.19.1 - 2026-11-20
 
 - Crew walking to you no longer cut through props, the Party Hall's pillar or house walls: the walking test now knows everything you bump into, so routes go around it
