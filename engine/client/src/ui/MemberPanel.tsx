@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { emit, memberOf, openBrowserModal, setState, str, toast, useStore } from '../store';
 import { IconButton } from './IconButton';
+import { toggleWidePanel, useWidePanel } from './widePanel';
 import { play } from '../audio/sfx';
 import { Portrait } from './Portrait';
 import { ThreadView } from './Thread';
@@ -10,6 +11,7 @@ import { PendingRequests } from './Requests';
 
 export function MemberPanel({ id }: { id: string }) {
   const wid = useStore((s) => s.vorldId)!;
+  const wide = useWidePanel();
   const version = useStore((s) => s.threadsVersion);
   useStore((s) => s.vorld);
   const m = memberOf(id);
@@ -38,7 +40,7 @@ export function MemberPanel({ id }: { id: string }) {
     catch (e: any) { toast({ kind: 'error', title: e.message }); }
   };
   return (
-    <aside className="member-panel panel" onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+    <aside className={`member-panel panel ${wide ? 'wide' : ''}`} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
       <header className="cp-head">
         <Portrait role={id} size={64} />
         <div className="cp-who">
@@ -51,6 +53,7 @@ export function MemberPanel({ id }: { id: string }) {
           {following
             ? <IconButton icon="following" active title={`${m.name} is following you: send them home`} onClick={() => { play('ui.click'); emit('dismiss', { ids: [id] }); }} />
             : <IconButton icon="call" title={`Call ${m.name} over`} onClick={() => { play('ui.click'); emit('summon', { ids: [id] }); }} />}
+          <IconButton icon={wide ? 'shrink' : 'expand'} title={wide ? 'Back to the normal width' : 'Make the chat wider'} onClick={() => { play('ui.click'); toggleWidePanel(); }} />
           <IconButton icon="gear" title="Settings" onClick={() => { play('ui.open'); setState({ modal: 'member' }); }} />
           <IconButton icon="close" title="Close" onClick={() => setState({ talkingTo: null })} />
         </div>

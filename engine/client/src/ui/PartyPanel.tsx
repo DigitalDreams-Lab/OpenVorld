@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { api } from '../api';
 import { emit, memberOf, setState, str, toast, useStore } from '../store';
 import { IconButton } from './IconButton';
+import { toggleWidePanel, useWidePanel } from './widePanel';
 import { play } from '../audio/sfx';
 import { Portrait } from './Portrait';
 import { ThreadView } from './Thread';
@@ -12,6 +13,7 @@ import { PendingRequests } from './Requests';
 /** `hidden`: a member's chat is open on top; the room stays mounted so its chat, scroll and draft are there to come back to. */
 export function PartyPanel({ id, hidden }: { id: string; hidden?: boolean }) {
   const wid = useStore((s) => s.vorldId)!;
+  const wide = useWidePanel();
   const version = useStore((s) => s.threadsVersion);
   const party = useStore((s) => (s.vorld.parties ?? []).find((p: any) => p.id === id));
   const live = useStore((s) => s.live);
@@ -34,7 +36,7 @@ export function PartyPanel({ id, hidden }: { id: string; hidden?: boolean }) {
   };
   const speaking = active && live[active]?.working ? memberOf(live[active].role)?.name : null;
   return (
-    <aside className="member-panel party-panel panel" style={hidden ? { visibility: 'hidden' } : undefined} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
+    <aside className={`member-panel party-panel panel ${wide ? 'wide' : ''}`} style={hidden ? { visibility: 'hidden' } : undefined} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => e.stopPropagation()}>
       <header className="cp-head">
         <div className="cp-who">
           <div className="cp-name" title={party.name}>🎲 {party.name}</div>
@@ -46,6 +48,7 @@ export function PartyPanel({ id, hidden }: { id: string; hidden?: boolean }) {
           {party.goal && <div className="cp-goal muted">{party.goal}</div>}
         </div>
         <div className="cp-actions">
+          <IconButton icon={wide ? 'shrink' : 'expand'} title={wide ? 'Back to the normal width' : 'Make the chat wider'} onClick={() => { play('ui.click'); toggleWidePanel(); }} />
           <IconButton icon="edit" title="Edit the party" onClick={() => { play('ui.open'); setState({ modal: 'parties', partyEdit: id }); }} />
           <IconButton icon="close" title="Close" onClick={() => setState({ partyId: null })} />
         </div>
