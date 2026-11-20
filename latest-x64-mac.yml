@@ -1,11 +1,11 @@
-version: 0.16.3
+version: 0.18.0
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.3/OpenVorld-0.16.3-mac-x64.zip
-    sha512: 9P/aD4TwCWm3kO8oDByNGNin5asrtuelOncixqWrOxwY+Mo9+jF2XkwVlfC1juTAyk18OApzhRvGn4H7bWue+Q==
-    size: 185123938
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.3/OpenVorld-0.16.3-mac-x64.zip
-sha512: 9P/aD4TwCWm3kO8oDByNGNin5asrtuelOncixqWrOxwY+Mo9+jF2XkwVlfC1juTAyk18OApzhRvGn4H7bWue+Q==
-releaseNotes: "- Pages with very large response headers (Google, YouTube) load
-  in the crew browser: pages now load natively and redirects are checked inside
-  Chrome, popups included"
-releaseDate: 2026-11-20T11:41:25.517Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-mac-x64.zip
+    sha512: gb5UZrbWSj9/btSEEwQse576DCdf92Tc7YqGxN9gG4yzYrGj2jSqZCMQwMgg3ZwroGRsAVmcFBYrrjcWEeNXpA==
+    size: 185125033
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-mac-x64.zip
+sha512: gb5UZrbWSj9/btSEEwQse576DCdf92Tc7YqGxN9gG4yzYrGj2jSqZCMQwMgg3ZwroGRsAVmcFBYrrjcWEeNXpA==
+releaseNotes: "- Chats: a button in the chat header makes the member chat or
+  party room wider (up to 70% of the screen); the choice is kept in this
+  browser"
+releaseDate: 2026-11-20T12:03:41.726Z

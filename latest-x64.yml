@@ -1,11 +1,11 @@
-version: 0.16.3
+version: 0.18.0
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.3/OpenVorld-0.16.3-win-x64.exe
-    sha512: jC+FQh0aYg5jgSqalb5FzixjbPPenB+eepTEqvnGEvBBVZjbSo86Iqskhf4x58tgjHer9gHAmNDhBZaQh5ZOzg==
-    size: 177439908
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.3/OpenVorld-0.16.3-win-x64.exe
-sha512: jC+FQh0aYg5jgSqalb5FzixjbPPenB+eepTEqvnGEvBBVZjbSo86Iqskhf4x58tgjHer9gHAmNDhBZaQh5ZOzg==
-releaseNotes: "- Pages with very large response headers (Google, YouTube) load
-  in the crew browser: pages now load natively and redirects are checked inside
-  Chrome, popups included"
-releaseDate: 2026-11-20T11:35:19.636Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-win-x64.exe
+    sha512: /zBsedLl3iCOPCINawtUgHdoLw2QlvGop2R7MnEHVePkMiCCE2b5bE6ZhvMDPx6Ri2+I52kaZxyrLYxSZ6taVw==
+    size: 177441180
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-win-x64.exe
+sha512: /zBsedLl3iCOPCINawtUgHdoLw2QlvGop2R7MnEHVePkMiCCE2b5bE6ZhvMDPx6Ri2+I52kaZxyrLYxSZ6taVw==
+releaseNotes: "- Chats: a button in the chat header makes the member chat or
+  party room wider (up to 70% of the screen); the choice is kept in this
+  browser"
+releaseDate: 2026-11-20T11:53:00.321Z

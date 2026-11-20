@@ -1,11 +1,11 @@
-version: 0.16.3
+version: 0.18.0
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.3/OpenVorld-0.16.3-linux-x86_64.AppImage
-    sha512: a4q/DCOpU8w0E7J3xkgg7tl6sEipaSPD9yJrHM5JNThcnipZutlBL4VL4JNwm2xclRa2wqqExmg7HeMygX4Pgw==
-    size: 185641170
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.3/OpenVorld-0.16.3-linux-x86_64.AppImage
-sha512: a4q/DCOpU8w0E7J3xkgg7tl6sEipaSPD9yJrHM5JNThcnipZutlBL4VL4JNwm2xclRa2wqqExmg7HeMygX4Pgw==
-releaseNotes: "- Pages with very large response headers (Google, YouTube) load
-  in the crew browser: pages now load natively and redirects are checked inside
-  Chrome, popups included"
-releaseDate: 2026-11-20T11:34:33.552Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-linux-x86_64.AppImage
+    sha512: MnE2tTAqxeD4uwsABD3+ZqepkP1ShcXT3GNj/3uLfStTbG/yy7TwIdc3Fcb+IIF8L1JLW8HkvBtjOJzZ/XypBw==
+    size: 185641102
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.18.0/OpenVorld-0.18.0-linux-x86_64.AppImage
+sha512: MnE2tTAqxeD4uwsABD3+ZqepkP1ShcXT3GNj/3uLfStTbG/yy7TwIdc3Fcb+IIF8L1JLW8HkvBtjOJzZ/XypBw==
+releaseNotes: "- Chats: a button in the chat header makes the member chat or
+  party room wider (up to 70% of the screen); the choice is kept in this
+  browser"
+releaseDate: 2026-11-20T11:52:45.325Z
