@@ -49,6 +49,7 @@ export function PartyPanel({ id, hidden }: { id: string; hidden?: boolean }) {
         </div>
         <div className="cp-actions">
           <IconButton icon={wide ? 'shrink' : 'expand'} title={wide ? 'Back to the normal width' : 'Make the chat wider'} onClick={() => { play('ui.click'); toggleWidePanel(); }} />
+          <IconButton icon="folder" title="Open the party's shared folder" onClick={() => { play('ui.open'); void api(`/vorlds/${wid}/parties/${id}/shared/open`, { body: {} }).then((r: any) => toast({ kind: 'info', title: 'Shared folder', body: r?.path })).catch((e: any) => toast({ kind: 'error', title: e.message })); }} />
           <IconButton icon="edit" title="Edit the party" onClick={() => { play('ui.open'); setState({ modal: 'parties', partyEdit: id }); }} />
           <IconButton icon="close" title="Close" onClick={() => setState({ partyId: null })} />
         </div>

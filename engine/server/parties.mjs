@@ -8,7 +8,8 @@
 // The party joins the founder for a conversation and stays nearby between messages. A member who
 // asks for a writ pauses the room; the founder's answer picks it up again.
 //
-// Files: <vorld>/parties/<id>.json. Chats: threads/<tid>.jsonl like any other thread.
+// Files: <vorld>/parties/<id>.json, and its shared folder <vorld>/parties/<id>/shared/ (party-files.mjs; kept when the party is deleted).
+// Chats: threads/<tid>.jsonl like any other thread.
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
@@ -16,6 +17,7 @@ import { createThread, getThread, listThreads, readEvents, appendEvent, updateTh
 import { runTurn, isWorking, stopTurn, openWrits } from './agents/runner.mjs';
 import { publicFiles } from './attachments.mjs';
 import { gameFor } from './game.mjs';
+import { ensureShared, sharedDir, listShared, syncAttachments } from './party-files.mjs';
 
 const dirOf = (ctx) => path.join(ctx.dir, 'parties');
 const fileOf = (ctx, id) => path.join(dirOf(ctx), `${id}.json`);
@@ -52,7 +54,9 @@ export function saveParty(ctx, input, id = null, { starter = false } = {}) {
   const p = id ? getParty(ctx, id) : { id: crypto.randomUUID(), created_at: now };
   Object.assign(p, { name, goal: str(input.goal, 2000), members });
   if (!id && !starter) gameFor(ctx).event('party.created');
-  return write(ctx, p);
+  const saved = write(ctx, p);
+  ensureShared(ctx, saved.id);          // its shared folder (party-files.mjs) is there from the start, and stays when the party is deleted
+  return saved;
 }
 export function deleteParty(ctx, id) {
   const p = getParty(ctx, id);
@@ -114,29 +118,48 @@ export function founderSpeakers(ctx, text, members) {
 }
 
 /** The room as plain lines, newest last: what the member is told to react to. */
-function transcript(ctx, tid) {
+const fill = (t, vars) => String(t ?? '').replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
+const sharedCfg = (ctx) => ctx.interactions.agent?.party?.shared ?? {};
+
+function transcript(ctx, tid, partyId, copies) {
   const { message_chars: max, room_events: n } = cfg(ctx);
   const cut = (t) => (t.length > max ? t.slice(0, max) + ' … (cut)' : t);
+  const dir = sharedDir(ctx, partyId), tpl = sharedCfg(ctx).file_line;
+  // who put which file in the shared folder: a line the next speaker can open (the folder is the place, the member's own tools do the reading)
+  const filed = (who, list) => (tpl ? list.map((f) => fill(tpl, { who, name: f.name, path: f.path ?? path.join(dir, f.name) })) : []);
   const lines = readEvents(ctx, tid).flatMap((e) => {
-    if (e.type === 'founder.message') return [`Founder: ${cut(e.text)}`];
-    if (e.type === 'agent.text' && !e.partial) return [`${nameOf(ctx, e.role)}: ${cut(e.text)}`];
+    if (e.type === 'founder.message') return [`Founder: ${cut(e.text)}`, ...filed('Founder', (e.attachments ?? []).flatMap((a) => copies.get(a.id) ?? []))];
+    if (e.type === 'agent.text' && !e.partial) {
+      const who = nameOf(ctx, e.role);
+      const made = (e.steps ?? []).flatMap((s) => (s.attachments ?? []).flatMap((a) => copies.get(a.id) ?? []));
+      return [`${who}: ${cut(e.text)}`, ...filed(who, [...made, ...(e.meta?.shared ?? []).map((name) => ({ name }))])];
+    }
     if (e.type === 'writ.answered') return [`[The founder ${e.answer === 'deny' ? 'refused' : 'granted'} ${nameOf(ctx, e.role)} access to ${e.scope}]`];
     return [];
   });
   return lines.slice(-n).join('\n\n');
 }
 
+/** The shared folder, as a member is told about it (the wording is the pack's: interactions.yaml > agent.party.shared). */
+function sharedText(ctx, partyId) {
+  const c = sharedCfg(ctx); if (!c.instructions) return '';
+  const names = listShared(ctx, partyId);
+  return fill(c.instructions, { path: ensureShared(ctx, partyId), files: names.length ? fill(c.files_listed, { names: names.join(', ') }) : '' }).trim();
+}
+
 /** What one member is told on its turn. */
 export function roomPrompt(ctx, party, tid, role) {
   const m = ctx.member(role);
+  const copies = syncAttachments(ctx, party.id, tid, (r) => nameOf(ctx, r));      // first, so the folder listing below has what the room just shared
   const team = party.members.map((id) => ctx.member(id)).filter(Boolean)
     .map((x) => `${x.name} (${x.job || 'crew'}${x.function ? `: ${x.function}` : ''})${x.id === party.members[0] ? ' - leader' : ''}${x.id === role ? ' - you' : ''}`).join('; ');
   return [
     `You are ${m.name} in the party "${party.name}".`,
     party.goal ? `The party's goal: ${party.goal}` : '',
     `Party members: ${team}.`,
+    sharedText(ctx, party.id),
     'This is the party room: everybody sees every message. Below is the conversation so far.',
-    transcript(ctx, tid),
+    transcript(ctx, tid, party.id, copies),
     `Now it is your turn, ${m.name}. Do the part of the work that is yours and reply in the room. If you need a teammate to act next, write @Name in your reply and say exactly what you need from them; that teammate speaks next. Mention nobody unless you need them to act. When the job (or your part of it, with nobody else needed) is finished, reply with the result and mention nobody: that ends the job.`,
   ].filter(Boolean).join('\n\n');
 }

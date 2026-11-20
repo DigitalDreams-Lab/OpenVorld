@@ -11,6 +11,7 @@ import { atlasFor, sheetImage } from './art.mjs';
 import { gameFor } from './game.mjs';
 import { listThreads, createThread, getThread, updateThread, readEvents, appendEvent } from './threads.mjs';
 import { runTurn, stopTurn, stopAllTurns, activeTurnCount, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
+import { openShared } from './party-files.mjs';
 import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, stopAllParties, partyBusy } from './parties.mjs';
 import { adoptLegacyKeys, cleanProviders, hasKey, keyFor, looksLikeEnvName } from './keys.mjs';
 import { saveAttachmentStream, saveAttachment, publicFiles, getAttachment, resolveAttachments, replyFile, allowReplyFile, addReferences } from './attachments.mjs';
@@ -428,6 +429,7 @@ route('POST', '/api/vorlds/:id/parties', async ({ p, req }) => {
 });
 route('PUT', '/api/vorlds/:id/parties/:pid', async ({ p, req }) => { const ctx = W(p); saveParty(ctx, await body(req), p.pid); vorldChanged(p.id); return vorldView(vorldCtx(p.id, { fresh: true })); });
 route('DELETE', '/api/vorlds/:id/parties/:pid', ({ p }) => { const ctx = W(p); deleteParty(ctx, p.pid); vorldChanged(p.id); return vorldView(vorldCtx(p.id, { fresh: true })); });
+route('POST', '/api/vorlds/:id/parties/:pid/shared/open', ({ p }) => { const ctx = W(p); getParty(ctx, p.pid); return { ok: true, path: openShared(ctx, p.pid) }; });   // the party's shared folder in the file manager
 route('GET', '/api/vorlds/:id/parties/:pid/chats', ({ p }) => { const ctx = W(p); getParty(ctx, p.pid); return partyChats(ctx, p.pid); });
 route('POST', '/api/vorlds/:id/parties/:pid/chats', async ({ p, req }) => createPartyChat(W(p), p.pid, (await body(req)).title));
 

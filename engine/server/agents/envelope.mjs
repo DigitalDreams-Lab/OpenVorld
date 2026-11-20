@@ -16,6 +16,7 @@ export function splitEnvelope(text, lang = 'ov') {
       commands: Array.isArray(meta.commands) ? meta.commands.filter((c) => c && typeof c === 'object' && !Array.isArray(c)).slice(0, 24) : undefined,
       remember: clean(meta.remember, 5, 600),            // crew memory (memory.mjs): notes to keep, note ids to drop, where this chat stands
       forget: clean(meta.forget, 10, 20),
+      share: clean(meta.share, 5, 500),                  // a party room (party-files.mjs): paths of files to copy into the party's shared folder
       summary: typeof meta.summary === 'string' ? meta.summary.slice(0, 1200) : undefined,
       access: Array.isArray(meta.access) ? meta.access.filter((a) => a && typeof a.capability === 'string' && typeof a.scope === 'string').slice(0, 3)
         .map((a) => ({ capability: a.capability.slice(0, 40), scope: a.scope.slice(0, 300), why: typeof a.why === 'string' ? a.why.slice(0, 200) : '' })) : undefined,

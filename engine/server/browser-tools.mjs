@@ -15,7 +15,7 @@ export const BROWSER_TOOLS = [
     properties: { id: { type: 'integer' }, text: { type: 'string' }, submit: { type: 'boolean', description: 'Press Enter afterwards' } }, required: ['id', 'text'] },
   { name: 'browser_back', description: 'Go back one page.', properties: {}, required: [] },
   { name: 'browser_close', description: 'Close your browser when you are done with it, so it does not stay open for nothing. Open a page again later if you need one. If the founder is using the window right now, it stays open.', properties: {}, required: [] },
-  { name: 'browser_screenshot', description: 'Take a screenshot of the current browser page. Returns the image and automatically posts it to the chat so you and the founder can inspect it.',
+  { name: 'browser_screenshot', description: 'Take a screenshot of the current browser page. Returns the image and automatically posts it to the chat so you and the founder can inspect it. Always give a short caption: what it shows and what to look at.',
     properties: { post: { type: 'boolean', description: 'Whether to post the screenshot to the chat (default true)' }, caption: { type: 'string', description: 'Optional short caption explaining what this screenshot shows' } }, required: [] },
 ];
 
