@@ -63,6 +63,18 @@ agent:
     max_turns: 12                  # most member turns after one message from the founder
     message_chars: 2500            # longest message of the room shown to a member
     room_events: 40                # how many of the latest room messages a member is shown
+    shared:                        # each party's shared folder (engine/server/party-files.mjs); {path}, {files}, {names}, {who} and {name} are filled in
+      copy_max_mb: 50              # a file bigger than this is not copied into the folder
+      listed: 30                   # files named in the prompt
+      instructions: |
+        Your party has a shared folder for the files and notes everyone needs: {path}
+        Everyone in the party can read it with their own file tools, and it stays after the party ends. Files the founder
+        attaches and pictures taken in this room are copied into it, and the room lists them. To share a file of your own, put
+        its path in the "share" list of your ov block (it must be a file you can read), then say in a line or two what it is and
+        what to look at. Give every screenshot a short caption. Open files from the folder yourself, however your tools allow.
+        {files}
+      files_listed: "Files there now: {names}."
+      file_line: "[{who} shared {name}: {path}]"
   transcript: { output_chars: 4000, detail_chars: 1500 }
   chat: { collapse_after: 6 }
   claude_code:

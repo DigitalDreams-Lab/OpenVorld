@@ -24,6 +24,7 @@ import { gameFor } from '../game.mjs';
 import { profileContext } from '../profile.mjs';
 import { applyMemory, memoryContext } from '../memory.mjs';
 import { attachmentPrompt, publicFiles, threadAttachments, getAttachment, saveAttachment, imageType } from '../attachments.mjs';
+import { ensureShared, shareFiles } from '../party-files.mjs';
 
 const active = new Map(); // threadId -> AbortController
 export const isWorking = (id) => active.has(id);
@@ -141,7 +142,9 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
   // a read writ names a folder, or one file the founder allowed for the session (a file is read like a reference, never added as a folder)
   const readGrants = folderGrants(ctx, role, 'fs.read'), isDir = (p) => { try { return fs.statSync(p).isDirectory(); } catch { return false; } };
   referenceFiles.push(...readGrants.filter((p) => !isDir(p) && fs.existsSync(p)));
-  const readDirs = [...new Set([...(project.exists ? [project.path] : []), ...readGrants.filter(isDir), ...uploadDirs])];
+  // a party's room has a shared folder: every member reads it (nothing is writable because of it; see party-files.mjs)
+  const shared = inRoom && thread.party ? ensureShared(ctx, thread.party) : null;
+  const readDirs = [...new Set([...(project.exists ? [project.path] : []), ...readGrants.filter(isDir), ...uploadDirs, ...(shared ? [shared] : [])])];
   const cmdGrants = grantsOf(ctx, role).filter((g) => g.capability === 'cmd.run').map((g) => g.scope);
   const netGrants = grantsOf(ctx, role).filter((g) => g.capability === 'net.fetch').map((g) => g.scope);
   const tools = [];
@@ -229,7 +232,11 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     catch (e) { if (!sessionId || !SESSION_LOST.test(e.message ?? '')) throw e; result = await drive(null); }      // its session is gone: start fresh, with the conversation so far
 
     const { text: shown, meta } = splitEnvelope(redactSecrets(ctx, role, result.text ?? ''), lang);
-    const { access, commands: askedCommands, remember, forget, summary, ...metaShown } = meta;
+    const { access, commands: askedCommands, remember, forget, summary, share, ...metaShown } = meta;
+    if (shared && share?.length) {      // the files this member named in the room are copied where the others can read them
+      const names = shareFiles(ctx, thread.party, ctx.member(role)?.name ?? role, share, [cwd, ...readDirs, ...writeDirs, ...referenceFiles]);
+      if (names.length) metaShown.shared = names;
+    }
     const noted = applyMemory(ctx, role, threadId, { remember, forget, summary });
     if (noted.length) metaShown.noted = noted;
     const done = prepareCommands(ctx, role, askedCommands, scope);

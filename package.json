@@ -1,6 +1,6 @@
 {
   "name": "openvorld",
-  "version": "0.18.1",
+  "version": "0.19.0",
   "description": "An open-source harness for AI agents. Every project is a vorld: a shared project folder, a crew of agents with their own workbenches, and the parties they work in together. Shown as a pixel-art world.",
   "license": "MIT",
   "type": "module",

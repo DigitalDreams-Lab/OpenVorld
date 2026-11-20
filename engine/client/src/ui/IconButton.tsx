@@ -6,6 +6,7 @@ const PATHS: Record<string, ReactNode> = {
   close: <path d="M6 6l12 12M18 6L6 18" />,
   call: <><circle cx="8" cy="8" r="3.2" /><path d="M2.5 20c0-3.6 2.5-6 5.5-6s5.5 2.4 5.5 6" /><path d="M22 11.5h-6.5M18.5 8.5l-3 3 3 3" /></>,   // someone coming over to you
   following: <><circle cx="8" cy="8" r="3.2" /><path d="M2.5 20c0-3.6 2.5-6 5.5-6s5.5 2.4 5.5 6" /><path d="M16.5 8.5l5 5M21.5 8.5l-5 5" /></>,   // a follower you can send home
+  folder: <path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V7z" />,   // the party's shared folder
   expand: <><path d="M14 4h6v6M10 20H4v-6" /><path d="M20 4l-7 7M4 20l7-7" /></>,   // make the panel wider
   shrink: <><path d="M20 10h-6V4M4 14h6v6" /><path d="M14 10l7-7M3 21l7-7" /></>,   // back to the normal width
   edit: <><path d="M4 20h4L19 9l-4-4L4 16v4z" /><path d="M13.5 6.5l4 4" /></>,
