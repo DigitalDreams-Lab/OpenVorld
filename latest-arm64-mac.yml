@@ -1,14 +1,11 @@
-version: 0.16.0
+version: 0.16.1
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.0/OpenVorld-0.16.0-mac-arm64.zip
-    sha512: C8qR2vbZjoGn8KWle3T2Oz5qxN0PIz9egxHete2s8KIeLZXmgWoAJog7c+Rlbi0NwUzqoVzkQOEQIBA/dRBXbA==
-    size: 177877886
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.0/OpenVorld-0.16.0-mac-arm64.zip
-sha512: C8qR2vbZjoGn8KWle3T2Oz5qxN0PIz9egxHete2s8KIeLZXmgWoAJog7c+Rlbi0NwUzqoVzkQOEQIBA/dRBXbA==
-releaseNotes: "- The crew browser opens inside OpenVorld: expand a member's live
-  preview, click, scroll and type in it, and sign in to a site without a
-  separate Chrome window (your sign-in is saved for that member). A CAPTCHA or
-  login wall now shows a \"needs you\" note on the balloon. Your window never
-  loosens the member's own writs, and the browser keeps its honest OpenVorld/1
-  name"
-releaseDate: 2026-11-20T01:13:27.351Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.1/OpenVorld-0.16.1-mac-arm64.zip
+    sha512: KJHYyzCVVhXbnoVGQvqBxLbIQyOoZGev8zz0zIWaeAs8IaGT8C27603mJpF/bBI/1Fp+O9Haug/lm4e7KVa/9g==
+    size: 177878107
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.1/OpenVorld-0.16.1-mac-arm64.zip
+sha512: KJHYyzCVVhXbnoVGQvqBxLbIQyOoZGev8zz0zIWaeAs8IaGT8C27603mJpF/bBI/1Fp+O9Haug/lm4e7KVa/9g==
+releaseNotes: "- The in-app browser window sits on a real backdrop again (it had
+  the wrong class, so it had no close button in reach), and the member panel can
+  close a member's browser"
+releaseDate: 2026-11-20T09:07:19.394Z
