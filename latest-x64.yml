@@ -1,12 +1,14 @@
-version: 0.15.1
+version: 0.16.0
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.15.1/OpenVorld-0.15.1-win-x64.exe
-    sha512: cfQ6K0pE7dFuWWRdcieutAWZio+G6nqO92GuDNdvBPlR8C1vCwO71yChug3gTOtZNifOlz2Yiz+1dde0THjSxw==
-    size: 177434562
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.15.1/OpenVorld-0.15.1-win-x64.exe
-sha512: cfQ6K0pE7dFuWWRdcieutAWZio+G6nqO92GuDNdvBPlR8C1vCwO71yChug3gTOtZNifOlz2Yiz+1dde0THjSxw==
-releaseNotes: "- Windows: the crew browser tools reach Claude Code members again
-  (its system prompt was passed as a multi-line argument, which cmd.exe cut off
-  together with --allowedTools; it now comes from a temporary file), and Chrome
-  or Edge are found per user and in any Program Files folder"
-releaseDate: 2026-11-19T21:33:52.674Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.0/OpenVorld-0.16.0-win-x64.exe
+    sha512: YZhhrwH774qwyEn3bsipw/DXj54FuSHNm5g9MxIDZB2bR0OFicPaSDmImsJ+/vxzi2YeMXLI27UPifLC0P1Kkw==
+    size: 177438930
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.0/OpenVorld-0.16.0-win-x64.exe
+sha512: YZhhrwH774qwyEn3bsipw/DXj54FuSHNm5g9MxIDZB2bR0OFicPaSDmImsJ+/vxzi2YeMXLI27UPifLC0P1Kkw==
+releaseNotes: "- The crew browser opens inside OpenVorld: expand a member's live
+  preview, click, scroll and type in it, and sign in to a site without a
+  separate Chrome window (your sign-in is saved for that member). A CAPTCHA or
+  login wall now shows a \"needs you\" note on the balloon. Your window never
+  loosens the member's own writs, and the browser keeps its honest OpenVorld/1
+  name"
+releaseDate: 2026-11-20T01:08:38.778Z
