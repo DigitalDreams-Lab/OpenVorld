@@ -1,13 +1,11 @@
-version: 0.19.0
+version: 0.19.1
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.0/OpenVorld-0.19.0-mac-arm64.zip
-    sha512: uW1p7CKRrP/nBq5Kr/CED6gFA9S1wbfAMalqROuPbdADTPPMkW7UmAPzNlVKO+vREtSmzqihDaUxDjzkuKC1nw==
-    size: 177884606
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.0/OpenVorld-0.19.0-mac-arm64.zip
-sha512: uW1p7CKRrP/nBq5Kr/CED6gFA9S1wbfAMalqROuPbdADTPPMkW7UmAPzNlVKO+vREtSmzqihDaUxDjzkuKC1nw==
-releaseNotes: "- Parties get a shared folder (parties/<id>/shared) that is kept
-  after the party: files the founder attaches, pictures from tools and files a
-  member names in share are copied there, the room says who shared what and
-  where, every member reads it with its own tools, and an Open folder button
-  shows it"
-releaseDate: 2026-11-20T13:01:47.292Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.1/OpenVorld-0.19.1-mac-arm64.zip
+    sha512: ZdpTe6MVwNxd/FQS4myRywqxN1/7mycKNkL5FUhP0Df/1i7Mr656BpTJTO/NCDWfAqVbeSlhsvLwAu039R94sw==
+    size: 177885065
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.1/OpenVorld-0.19.1-mac-arm64.zip
+sha512: ZdpTe6MVwNxd/FQS4myRywqxN1/7mycKNkL5FUhP0Df/1i7Mr656BpTJTO/NCDWfAqVbeSlhsvLwAu039R94sw==
+releaseNotes: "- Crew walking to you no longer cut through props, the Party
+  Hall's pillar or house walls: the walking test now knows everything you bump
+  into, so routes go around it"
+releaseDate: 2026-11-20T13:32:00.004Z
