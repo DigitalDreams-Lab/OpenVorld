@@ -1,11 +1,11 @@
-version: 0.16.2
+version: 0.16.3
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.2/OpenVorld-0.16.2-linux-x86_64.AppImage
-    sha512: Iligm81Rk/TZPNYxbg9jMTgDrpkS96MyX2XaXQAb2jMxiez0gq35aTiILESfYtS+g4nzO0qOHKYi70j8AObdgg==
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.3/OpenVorld-0.16.3-linux-x86_64.AppImage
+    sha512: a4q/DCOpU8w0E7J3xkgg7tl6sEipaSPD9yJrHM5JNThcnipZutlBL4VL4JNwm2xclRa2wqqExmg7HeMygX4Pgw==
     size: 185641170
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.2/OpenVorld-0.16.2-linux-x86_64.AppImage
-sha512: Iligm81Rk/TZPNYxbg9jMTgDrpkS96MyX2XaXQAb2jMxiez0gq35aTiILESfYtS+g4nzO0qOHKYi70j8AObdgg==
-releaseNotes: "- A crew member can close its own browser when it is done (new
-  browser_close tool for every brain); it stays open if you are using the
-  window"
-releaseDate: 2026-11-20T09:10:51.674Z
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.16.3/OpenVorld-0.16.3-linux-x86_64.AppImage
+sha512: a4q/DCOpU8w0E7J3xkgg7tl6sEipaSPD9yJrHM5JNThcnipZutlBL4VL4JNwm2xclRa2wqqExmg7HeMygX4Pgw==
+releaseNotes: "- Pages with very large response headers (Google, YouTube) load
+  in the crew browser: pages now load natively and redirects are checked inside
+  Chrome, popups included"
+releaseDate: 2026-11-20T11:34:33.552Z
