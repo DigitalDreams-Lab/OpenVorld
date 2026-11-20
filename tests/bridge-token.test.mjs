@@ -17,7 +17,7 @@ test('the launch token opens everything; a bridge token opens only its own membe
   const token = B.mintBridgeToken('lantern', 'ada', 't1');
   const ok = (t, method, url) => B.apiAuthorized(t, LAUNCH, method, url);
   assert.ok(ok(LAUNCH, 'GET', at('/api/boot', '')) && ok(LAUNCH, 'POST', at('/api/vorlds/lantern/threads/t1/writs/w1', '')));
-  for (const tool of ['browser_open', 'browser_read', 'browser_click', 'browser_type', 'browser_back', 'browser_screenshot', 'secret_ask', 'recall']) assert.ok(ok(token, 'POST', at(`${own}/${tool}`)), tool);
+  for (const tool of ['browser_open', 'browser_read', 'browser_click', 'browser_type', 'browser_back', 'browser_close', 'browser_screenshot', 'secret_ask', 'recall']) assert.ok(ok(token, 'POST', at(`${own}/${tool}`)), tool);
 
   const denied = [
     ['another member', 'POST', at('/api/vorlds/lantern/browser/bo/browser_open')],

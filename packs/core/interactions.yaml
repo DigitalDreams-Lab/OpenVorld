@@ -22,8 +22,9 @@ agent:
     jpeg_quality: 55
     allow_private: false           # localhost and local-network addresses stay blocked
     instructions: |
-      You have your own private web browser: the tools browser_open, browser_read, browser_click, browser_type and
-      browser_back (your tool list may show a prefix such as ov_browser). The founder can watch it in the game.
+      You have your own private web browser: the tools browser_open, browser_read, browser_click, browser_type,
+      browser_back and browser_close (your tool list may show a prefix such as ov_browser). The founder can watch it
+      in the game. When you are done with the web, close it with browser_close.
       Use it for anything on the web, and do not use any other browser, computer-use or web tool. Each website needs a
       writ: opening one you do not have asks the founder, then you continue when they agree. Read the numbered links
       and fields in each answer, click or type by number, and never type passwords or payment details.

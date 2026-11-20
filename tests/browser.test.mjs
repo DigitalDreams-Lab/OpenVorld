@@ -412,3 +412,31 @@ test('the in-app browser window sits on a backdrop the stylesheet defines, with 
   assert.match(modal, /aria-label="Close browser preview"/);
   assert.match(panel, /closeBrowser/, 'the member panel can close the browser');
 });
+
+test('a member can close its own browser when it is done, but not under the founder (needs Chrome)', { skip: !hub.findChrome() && 'no Chrome or Edge on this computer' }, async (t) => {
+  process.env.OV_BROWSER_ALLOW_PRIVATE = '1';
+  const page = http.createServer((req, res) => { res.setHeader('content-type', 'text/html'); res.end('<title>Home</title><h1>Hello</h1>'); });
+  await new Promise((r) => page.listen(0, '127.0.0.1', r));
+  t.after(async () => { delete process.env.OV_BROWSER_ALLOW_PRIVATE; await hub.closeAll(); page.close(); });
+  const ctx = crew(), frames = [];
+  const use = (name, args) => hub.callTool(ctx, 'ada', name, args, { emit: (m) => frames.push(m) });
+  const home = `http://127.0.0.1:${page.address().port}/`;
+  grant(ctx, { role: 'ada', capability: 'net.fetch', scope: '127.0.0.1' });
+
+  assert.match(await use('browser_close', {}), /No browser was open/, 'closing needs no page and starts nothing');
+  assert.equal(hub.latest(ctx, 'ada'), null);
+
+  await use('browser_open', { url: home });
+  assert.ok(hub.latest(ctx, 'ada'));
+  assert.match(await use('browser_close', {}), /Browser closed/);
+  assert.equal(hub.latest(ctx, 'ada'), null, 'the page is gone');
+  assert.ok(frames.some((f) => f.type === 'browser' && f.closed), 'the game is told, so the preview goes away');
+  await assert.rejects(use('browser_read', {}), /no page is open yet/);
+
+  // while the founder holds the window, the member leaves it alone
+  await hub.openInteractive(ctx, 'ada', { url: home });
+  assert.match(await use('browser_close', {}), /founder is using the browser/);
+  assert.ok(hub.latest(ctx, 'ada'), 'still open');
+  await hub.closeInteractive(ctx, 'ada');
+  assert.match(await use('browser_close', {}), /Browser closed/);
+});
