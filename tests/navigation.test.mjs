@@ -10,6 +10,7 @@ const TweenManager = require(path.resolve('node_modules/phaser/src/tweens/TweenM
 const navigation = await clientModuleUrl('engine/client/src/game/navigation.ts');
 const geometry = await clientModuleUrl('engine/client/src/game/geometry.ts');
 const companion = await clientModuleUrl('engine/client/src/game/companion-position.ts');
+const solids = await clientModuleUrl('engine/client/src/game/solids.ts');
 const { clearWalk, walkingPath, NavigationGrid } = await import(navigation);
 const { homeGeometry } = await import(geometry);
 const stub = stubModule(`
@@ -25,7 +26,7 @@ const stub = stubModule(`
 const { setBuilding } = await import(stub);
 const { VorldScene } = await clientModule('engine/client/src/game/VorldScene.ts', {
   phaser: stub, './commands': stub, '../store': stub, '../audio/sfx': stub,
-  './pixels': stub, './sprites': stub, '../theme': stub, './geometry': geometry, './navigation': navigation, './companion-position': companion,
+  './pixels': stub, './sprites': stub, '../theme': stub, './geometry': geometry, './navigation': navigation, './solids': solids, './companion-position': companion,
 });
 
 function sceneWithHouse() {
