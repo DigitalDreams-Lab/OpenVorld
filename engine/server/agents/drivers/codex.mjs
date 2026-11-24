@@ -38,7 +38,16 @@ export function generatedImages(sessionId, since, env = null, max = 4) {
 export const sandboxOf = (writeDirs, cwd) => ({ writable: writeDirs.length > 0, addDirs: writeDirs.filter((d) => d !== cwd) });
 const plan = (it) => (it.items ?? []).map((x) => ({ text: x.text ?? '', status: x.completed ? 'completed' : 'pending' }));
 
-export async function run({ bin = 'codex', system, prompt, images = [], sessionId, cwd, addDirs = [], mcp = null, env = null, writable = false, web = false, model, signal, onEvent, onAccess = () => {} }) {
+/**
+ * Network for the member's own shell commands, from a net.cli writ. Codex keeps the network switch under workspace-write only
+ * (read-only always runs offline), so a member without a writable folder stays offline and is asked for one. The switch is set
+ * both ways on every turn: a resumed session must lose the network when the writ is revoked.
+ */
+export const networkArgs = (network, writable) => (writable ? ['-c', `sandbox_workspace_write.network_access=${network ? 'true' : 'false'}`] : []);
+/** What a command prints when the sandbox has no network (DNS fails first, then the connection). */
+export const OFFLINE = /Could not resolve host|nodename nor servname|getaddrinfo|ENOTFOUND|EAI_AGAIN|Name or service not known|Temporary failure in name resolution|Network is unreachable|NameResolutionError|Failed to resolve/i;
+
+export async function run({ bin = 'codex', system, prompt, images = [], sessionId, cwd, addDirs = [], mcp = null, env = null, writable = false, network = false, web = false, model, signal, onEvent, onAccess = () => {} }) {
   const SANDBOX = /Operation not permitted|Read-only file system|EROFS|EPERM|sandbox/i;
   // --ignore-user-config: only what OpenVorld passes applies, never the founder's own Codex plugins or MCP servers
   // (computer-use and browser plugins there could drive the founder's real apps and bypass writs)
@@ -47,9 +56,11 @@ export async function run({ bin = 'codex', system, prompt, images = [], sessionI
   // revoked) after the chat began never took effect. The same settings go in as config overrides, on every turn.
   const sandbox = ['-c', `sandbox_mode=${toml(writable ? 'workspace-write' : 'read-only')}`,
     ...(writable && addDirs.length ? ['-c', `sandbox_workspace_write.writable_roots=[${addDirs.map(toml).join(', ')}]`] : [])];
+  const net = networkArgs(network, writable);
   const args = sessionId
-    ? ['exec', 'resume', sessionId, ...base, ...sandbox, ...(model ? ['-m', model] : []), '-']
-    : ['exec', ...base, '-C', cwd, '-s', writable ? 'workspace-write' : 'read-only', ...addDirs.flatMap((d) => ['--add-dir', d]), ...(model ? ['-m', model] : []), '-'];
+    ? ['exec', 'resume', sessionId, ...base, ...sandbox, ...net, ...(model ? ['-m', model] : []), '-']
+    : ['exec', ...base, ...net, '-C', cwd, '-s', writable ? 'workspace-write' : 'read-only', ...addDirs.flatMap((d) => ['--add-dir', d]), ...(model ? ['-m', model] : []), '-'];
+  let askedNet = false;
   let sid = sessionId, text = '', failed = '';
   const startedAt = Date.now() - 2000;
   const searches = new Set();
@@ -74,6 +85,14 @@ export async function run({ bin = 'codex', system, prompt, images = [], sessionI
         onEvent({ type: 'tool_result', id: it.id, ok: it.exit_code === 0, name: 'shell', target: String(it.command).slice(0, 240), output: it.aggregated_output ?? '' });
         // the read-only sandbox stopped a write: ask the founder for write access to the working folder
         if (it.exit_code !== 0 && !writable && SANDBOX.test(it.aggregated_output ?? '')) onAccess({ capability: 'fs.write', scope: cwd, why: `the command "${String(it.command).slice(0, 60)}" needs to write files` });
+        // the sandbox had no network: ask for it once per turn (and for a writable folder, which Codex needs before it opens the network)
+        // any exit code: a script that catches the failed lookup and prints it still exits 0
+        if (!askedNet && OFFLINE.test(it.aggregated_output ?? '') && !(network && writable)) {
+          askedNet = true;
+          const cmd = String(it.command).slice(0, 60);
+          if (!network) onAccess({ capability: 'net.cli', scope: '*', why: `the command "${cmd}" needs the internet` });
+          if (!writable) onAccess({ capability: 'fs.write', scope: cwd, why: `Codex only opens the network for commands in a writable workbench ("${cmd}")` });
+        }
       } else if (done && it.type === 'file_change') {
         (it.changes ?? []).forEach((c, i) => {
           const id = `${it.id}:${i}`;

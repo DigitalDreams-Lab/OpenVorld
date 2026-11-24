@@ -88,6 +88,8 @@ export function checkScope(ctx, capability, scope) {
     return pattern;
   }
   if (capability === 'secret.use') { if (!/^[A-Z][A-Z0-9_]{2,63}$/.test(s)) bad('name a secret like YT_CLIENT_SECRET'); return s; }
+  // a CLI sandbox opens the network as a whole: there is no per-site scope to give
+  if (capability === 'net.cli') { if (s && s !== '*') bad('network access for commands is all sites or none: the scope is *'); return '*'; }
   if (capability === 'net.fetch' || capability === 'net.session' || capability === 'net.act') {
     const d = s.replace(/^https?:\/\//, '').replace(/\/.*$/, '').toLowerCase();
     if (!/^(\*|[a-z0-9.-]+\.[a-z]{2,})$/.test(d)) bad('name a domain like example.com');

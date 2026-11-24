@@ -65,6 +65,11 @@ capabilities:
     risk: high
     scope: domain
     seal: every_time                  # never "always": the founder approves this time or for the session
+  net.cli:
+    label: "let its own commands reach the internet"   # a sandboxed CLI brain (Codex): its shell gets the whole network
+    risk: high
+    scope: any                        # always "*": Codex's sandbox opens the network for every site or for none
+    seal: every_time                  # never "always": with secrets in its environment, a networked shell can send them anywhere
   secret.use:
     label: "use the secret"             # from the member's vault; the founder adds secrets in the member's settings
     risk: high

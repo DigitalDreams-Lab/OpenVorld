@@ -69,6 +69,9 @@ test('house: no folder writ or workbench can ever hold the houses', () => {
   }
   assert.throws(() => checkScope(ctx, 'secret.use', 'lower_case'), /name a secret/);
   assert.equal(checkScope(ctx, 'secret.use', 'YT_TOKEN'), 'YT_TOKEN');
+  assert.equal(checkScope(ctx, 'net.cli', ''), '*', 'network for commands is all or nothing');
+  assert.equal(checkScope(ctx, 'net.cli', '*'), '*');
+  assert.throws(() => checkScope(ctx, 'net.cli', 'api.example.com'), /all sites or none/);
 });
 
 test('vault routes: values go in and never come out; a secret.use writ needs a secret that exists', async (t) => {

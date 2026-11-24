@@ -38,4 +38,7 @@ if (fs.existsSync(register)) execFileSync(register, ['-f', destination]);
 console.log(`Installed: ${destination}`);
 if (backup) console.log(`Previous app kept: ${backup}`);
 const env = { ...process.env }; delete env.ELECTRON_RUN_AS_NODE; delete env.OPENVORLD_HOME;
+// the app starts with whatever this shell has, and its agent CLIs inherit it: installing from inside a Claude Code session used to hand
+// every crew member that session's proxy, token and model names (ANTHROPIC_*, CLAUDE_CODE_*), which broke Claude Code members
+for (const k of Object.keys(env)) if (/^(ANTHROPIC_|CLAUDE_CODE_|CODEX_SANDBOX)/.test(k) || k === 'CLAUDECODE') delete env[k];
 execFileSync('/usr/bin/open', [destination], { env });

@@ -75,3 +75,19 @@ export function history(ctx, id, max = 30) {
   return readEvents(ctx, id).filter((e) => e.type === 'founder.message' || e.type === 'agent.text').slice(-max)
     .map((e) => ({ role: e.type === 'founder.message' ? 'user' : 'assistant', content: e.text, ...(e.attachments?.length ? {attachments:e.attachments} : {}) }));
 }
+
+/**
+ * What to tell a member after the founder answered their requests. Several requests can be answered one after another before the member
+ * is idle, and only the last answer resumes the chat: the message names every answer since the member's last reply, or the member never
+ * learns that the earlier ones were granted and goes on saying it is blocked.
+ */
+export function accessMessage(ctx, tid, role) {
+  const events = readEvents(ctx, tid), caps = ctx.packs.byKind.permissions?.permissions?.capabilities ?? {};
+  let from = events.length - 1;
+  while (from >= 0 && !(events[from].role === role && (events[from].type === 'agent.text' || events[from].type === 'turn.error'))) from--;
+  const asks = new Map(events.filter((e) => e.type === 'writ.request').map((e) => [e.id, e]));
+  const phrase = (e) => `${caps[asks.get(e.id)?.capability]?.label ?? asks.get(e.id)?.capability ?? 'use'} ${e.scope}`;
+  const answered = events.slice(from + 1).filter((e) => e.type === 'writ.answered' && e.role === role);
+  const yes = answered.filter((e) => e.answer !== 'deny').map(phrase), no = answered.filter((e) => e.answer === 'deny').map(phrase);
+  return [yes.length ? `Access granted: you may ${yes.join('; you may ')}.` : '', no.length ? `Refused: you may not ${no.join('; you may not ')}.` : '', 'Please continue.'].filter(Boolean).join(' ');
+}

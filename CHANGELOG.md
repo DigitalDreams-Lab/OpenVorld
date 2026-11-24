@@ -2,6 +2,14 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.20.0 - 2026-11-23
+
+- Codex members can get a net.cli writ: their shell commands reach the internet (all sites, only for this time or session, only in a writable workbench); a command that cannot resolve a host asks for it, and a revoked writ takes a resumed session offline again
+- Redrawn with Codex image generation: the back and back-right views of the grey-haired Journalist (agent_5). The nape was painted in the face's skin tone, so from behind it looked like a second face; the whole back of the head is hair now.
+- The network request also fires when a script catches the failed lookup and exits 0 (it used to wait for a failing exit code).
+- Answering several access requests in a row now tells the member about every one (granted and refused) since their last reply; before, only the last answer reached them, so a member kept saying it was blocked on a request you had already approved.
+- `desktop:install` no longer hands the app the shell's `ANTHROPIC_*` / `CLAUDE_CODE_*` variables: installing from inside a Claude Code session gave every Claude Code member that session's proxy and model names and broke them.
+
 ## 0.19.5 - 2026-11-20
 
 - Cover the active direct chat deletion guard and verify that deletion removes the log and uploads after the reply finishes.
