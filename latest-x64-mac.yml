@@ -1,14 +1,12 @@
-version: 0.21.0
+version: 0.21.1
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.21.0/OpenVorld-0.21.0-mac-x64.zip
-    sha512: +PM7rVW7x/0DR0aRd/Vohbo90kFhkeJJq8aE7ZSHSW27TsRTRWZDCENoK2LE/qZLzwT+slWP3Z5p9aXzgGk+Fw==
-    size: 185099785
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.21.0/OpenVorld-0.21.0-mac-x64.zip
-sha512: +PM7rVW7x/0DR0aRd/Vohbo90kFhkeJJq8aE7ZSHSW27TsRTRWZDCENoK2LE/qZLzwT+slWP3Z5p9aXzgGk+Fw==
-releaseNotes: "- Write to a member while they work: Enter sends now and stops
-  the current reply (what they had written stays in the chat), Ctrl+Enter or
-  Cmd+Enter queues the message above the box. Queued messages run one after
-  another and can each be edited, deleted or sent now; they work in party rooms
-  too, and survive switching chats and reloading. Stop pauses the queue until
-  you resume it."
-releaseDate: 2026-11-24T11:51:55.745Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.21.1/OpenVorld-0.21.1-mac-x64.zip
+    sha512: LD98Ye6R/juJKluQPIoHPHv1trp8xYS/7taJRG3v5S4c8A5+LEAB7iQq9CRhmYl1WAW5Z8GhujIQ+3/qmQxBbQ==
+    size: 185100725
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.21.1/OpenVorld-0.21.1-mac-x64.zip
+sha512: LD98Ye6R/juJKluQPIoHPHv1trp8xYS/7taJRG3v5S4c8A5+LEAB7iQq9CRhmYl1WAW5Z8GhujIQ+3/qmQxBbQ==
+releaseNotes: "- Opening a vorld is much faster: the character sheet pages are
+  cut from one decode with a quick encoder (about 5 s down to under 1 s) and
+  ready at start-up, the sprite sheets download and decode side by side with
+  createImageBitmap, and a loading screen shows instead of a black page"
+releaseDate: 2026-11-24T12:03:33.705Z

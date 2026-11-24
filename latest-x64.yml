@@ -1,14 +1,12 @@
-version: 0.21.0
+version: 0.21.1
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.21.0/OpenVorld-0.21.0-win-x64.exe
-    sha512: nKJQFqFYtUizwnNvw7Kuru3Wrpz8dQ86Mf+nyHrELJYuVzRU3RV/sL9+3+stmWx7p/b5d5SLIRHBJgCjT+ZXxQ==
-    size: 177414932
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.21.0/OpenVorld-0.21.0-win-x64.exe
-sha512: nKJQFqFYtUizwnNvw7Kuru3Wrpz8dQ86Mf+nyHrELJYuVzRU3RV/sL9+3+stmWx7p/b5d5SLIRHBJgCjT+ZXxQ==
-releaseNotes: "- Write to a member while they work: Enter sends now and stops
-  the current reply (what they had written stays in the chat), Ctrl+Enter or
-  Cmd+Enter queues the message above the box. Queued messages run one after
-  another and can each be edited, deleted or sent now; they work in party rooms
-  too, and survive switching chats and reloading. Stop pauses the queue until
-  you resume it."
-releaseDate: 2026-11-24T11:45:34.165Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.21.1/OpenVorld-0.21.1-win-x64.exe
+    sha512: 8Sb72+DBeuHcCDoB9XZRMSLFe6ZILFXMPGUTmhiRBublMJn4cbRTx/sJqVIxls1ddyFqu8DBzisG4kHyStcwqg==
+    size: 177415748
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.21.1/OpenVorld-0.21.1-win-x64.exe
+sha512: 8Sb72+DBeuHcCDoB9XZRMSLFe6ZILFXMPGUTmhiRBublMJn4cbRTx/sJqVIxls1ddyFqu8DBzisG4kHyStcwqg==
+releaseNotes: "- Opening a vorld is much faster: the character sheet pages are
+  cut from one decode with a quick encoder (about 5 s down to under 1 s) and
+  ready at start-up, the sprite sheets download and decode side by side with
+  createImageBitmap, and a loading screen shows instead of a black page"
+releaseDate: 2026-11-24T11:56:28.232Z
