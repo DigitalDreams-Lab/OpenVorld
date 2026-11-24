@@ -1,30 +1,14 @@
-version: 0.20.0
+version: 0.21.0
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.20.0/OpenVorld-0.20.0-mac-x64.zip
-    sha512: d9Mupaa7rjfs/gRHH4UJXsQhuZO4HSuGNyBbsGnEqgmaSR38ab2qsR3HNa7ixbCf46b3CQzWcoagpj6R6KFiOw==
-    size: 185096474
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.20.0/OpenVorld-0.20.0-mac-x64.zip
-sha512: d9Mupaa7rjfs/gRHH4UJXsQhuZO4HSuGNyBbsGnEqgmaSR38ab2qsR3HNa7ixbCf46b3CQzWcoagpj6R6KFiOw==
-releaseNotes: >-
-  - Codex members can get a net.cli writ: their shell commands reach the
-  internet (all sites, only for this time or session, only in a writable
-  workbench); a command that cannot resolve a host asks for it, and a revoked
-  writ takes a resumed session offline again
-
-  - Redrawn with Codex image generation: the back and back-right views of the
-  grey-haired Journalist (agent_5). The nape was painted in the face's skin
-  tone, so from behind it looked like a second face; the whole back of the head
-  is hair now.
-
-  - The network request also fires when a script catches the failed lookup and
-  exits 0 (it used to wait for a failing exit code).
-
-  - Answering several access requests in a row now tells the member about every
-  one (granted and refused) since their last reply; before, only the last answer
-  reached them, so a member kept saying it was blocked on a request you had
-  already approved.
-
-  - `desktop:install` no longer hands the app the shell's `ANTHROPIC_*` /
-  `CLAUDE_CODE_*` variables: installing from inside a Claude Code session gave
-  every Claude Code member that session's proxy and model names and broke them.
-releaseDate: 2026-11-24T11:25:34.415Z
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.21.0/OpenVorld-0.21.0-mac-x64.zip
+    sha512: +PM7rVW7x/0DR0aRd/Vohbo90kFhkeJJq8aE7ZSHSW27TsRTRWZDCENoK2LE/qZLzwT+slWP3Z5p9aXzgGk+Fw==
+    size: 185099785
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.21.0/OpenVorld-0.21.0-mac-x64.zip
+sha512: +PM7rVW7x/0DR0aRd/Vohbo90kFhkeJJq8aE7ZSHSW27TsRTRWZDCENoK2LE/qZLzwT+slWP3Z5p9aXzgGk+Fw==
+releaseNotes: "- Write to a member while they work: Enter sends now and stops
+  the current reply (what they had written stays in the chat), Ctrl+Enter or
+  Cmd+Enter queues the message above the box. Queued messages run one after
+  another and can each be edited, deleted or sent now; they work in party rooms
+  too, and survive switching chats and reloading. Stop pauses the queue until
+  you resume it."
+releaseDate: 2026-11-24T11:51:55.745Z
