@@ -2,6 +2,10 @@
 
 Every commit bumps the version (see [Versioning](CONTRIBUTING.md#versioning)): patch for fixes, polish, art and docs; minor for anything new or a changed data or pack format. Upgrading is covered in [docs/UPGRADING.md](docs/UPGRADING.md).
 
+## 0.21.0 - 2026-11-24
+
+- Write to a member while they work: Enter sends now and stops the current reply (what they had written stays in the chat), Ctrl+Enter or Cmd+Enter queues the message above the box. Queued messages run one after another and can each be edited, deleted or sent now; they work in party rooms too, and survive switching chats and reloading. Stop pauses the queue until you resume it.
+
 ## 0.20.0 - 2026-11-23
 
 - Codex members can get a net.cli writ: their shell commands reach the internet (all sites, only for this time or session, only in a writable workbench); a command that cannot resolve a host asks for it, and a revoked writ takes a resumed session offline again

@@ -8,6 +8,7 @@ import { MessageFiles } from './MessageFiles';
 import { WritCard } from './WritCard';
 import { ChatComposer, DropHint, useChatDraft } from './ChatComposer';
 import { BenchLine } from './BenchLine';
+import { QueuedMessages } from './QueuedMessages';
 import { EVERYONE, asksEveryone } from './mentions';
 import { nearEnd } from './scroll';
 
@@ -61,6 +62,7 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
           if (e.type === 'founder.message') return <div key={i} className="msg me"><Markdown text={e.text} thread={tid} /><MessageFiles files={e.attachments} /></div>;
           if (e.type === 'agent.text') return <AgentTurn key={i} role={e.role ?? thread.role} steps={e.steps} text={e.text} mood={e.meta?.mood} did={e.meta?.did} noted={e.meta?.noted} thread={tid} {...(party ? { speaker: speakerName(e.role), job: memberOf(e.role)?.job, mentions: names } : {})} />;
           if (e.type === 'writ.request') return <WritCard key={e.id} ask={e} answered={answered.get(e.id)} wid={wid} thread={tid} who={speakerName(e.role)} />;
+          if (e.type === 'turn.error' && e.stopped) return <div key={i} className="log stopped">■ <bdi>Stopped</bdi></div>;
           if (e.type === 'turn.error') return <div key={i} className="log err">✖ <bdi>{e.message}</bdi></div>;
           if (e.type === 'party.paused') return <div key={i} className="log">⏸ <bdi>{e.text}</bdi></div>;
           return null;
@@ -72,7 +74,7 @@ export function ThreadView({ wid, tid, canSend = true, placeholder }: { wid: str
       {canSend && !working && lastAgent?.meta?.options?.length > 0 && (
         <div className="options">{lastAgent.meta.options.map((o: string) => <button key={o} className="option" dir="auto" disabled={draft.busy} onClick={() => draft.send(o, true)}>▸ {o}</button>)}</div>
       )}
-      {canSend && <ChatComposer draft={draft} mentionMembers={mentionMembers} placeholder={placeholder ?? (party ? 'Message the party… (@Name picks who answers first, @all asks everyone)' : `Message ${m?.name ?? ''}…`)} working={working} onStop={() => { void api(`/vorlds/${wid}/threads/${tid}/stop`, { body: {} }).catch((e) => toast({ kind: 'error', title: e.message })); }} {...(party && asksEveryone(draft.text) ? { hint: <div className="composer-hint">@all asks all {members?.length ?? 0} members, one after the other</div> } : {})} {...(!party && thread?.bench ? { hint: <BenchLine wid={wid} thread={thread} begun={events.some((e: any) => e.type === 'founder.message')} /> } : {})} />}
+      {canSend && <ChatComposer draft={draft} mentionMembers={mentionMembers} placeholder={placeholder ?? (party ? 'Message the party… (@Name picks who answers first, @all asks everyone)' : `Message ${m?.name ?? ''}…`)} working={working} queued={<QueuedMessages wid={wid} tid={tid} items={thread?.queued ?? []} paused={!!thread?.queue_paused} />} onStop={() => { void api(`/vorlds/${wid}/threads/${tid}/stop`, { body: {} }).catch((e) => toast({ kind: 'error', title: e.message })); }} {...(party && asksEveryone(draft.text) ? { hint: <div className="composer-hint">@all asks all {members?.length ?? 0} members, one after the other</div> } : {})} {...(!party && thread?.bench ? { hint: <BenchLine wid={wid} thread={thread} begun={events.some((e: any) => e.type === 'founder.message')} /> } : {})} />}
     </div>
   );
 }

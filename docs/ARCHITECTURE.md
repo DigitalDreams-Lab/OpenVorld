@@ -72,6 +72,12 @@ The founder reads, edits and removes all of it in the member's settings (Memory)
 4. A member who asks for access pauses the room at a writ card. Answering it calls `resumeParty` for that member, and the members still waiting from an `@all` take their turns after it.
 5. When the room starts, a `party.gather` event brings its members to the founder. They stay nearby between replies until dismissed, rather than walking away to the hall or home. A finished job earns `party.job_done` and XP.
 
+### Writing while a member works
+
+`POST /threads/:tid/messages` takes a `mode`. With the member idle, the message starts a turn (a chat turn, or the room taking turns). While they work, `mode: "send"` (Enter in the composer) **interrupts**: the turn is aborted, what the member had written so far is kept in the chat as a `partial` reply followed by a quiet `turn.error` marked `stopped`, and the message runs next. `mode: "queue"` (Ctrl+Enter or Cmd+Enter) **waits**. Waiting messages live on the thread itself (`queued`, at most 20, each `{ id, text, attachments, files, now? }`; `threads.mjs > setQueue`), so they survive switching chats, a reload and a restart, and chats and party rooms share one code path. When a turn or a room ends, `drainQueue` starts the first one, so the queue runs one message after another. Messages that interrupted (`now`) go ahead of the plain queue, in the order they were sent.
+
+Each queued message can be edited (`PUT .../queue/:qid`), deleted (`DELETE .../queue/:qid`) or sent now (`POST .../queue/:qid/send`: it moves to the front and stops the running turn; the rest stay queued). Stop pauses the queue (`queue_paused`), and so does starting the app with messages still waiting: nothing starts by itself until the founder resumes it (`POST .../queue/resume`) or writes again.
+
 ## Client (`engine/client/src`)
 
 Pending approvals open a focused request dialog with the original thread ID, so requests from party rooms never divert into an agent's private chat. Member and party panels keep pending-request buttons above their conversations, including requests in older chats. Answers use the existing approval API and resume the originating party; closing the dialog leaves the request pending.

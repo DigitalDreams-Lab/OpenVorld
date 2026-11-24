@@ -9,7 +9,7 @@ import { WebSocketServer } from 'ws';
 import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMember, detected, migrateVorlds, addYourselfMessage } from './vorld.mjs';
 import { atlasFor, sheetImage } from './art.mjs';
 import { gameFor } from './game.mjs';
-import { listThreads, createThread, deleteThread, getThread, updateThread, readEvents, appendEvent, accessMessage } from './threads.mjs';
+import { listThreads, createThread, deleteThread, getThread, updateThread, readEvents, appendEvent, accessMessage, setQueue, afterInterrupts, QUEUE_MAX } from './threads.mjs';
 import { runTurn, stopTurn, stopAllTurns, activeTurnCount, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
 import { openShared } from './party-files.mjs';
 import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, stopAllParties, partyBusy } from './parties.mjs';
@@ -81,6 +81,39 @@ async function turn(ctx, tid, text, files = []) {
   const emit = emitTo(ctx.id), thread = getThread(ctx, tid);
   try { await runTurn(ctx, tid, text, emit, files); }
   catch (e) { emit({ type: 'thread.event', thread: tid, role: thread.role, kind: thread.kind, party: thread.party, ev: { type: 'turn.error', message: e.message } }); }
+}
+
+// ---------- queued messages ----------
+// A message written while the member is busy either interrupts (the turn is stopped, what was written so far stays in the chat, and
+// the message runs next) or waits in the chat's queue (threads.mjs > setQueue). The queue runs one message after another, each when
+// the previous turn has ended, in chats and in party rooms alike.
+const queueChanged = (ctx, thread) => emitTo(ctx.id)({ type: 'thread.event', thread: thread.id, role: thread.role, kind: thread.kind, party: thread.party, ev: { type: 'queue' } });
+const busy = (tid) => isWorking(tid) || partyBusy(tid);
+/** Start a message now: a chat turn, or the room taking turns. The queue carries on when it ends. */
+function launch(ctx, thread, msg, files) {
+  const emit = emitTo(ctx.id), tid = thread.id, next = () => drainQueue(ctx, tid);
+  if (thread.kind === 'party') void runParty(ctx, tid, msg, files, emit).catch((e) => emit({ type: 'thread.event', thread: tid, role: thread.speaker, kind: thread.kind, party: thread.party, ev: { type: 'turn.error', message: e.message } })).finally(next);
+  else void turn(ctx, tid, msg, files).finally(next);
+}
+/** Once the member is idle, run the first queued message (unless the founder pressed Stop: then the queue waits for them). */
+function drainQueue(ctx, tid) {
+  if (busy(tid)) return;
+  let thread; try { thread = getThread(ctx, tid); } catch { return; }       // the chat is gone
+  const [next, ...rest] = thread.queued ?? [];
+  if (!next || thread.queue_paused) return;
+  setQueue(ctx, tid, rest);
+  queueChanged(ctx, thread);
+  const files = (next.attachments ?? []).flatMap((id) => { try { return [getAttachment(ctx, tid, id)]; } catch { return []; } });
+  launch(ctx, thread, next.text, files);
+}
+/** Put a message at its place in the queue and, when it interrupts, stop what the member is doing; it starts when the turn has ended. */
+function enqueue(ctx, thread, item, interrupt) {
+  const queued = thread.queued ?? [];
+  if (queued.length >= QUEUE_MAX) fail(`at most ${QUEUE_MAX} messages can wait in a chat`, 409);
+  const at = interrupt ? afterInterrupts(queued) : queued.length;
+  setQueue(ctx, thread.id, [...queued.slice(0, at), interrupt ? { ...item, now: true } : item, ...queued.slice(at)]);
+  queueChanged(ctx, thread);
+  if (busy(thread.id)) { if (interrupt) stopParty(thread.id); } else drainQueue(ctx, thread.id);
 }
 
 // ---------- routes ----------
@@ -298,17 +331,59 @@ route('DELETE', '/api/vorlds/:id/threads/:tid', ({ p }) => {
   return { ok: true };
 });
 route('POST', '/api/vorlds/:id/threads/:tid/messages', async ({ p, req }) => {
-  const { text, attachments } = await body(req);
+  const { text, attachments, mode } = await body(req);
   const ctx = W(p), thread = getThread(ctx, p.tid);
-  if (isWorking(p.tid) || partyBusy(p.tid)) fail(thread.kind === 'party' ? 'the party is still working' : 'this crew member is still working', 409);
   const msg = String(text ?? '').trim(), files = resolveAttachments(ctx, p.tid, attachments);
   if (!msg && !files.length) fail('empty message');
   if (msg.length > 20000) fail('message too long', 413);
-  if (thread.kind === 'party') void runParty(ctx, p.tid, msg, files, emitTo(p.id)).catch((e) => emitTo(p.id)({ type: 'thread.event', thread: p.tid, role: thread.speaker, kind: thread.kind, party: thread.party, ev: { type: 'turn.error', message: e.message } }));
-  else void turn(ctx, p.tid, msg, files);
+  // idle: the message starts now. Working: `mode: "queue"` waits its turn; anything else interrupts the member and runs next.
+  if (!busy(p.tid) && mode !== 'queue') {
+    if (thread.queue_paused) setQueue(ctx, p.tid, thread.queued ?? []);      // writing again picks the waiting queue back up after this message
+    launch(ctx, thread, msg, files);
+    return { ok: true };
+  }
+  const queued = thread.queued ?? [];
+  if (thread.queue_paused) setQueue(ctx, p.tid, queued);
+  enqueue(ctx, getThread(ctx, p.tid), { id: crypto.randomUUID(), text: msg, attachments: files.map((f) => f.id), files: publicFiles(files) }, mode !== 'queue');
+  return { ok: true, queued: true };
+});
+route('POST', '/api/vorlds/:id/threads/:tid/stop', ({ p }) => {
+  const ctx = W(p), thread = getThread(ctx, p.tid);
+  if (thread.queued?.length) { setQueue(ctx, p.tid, thread.queued, true); queueChanged(ctx, thread); }      // what the founder stopped is not followed by what they queued
+  stopParty(p.tid); stopTurn(p.tid); return { ok: true };
+});
+const queuedItem = (ctx, tid, qid) => { const thread = getThread(ctx, tid), at = (thread.queued ?? []).findIndex((m) => m.id === qid); if (at < 0) fail('that message is not waiting any more', 404); return { thread, at }; };
+route('PUT', '/api/vorlds/:id/threads/:tid/queue/:qid', async ({ p, req }) => {
+  const ctx = W(p), { thread, at } = queuedItem(ctx, p.tid, p.qid), msg = String((await body(req)).text ?? '').trim();
+  const item = thread.queued[at];
+  if (!msg && !item.attachments?.length) fail('empty message');
+  if (msg.length > 20000) fail('message too long', 413);
+  setQueue(ctx, p.tid, thread.queued.map((m, i) => (i === at ? { ...m, text: msg } : m)), !!thread.queue_paused);
+  queueChanged(ctx, thread);
   return { ok: true };
 });
-route('POST', '/api/vorlds/:id/threads/:tid/stop', ({ p }) => { stopParty(p.tid); stopTurn(p.tid); return { ok: true }; });
+route('DELETE', '/api/vorlds/:id/threads/:tid/queue/:qid', ({ p }) => {
+  const ctx = W(p), { thread, at } = queuedItem(ctx, p.tid, p.qid);
+  setQueue(ctx, p.tid, thread.queued.filter((_, i) => i !== at), !!thread.queue_paused);
+  queueChanged(ctx, thread);
+  return { ok: true };
+});
+// "Send now": this message goes next, ahead of the others, and stops the turn that is running; the rest stay queued
+route('POST', '/api/vorlds/:id/threads/:tid/queue/:qid/send', ({ p }) => {
+  const ctx = W(p), { thread, at } = queuedItem(ctx, p.tid, p.qid);
+  const item = thread.queued[at], rest = thread.queued.filter((_, i) => i !== at);
+  setQueue(ctx, p.tid, rest);
+  enqueue(ctx, getThread(ctx, p.tid), item, true);
+  return { ok: true };
+});
+// carry on with the queue after a Stop
+route('POST', '/api/vorlds/:id/threads/:tid/queue/resume', ({ p }) => {
+  const ctx = W(p), thread = getThread(ctx, p.tid);
+  setQueue(ctx, p.tid, thread.queued ?? []);
+  queueChanged(ctx, thread);
+  drainQueue(ctx, p.tid);
+  return { ok: true };
+});
 async function sendFile(res, file, download = false) {
   res.writeHead(200, { 'content-type': file.type, 'content-disposition': `${download || !file.type.startsWith('image/') ? 'attachment' : 'inline'}; filename="attachment"; filename*=UTF-8''${encodeURIComponent(file.name)}`, 'cache-control': 'private, no-store', 'x-content-type-options': 'nosniff', 'content-security-policy': "default-src 'none'; sandbox" });
   if (file.kind === 'reference') return pipeline(fs.createReadStream(file.path), res);
@@ -373,6 +448,7 @@ route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
     else {
       await turn(ctx, p.tid, accessMessage(ctx, p.tid, ask.role));
     }
+    drainQueue(ctx, p.tid);
   })().catch(() => {});
   return { ok: true, scope };
 });
@@ -505,6 +581,12 @@ for (const r of migrateVorlds()) {
 
 // a key typed where the variable name goes is moved into the key store (and scrubbed from the chats)
 for (const { id } of listVorlds()) { try { const n = adoptLegacyKeys(vorldCtx(id), saveVorld); if (n) console.log(`vorld ${id}: ${n} API key(s) moved out of the vorld file into the key store`); } catch (e) { console.warn(`vorld ${id}: could not check API keys: ${e.message}`); } }
+
+// messages queued before the app closed stay in their chats, but nothing starts by itself on launch: the founder resumes them
+for (const { id } of listVorlds()) {
+  try { const ctx = vorldCtx(id); for (const t of listThreads(ctx)) if (t.queued?.length && !t.queue_paused) setQueue(ctx, t.id, t.queued, true); }
+  catch (e) { console.warn(`vorld ${id}: could not check queued messages: ${e.message}`); }
+}
 
 server.listen(PORT, '127.0.0.1', () => {
   // Desktop asks the OS for a free port, leaving a running browser-mode server alone.
