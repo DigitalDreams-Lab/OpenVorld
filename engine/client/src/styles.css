@@ -100,6 +100,11 @@ button, input, select, textarea { font-family: inherit; font-size: inherit; }
 .game { position: relative; height: 100%; }
 .phaser-host { position: absolute; inset: 0; }
 .phaser-host canvas { display: block; }
+.loading { position: absolute; inset: 0; z-index: 5; display: grid; place-content: center; justify-items: center; gap: 14px; background: var(--ink); color: var(--parchment); font-size: 16px; }
+.loading-bar { width: min(240px, 60vw); height: 8px; border: 2px solid var(--parchment); overflow: hidden; position: relative; }
+.loading-bar::after { content: ''; position: absolute; inset-block: 0; inset-inline-start: 0; width: 35%; background: var(--gold); animation: loading-slide 1.1s ease-in-out infinite alternate; }
+@keyframes loading-slide { to { inset-inline-start: 65%; } }
+@media (prefers-reduced-motion: reduce) { .loading-bar::after { animation: none; width: 100%; } }
 .hint { position: absolute; bottom: 12px; left: 50%; transform: translateX(-50%); color: var(--parchment); background: rgba(0,0,0,.45); padding: 4px 10px; font-size: 14px; pointer-events: none; }
 /* Vorld lighting sits at layer 1; interface panels must stay above its tint/vignette. */
 .hud { position: absolute; top: 12px; left: 12px; right: 12px; display: flex; gap: 14px; align-items: flex-start; pointer-events: none; z-index: 3; }

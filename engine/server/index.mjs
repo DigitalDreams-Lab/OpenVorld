@@ -7,7 +7,7 @@ import crypto from 'node:crypto';
 import { pipeline } from 'node:stream/promises';
 import { WebSocketServer } from 'ws';
 import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMember, detected, migrateVorlds, addYourselfMessage } from './vorld.mjs';
-import { atlasFor, sheetImage } from './art.mjs';
+import { atlasFor, sheetImage, warmArt } from './art.mjs';
 import { gameFor } from './game.mjs';
 import { listThreads, createThread, deleteThread, getThread, updateThread, readEvents, appendEvent, accessMessage, setQueue, afterInterrupts, QUEUE_MAX } from './threads.mjs';
 import { runTurn, stopTurn, stopAllTurns, activeTurnCount, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
@@ -596,6 +596,7 @@ server.listen(PORT, '127.0.0.1', () => {
   console.log(`OpenVorld server on http://127.0.0.1:${PORT}  (home: ${HOME})`);
   if (!process.env.OV_TOKEN) console.log(`Open http://127.0.0.1:${PORT}/`);
   if (process.env.OV_DESKTOP === '1') process.send?.({ type: 'desktop:ready', port: PORT });
+  setImmediate(() => warmArt(allPacks()));      // the character pages are cut now, not when the first vorld opens
 });
 
 if (process.env.OV_DESKTOP === '1') {

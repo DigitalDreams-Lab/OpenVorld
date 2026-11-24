@@ -30,6 +30,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
   const modal = useStore((s) => s.modal);
   const partyId = useStore((s) => s.partyId);
   const [err, setErr] = useState<string | null>(null);
+  const [ready, setReady] = useState(false);       // the map has drawn its first frame; until then a loading screen covers the empty canvas
 
   // load the vorld, then start Phaser once the art and fonts are ready
   useEffect(() => {
@@ -89,6 +90,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
     const offs = [
       on('talk', (role) => setState({ talkingTo: role })),
       on('scene-ready', announceAsking),          // a scene (re)started: tell it who is asking
+      on('scene-ready', () => setReady(true)),
       on('parties', () => setState({ modal: 'parties', partyEdit: null })),
     ];
     const stopBadge = initNotifications();
@@ -105,6 +107,7 @@ export function Game({ wid, onExit }: { wid: string; onExit: () => void }) {
   return (
     <div className="game">
       <div ref={host} className="phaser-host" />
+      {!ready && <div className="loading" role="status" aria-live="polite"><div className="loading-bar" aria-hidden="true" /><span>Opening your vorld…</span></div>}
       {vorld && <Hud onExit={onExit} />}
       {vorld && <CrewBar />}
       {vorld && <AgentBalloons />}
