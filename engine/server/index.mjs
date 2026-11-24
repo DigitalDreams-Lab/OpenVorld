@@ -9,7 +9,7 @@ import { WebSocketServer } from 'ws';
 import { HOME, allPacks, listVorlds, vorldCtx, saveVorld, createVorld, cleanMember, detected, migrateVorlds, addYourselfMessage } from './vorld.mjs';
 import { atlasFor, sheetImage } from './art.mjs';
 import { gameFor } from './game.mjs';
-import { listThreads, createThread, deleteThread, getThread, updateThread, readEvents, appendEvent } from './threads.mjs';
+import { listThreads, createThread, deleteThread, getThread, updateThread, readEvents, appendEvent, accessMessage } from './threads.mjs';
 import { runTurn, stopTurn, stopAllTurns, activeTurnCount, brainOf, isWorking, requestAccess, openWrits } from './agents/runner.mjs';
 import { openShared } from './party-files.mjs';
 import { listParties, getParty, saveParty, deleteParty, removeFromParties, partyChats, createPartyChat, runParty, resumeParty, stopParty, stopAllParties, partyBusy } from './parties.mjs';
@@ -371,8 +371,7 @@ route('POST', '/api/vorlds/:id/threads/:tid/writs/:wid', async ({ p, req }) => {
     if (isWorking(p.tid) || partyBusy(p.tid) || openWrits(ctx, p.tid).some((w) => w.role === ask.role)) return;
     if (thread.kind === 'party') await resumeParty(ctx, p.tid, ask.role, emit);
     else {
-      const label = ctx.packs.byKind.permissions?.permissions?.capabilities?.[ask.capability]?.label ?? ask.capability;
-      await turn(ctx, p.tid, `Access granted: you may ${label} ${scope}. Please continue.`);
+      await turn(ctx, p.tid, accessMessage(ctx, p.tid, ask.role));
     }
   })().catch(() => {});
   return { ok: true, scope };

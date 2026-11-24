@@ -147,6 +147,8 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
   const readDirs = [...new Set([...(project.exists ? [project.path] : []), ...readGrants.filter(isDir), ...uploadDirs, ...(shared ? [shared] : [])])];
   const cmdGrants = grantsOf(ctx, role).filter((g) => g.capability === 'cmd.run').map((g) => g.scope);
   const netGrants = grantsOf(ctx, role).filter((g) => g.capability === 'net.fetch').map((g) => g.scope);
+  // a sandboxed CLI's own shell (Codex) reaches the internet only with a net.cli writ
+  const cliNetwork = grantsOf(ctx, role).some((g) => g.capability === 'net.cli');
   const tools = [];
   if (readDirs.length || writeDirs.length || referenceFiles.length) tools.push('Read', 'Glob', 'Grep');
   if (writeDirs.length) tools.push('Edit', 'Write', 'MultiEdit');
@@ -210,7 +212,7 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     let result;
     if (brain.driver === 'scripted') result = await scripted.run({ ctx, role, onEvent });
     else if (brain.provider === 'claude-code') result = await claude.run({ ...common, env: heldSecrets(ctx, role), tools, allowed: [...allowed, ...(web.allowed ?? [])], addDirs, mcp: web.mcp });
-    else if (brain.provider === 'codex') result = await codex.run({ ...common, env: heldSecrets(ctx, role), mcp: web.mcp, ...codex.sandboxOf(writeDirs, cwd), web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
+    else if (brain.provider === 'codex') result = await codex.run({ ...common, env: heldSecrets(ctx, role), mcp: web.mcp, ...codex.sandboxOf(writeDirs, cwd), network: cliNetwork, web: netGrants.includes('*'), onAccess: (a) => asks.push(a) });
     else if (brain.provider === 'antigravity') result = await antigravity.run({ ...common, env: heldSecrets(ctx, role), addDirs, writable: writeDirs.length > 0, mcp: web.mcp });
     else if (brain.provider === 'opencode') result = await opencode.run({ ...common, env: heldSecrets(ctx, role), addDirs, writable: writeDirs.length > 0, cmdAllow: cmdGrants, web: netGrants.length > 0, mcp: web.mcp });
     else if (brain.driver === 'command') result = await command.run({ ...common, env: heldSecrets(ctx, role), mcp: bridged ? web.mcp : null, spec: brain.spec });
