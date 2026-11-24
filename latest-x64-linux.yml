@@ -1,14 +1,30 @@
-version: 0.19.5
+version: 0.20.0
 files:
-  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.5/OpenVorld-0.19.5-linux-x86_64.AppImage
-    sha512: 4SzK+HaOdSXCKX6ZsW1JO+iSEIrMDycEHB8GqAYm2MWd216WQuTeliegnDHgF2aZsMN4rvA/qi4wY267gCXjxw==
-    size: 185649286
-path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.19.5/OpenVorld-0.19.5-linux-x86_64.AppImage
-sha512: 4SzK+HaOdSXCKX6ZsW1JO+iSEIrMDycEHB8GqAYm2MWd216WQuTeliegnDHgF2aZsMN4rvA/qi4wY267gCXjxw==
+  - url: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.20.0/OpenVorld-0.20.0-linux-x86_64.AppImage
+    sha512: JYML3ofDoLpyX/5ZMpsPZKq9S8fRRjtT6Qjh7mmwNKd4TzS9WCYsA1hgzekyaRZ3HifFFeMqhwC05kpJWTdV8A==
+    size: 185612277
+path: https://github.com/DigitalDreams-Lab/OpenVorld/releases/download/v0.20.0/OpenVorld-0.20.0-linux-x86_64.AppImage
+sha512: JYML3ofDoLpyX/5ZMpsPZKq9S8fRRjtT6Qjh7mmwNKd4TzS9WCYsA1hgzekyaRZ3HifFFeMqhwC05kpJWTdV8A==
 releaseNotes: >-
-  - Cover the active direct chat deletion guard and verify that deletion removes
-  the log and uploads after the reply finishes.
+  - Codex members can get a net.cli writ: their shell commands reach the
+  internet (all sites, only for this time or session, only in a writable
+  workbench); a command that cannot resolve a host asks for it, and a revoked
+  writ takes a resumed session offline again
 
-  - Keep the demo guide beside the chat so it leaves room for the composer in
-  short windows.
-releaseDate: 2026-11-20T16:03:56.971Z
+  - Redrawn with Codex image generation: the back and back-right views of the
+  grey-haired Journalist (agent_5). The nape was painted in the face's skin
+  tone, so from behind it looked like a second face; the whole back of the head
+  is hair now.
+
+  - The network request also fires when a script catches the failed lookup and
+  exits 0 (it used to wait for a failing exit code).
+
+  - Answering several access requests in a row now tells the member about every
+  one (granted and refused) since their last reply; before, only the last answer
+  reached them, so a member kept saying it was blocked on a request you had
+  already approved.
+
+  - `desktop:install` no longer hands the app the shell's `ANTHROPIC_*` /
+  `CLAUDE_CODE_*` variables: installing from inside a Claude Code session gave
+  every Claude Code member that session's proxy and model names and broke them.
+releaseDate: 2026-11-24T11:17:20.458Z
