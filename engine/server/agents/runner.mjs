@@ -252,9 +252,11 @@ async function speak(ctx, thread, text, emit, signal, attachments, role, inRoom)
     const partial = tr.final(strip);
     if (partial.length) appendEvent(ctx, threadId, { type: 'agent.text', role, text: partial.filter((x) => x.t === 'text').map((x) => x.text).join('\n\n'), meta: {}, steps: partial, partial: true });
     requestAccess(ctx, thread, role, asks, send);
-    appendEvent(ctx, threadId, { type: 'turn.error', role, message: err.message });
-    send({ type: 'turn.error', message: err.message, speaker: role, reaction: reactions['turn.error'] });
-    return { ok: false, error: err.message };
+    // a turn the founder stopped (Stop, or a message sent over it) is not a failure: it keeps what was written and says so quietly
+    const stopped = signal.aborted;
+    appendEvent(ctx, threadId, { type: 'turn.error', role, message: err.message, ...(stopped ? { stopped: true } : {}) });
+    send({ type: 'turn.error', message: err.message, speaker: role, ...(stopped ? { stopped: true } : { reaction: reactions['turn.error'] }) });
+    return { ok: false, error: err.message, ...(stopped ? { stopped: true } : {}) };
   } finally {
     web?.release();                                  // the bridge's token ends with the turn
     consumeOnce(ctx, role);                          // "allow once" ends with this turn

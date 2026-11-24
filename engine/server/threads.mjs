@@ -59,6 +59,25 @@ export function updateThread(ctx, id, patch) {
   writeIndex(ctx, list);
   return list[i];
 }
+/**
+ * Messages the founder wrote while the member was busy: they wait on the thread (so they survive a reload, a closed chat or a restart)
+ * and run one after another when the member is idle. Item: { id, text, attachments: [ids], files: [public file info], now? }.
+ * `now` marks a message that interrupted the turn: it goes ahead of the queued ones, in the order it was sent.
+ * `paused`: the founder pressed Stop, so nothing starts by itself until they resume. Saving a queue does not count as chat activity.
+ */
+export const QUEUE_MAX = 20;
+export function setQueue(ctx, id, queued, paused = false) {
+  const list = readIndex(ctx);
+  const i = list.findIndex((x) => x.id === id && !x.deleting);
+  if (i < 0) throw Object.assign(new Error('thread not found'), { status: 404 });
+  const { queued: _q, queue_paused: _p, ...rest } = list[i];
+  list[i] = queued.length ? { ...rest, queued, ...(paused ? { queue_paused: true } : {}) } : rest;
+  writeIndex(ctx, list);
+  return list[i];
+}
+/** The position a message that interrupts takes: after the earlier interrupts, before the plain queue. */
+export const afterInterrupts = (queued) => { const last = queued.findLastIndex((m) => m.now); return last + 1; };
+
 export function appendEvent(ctx, id, ev) {
   fs.mkdirSync(dirOf(ctx), { recursive: true });
   const line = { at: new Date().toISOString(), ...ev };

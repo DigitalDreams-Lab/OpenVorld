@@ -1,5 +1,7 @@
 import { useEffect, useId, useRef, useState, type ReactNode, type DragEvent } from 'react';
 import { api, uploadFile } from '../api';
+import { setState } from '../store';
+import { effectiveMode, mainAction, sendModeOf, type SendMode } from './sendKeys';
 import { fileSize, type Attachment } from './MessageFiles';
 import { activeMention, mentionSuggestions, type MentionMember } from './mentions';
 
@@ -18,8 +20,10 @@ export function useChatDraft({wid,thread,working,onEvents}:{wid:string;thread:st
     updateFiles([...current.current,...added]);setError('');
   };
   const remove=(id:string)=>{if(locked.current)return;const f=current.current.find(f=>f.id===id);if(f?.preview)URL.revokeObjectURL(f.preview);updateFiles(current.current.filter(f=>f.id!==id));};
-  const send=async(message=text,option=false)=>{
-    const value=message.trim();if(working||locked.current||(!value&&!current.current.length))return;
+  // While the member works, a message either interrupts (mode 'send': the turn stops and this one runs next) or waits in the queue (mode 'queue').
+  const send=async(message=text,option=false,mode:SendMode='send')=>{
+    const value=message.trim();if(locked.current||(!value&&!current.current.length))return;
+    const how=effectiveMode(mode,working);
     locked.current=true;setBusy(true);setError('');let optimistic='';
     try{
       const sent:Attachment[]=[];
@@ -28,9 +32,13 @@ export function useChatDraft({wid,thread,working,onEvents}:{wid:string;thread:st
         item.uploaded=attachment;sent.push(attachment);
       }
       if(!alive.current)return;
-      optimistic=crypto.randomUUID();
-      onEvents((events:any[])=>[...events,{type:'founder.message',text:value,attachments:sent,at:new Date().toISOString(),clientId:optimistic}]);
-      await api(`/vorlds/${wid}/threads/${thread}/messages`,{body:{text:value,option,attachments:sent.map(f=>f.id)}});
+      // a message sent over a working member is shown by the thread itself once the server has stopped the turn and started it
+      if(!working){
+        optimistic=crypto.randomUUID();
+        onEvents((events:any[])=>[...events,{type:'founder.message',text:value,attachments:sent,at:new Date().toISOString(),clientId:optimistic}]);
+      }
+      await api(`/vorlds/${wid}/threads/${thread}/messages`,{body:{text:value,option,mode:how,attachments:sent.map(f=>f.id)}});
+      if(working)setState(s=>({threadsVersion:s.threadsVersion+1}));
       if(!alive.current)return;
       setText('');for(const f of current.current)if(f.preview)URL.revokeObjectURL(f.preview);updateFiles([]);
     }catch(e:any){
@@ -48,7 +56,7 @@ export function useChatDraft({wid,thread,working,onEvents}:{wid:string;thread:st
   return {text,setText,files,addFiles,remove,send,busy,error,dragging,dropHandlers};
 }
 type Draft=ReturnType<typeof useChatDraft>;
-export function ChatComposer({draft,placeholder,working,onStop,extra,children,hint,mentionMembers=[]}:{draft:Draft;placeholder:string;working:boolean;onStop:()=>void;extra?:ReactNode;children?:ReactNode;hint?:ReactNode;mentionMembers?:MentionMember[]}) {
+export function ChatComposer({draft,placeholder,working,onStop,extra,children,hint,queued,mentionMembers=[]}:{draft:Draft;placeholder:string;working:boolean;onStop:()=>void;extra?:ReactNode;children?:ReactNode;hint?:ReactNode;queued?:ReactNode;mentionMembers?:MentionMember[]}) {
   const input=useRef<HTMLInputElement>(null);
   const textarea=useRef<HTMLTextAreaElement>(null), listId=useId();
   const [caret,setCaret]=useState(0),[selected,setSelected]=useState(0),[dismissed,setDismissed]=useState(false);
@@ -62,7 +70,9 @@ export function ChatComposer({draft,placeholder,working,onStop,extra,children,hi
     draft.setText(prefix+suffix);setDismissed(true);setCaret(prefix.length);
     requestAnimationFrame(()=>{textarea.current?.focus();textarea.current?.setSelectionRange(prefix.length,prefix.length);});
   };
+  const hasContent=!!draft.text.trim()||draft.files.length>0;
   return <div className="composer">
+    {queued}
     {draft.files.length>0&&<div className="pending-files" aria-label="Files to send">{draft.files.map(f=><div className="pending-file" key={f.id}>
       {f.preview&&<img src={f.preview} alt={f.name}/>}<span><b dir="auto">{f.name}</b><small>{fileSize(f.size)}{f.uploaded?' · Ready':''}</small></span><button className="x" disabled={draft.busy} aria-label={`Remove ${f.name}`} onClick={()=>draft.remove(f.id)}>✕</button>
     </div>)}</div>}
@@ -83,16 +93,20 @@ export function ChatComposer({draft,placeholder,working,onStop,extra,children,hi
             if(e.key==='Escape'){e.preventDefault();e.stopPropagation();setDismissed(true);return;}
             if((e.key==='Enter'&&!e.shiftKey)||e.key==='Tab'){e.preventDefault();insert(suggestions[active]);return;}
           }
-          if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();void draft.send();}
+          const mode=sendModeOf(e);
+          if(mode){e.preventDefault();void draft.send(undefined,false,mode);}
         }}/>
     </div>
     <div className="composer-actions">
       <input ref={input} type="file" multiple hidden onChange={e=>{if(e.target.files)draft.addFiles(e.target.files);e.target.value='';}}/>
       <button className="btn small" title="Attach files" aria-label="Attach files" disabled={draft.busy} onClick={()=>input.current?.click()}>＋ File</button>
       {extra}
-      {working?<button className="btn small" onClick={onStop}>Stop</button>:<button className="btn small primary" disabled={draft.busy||(!draft.text.trim()&&!draft.files.length)} onClick={()=>void draft.send()}>{draft.busy?'Sending…':'Send'}</button>}
+      {mainAction(working,hasContent)==='stop'
+        ?<button className="btn small" aria-label="Stop the current reply" onClick={onStop}>Stop</button>
+        :<button className="btn small primary" disabled={draft.busy||!hasContent} aria-label={working?'Send now: stop the current reply and send this message':undefined} title={working?'Enter: stop the current reply and send this now':undefined} onClick={()=>void draft.send()}>{draft.busy?'Sending…':'Send'}</button>}
+      {working&&hasContent&&<button className="btn small" disabled={draft.busy} aria-label="Add to the queue: sent when the current reply is done" title="Ctrl+Enter (Cmd+Enter on Mac): sent when the current reply is done" onClick={()=>void draft.send(undefined,false,'queue')}>Queue</button>}
     </div>
-    {hint??<div className="composer-hint">Drop or paste files to attach · Shift+Enter for a new line</div>}
+    {hint??<div className="composer-hint">{working?'Enter sends now and stops the current reply · Ctrl+Enter queues it · Shift+Enter for a new line':'Drop or paste files to attach · Shift+Enter for a new line'}</div>}
     {children}
   </div>;
 }

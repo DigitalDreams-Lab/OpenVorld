@@ -197,6 +197,12 @@ function handleThreadEvent(m: any) {
       notify({ kind: 'done', title: `${nameOf(role)} is done`, body: lastActivityLine(ev.text), role });
       break;
     case 'turn.error':
+      if (ev.stopped) {      // the founder stopped it (Stop, or a message sent over it): not a failure, nobody faints
+        put({ working: false, error: null });
+        emit('working', { role, working: false });
+        setState((s) => ({ threadsVersion: s.threadsVersion + 1 }));
+        break;
+      }
       put({ working: false, error: ev.message });
       if (role) {
         const pId = partyId ?? getState().live[thread]?.party;
