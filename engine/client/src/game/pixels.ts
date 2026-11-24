@@ -21,7 +21,7 @@ export function movementDirection(vx: number, vy: number, last: Direction = 'dow
   return DIRECTIONS.reduce((best, d) => (off(d) < off(best) ? d : best), last);
 }
 
-type GenFrame = { img: HTMLImageElement; x: number; y: number; w: number; h: number; art: { x: number; y: number; w: number; h: number }; kind: string; anchor: string; flip?: boolean };
+type GenFrame = { img: CanvasImageSource; x: number; y: number; w: number; h: number; art: { x: number; y: number; w: number; h: number }; kind: string; anchor: string; flip?: boolean };
 let GEN: Map<string, GenFrame> | null = null, genRevision: string | null = null, genLoad = 0;
 /** Texture pixels per world pixel: sprites are baked at this multiple of the world tile and drawn scaled down by it, so the
  * camera zoom shows them smoothly instead of as enlarged pixels. */
@@ -39,18 +39,25 @@ export const generatedRevision = () => genRevision;
 export const onAtlas = (fn: () => void) => { listeners.add(fn); return () => { listeners.delete(fn); }; };
 
 /** Load an atlas index ({ revision, sheets: [{ image, frames }] }); `getImage` fetches a sheet image by name. */
+/** A sheet as something a canvas can draw. createImageBitmap decodes off the page's main thread; img.decode() waited for the page to be drawn, which took many seconds on a busy first load. */
+async function decodeSheet(blob: Blob): Promise<CanvasImageSource> {
+  if (typeof createImageBitmap === 'function') { try { return await createImageBitmap(blob); } catch { /* an image it cannot read: try the element */ } }
+  const url = URL.createObjectURL(blob), img = new Image();
+  try { img.src = url; await img.decode(); } finally { URL.revokeObjectURL(url); }
+  return img;
+}
 export async function loadGenerated(data: any, getImage: (name: string) => Promise<Blob>) {
   const load = ++genLoad;
   if (!data?.sheets?.length) { GEN = null; genRevision = null; canvasCache.clear(); listeners.forEach((f) => f()); return; }
   if (genRevision === data.revision && GEN) return;
   const map = new Map<string, GenFrame>(), failed: string[] = [];
-  for (const sheet of data.sheets) {
+  // all sheets download and decode side by side (one after the other doubled the wait)
+  const loaded = await Promise.all(data.sheets.map(async (sheet: any) => {
     try {
-      const blob = await getImage(sheet.image), url = URL.createObjectURL(blob), img = new Image();
-      try { img.src = url; await img.decode(); } finally { URL.revokeObjectURL(url); }
-      for (const [name, f] of Object.entries<any>(sheet.frames)) map.set(name, { img, ...f });
-    } catch { failed.push(sheet.image); }
-  }
+      return { sheet, img: await decodeSheet(await getImage(sheet.image)) };
+    } catch { failed.push(sheet.image); return null; }
+  }));
+  for (const item of loaded) if (item) for (const [name, f] of Object.entries<any>(item.sheet.frames)) map.set(name, { img: item.img, ...f });
   if (load !== genLoad) return;
   if (failed.length) throw new Error(`Could not load game artwork: ${failed.join(', ')}. Reload OpenVorld to retry.`);
   GEN = map.size ? map : null; genRevision = data.revision; canvasCache.clear(); iconCache.clear();

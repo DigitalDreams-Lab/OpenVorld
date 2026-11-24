@@ -30,8 +30,7 @@ export function sheetImage(packs, name) {
   if (!file) return null;
   const raw = fs.readFileSync(file), layout = characterPage(file, packs.byKind.default_art?.default_art?.characters, pngSize(raw));
   if (!layout) return null;
-  const x = Number(page[1]) * layout.edge, y = Number(page[2]) * layout.edge;
-  if (x >= layout.width || y >= layout.height) return null;
+  if (Number(page[1]) * layout.edge >= layout.width || Number(page[2]) * layout.edge >= layout.height) return null;
   const stat = fs.statSync(file), revision = `${stat.mtimeMs}:${stat.size}:${layout.edge}`;
   let cache = pageCache.get(file);
   if (!cache || cache.revision !== revision) {
@@ -39,16 +38,24 @@ export function sheetImage(packs, name) {
     cache = { revision, pages: new Map() }; pageCache.set(file, cache);
   }
   const key = `${Number(page[1])}:${Number(page[2])}`;
-  if (cache.pages.has(key)) return cache.pages.get(key);
-  const source = decodePng(raw), width = Math.min(layout.edge, source.width - x), height = Math.min(layout.edge, source.height - y);
-  const data = Buffer.alloc(width * height * 4);
-  for (let row = 0; row < height; row++) {
-    const start = ((y + row) * source.width + x) * 4;
-    source.data.copy(data, row * width * 4, start, start + width * 4);
+  if (!cache.pages.has(key)) {
+    // decode the sheet once and cut every page from it: the first load used to decode the whole sheet again for each page
+    const source = decodePng(raw);
+    for (let py = 0; py * layout.edge < source.height; py++) for (let px = 0; px * layout.edge < source.width; px++) {
+      const x0 = px * layout.edge, y0 = py * layout.edge, width = Math.min(layout.edge, source.width - x0), height = Math.min(layout.edge, source.height - y0);
+      const data = Buffer.alloc(width * height * 4);
+      for (let row = 0; row < height; row++) {
+        const start = ((y0 + row) * source.width + x0) * 4;
+        source.data.copy(data, row * width * 4, start, start + width * 4);
+      }
+      cache.pages.set(`${px}:${py}`, encodePng({ width, height, data }, { fast: true }));
+    }
   }
-  const png = encodePng({ width, height, data }); cache.pages.set(key, png);
-  return png;
+  return cache.pages.get(key) ?? null;
 }
+
+/** Cut the character pages now (at start-up), so the first vorld opened does not wait for them. */
+export function warmArt(packs) { try { sheetImage(packs, 'characters-page-0-0'); } catch { /* the first request tries again */ } }
 
 const keyOf = (id) => String(id).toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '') || 'x';
 

@@ -35,7 +35,8 @@ const crcTable = Array.from({ length: 256 }, (_, n) => { let c = n; for (let k =
 const crc32 = (b) => { let c = 0xffffffff; for (const x of b) c = crcTable[(c ^ x) & 255] ^ (c >>> 8); return (c ^ 0xffffffff) >>> 0; };
 const chunk = (type, body) => { const t = Buffer.from(type, 'ascii'), out = Buffer.alloc(12 + body.length); out.writeUInt32BE(body.length, 0); t.copy(out, 4); body.copy(out, 8); out.writeUInt32BE(crc32(Buffer.concat([t, body])), 8 + body.length); return out; };
 /** PNG with an adaptive row filter (the cheapest of None, Sub, Up and Paeth per row): much smaller than unfiltered pixels. */
-export function encodePng({ width, height, data }) {
+export function encodePng({ width, height, data }, { fast = false } = {}) {
+  if (fast) return encodeFast({ width, height, data });
   const stride = width * 4, raw = Buffer.alloc((stride + 1) * height), cand = [0, 1, 2, 4].map(() => Buffer.alloc(stride));
   const cost = (b) => { let t = 0; for (let i = 0; i < b.length; i++) { const v = b[i]; t += v < 128 ? v : 256 - v; } return t; };
   for (let y = 0; y < height; y++) {
@@ -52,4 +53,17 @@ export function encodePng({ width, height, data }) {
   }
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4); ihdr[8] = 8; ihdr[9] = 6;
   return Buffer.concat([SIG, chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw, { level: 9 })), chunk('IEND', Buffer.alloc(0))]);
+}
+
+/** The quick encoder for images made while the app runs (the paged character sheet): the Sub filter on every row and a light deflate, about ten times faster, and a little bigger. */
+function encodeFast({ width, height, data }) {
+  const stride = width * 4, raw = Buffer.alloc((stride + 1) * height);
+  for (let y = 0; y < height; y++) {
+    const o = y * stride, r = y * (stride + 1) + 1;
+    raw[r - 1] = 1;
+    for (let i = 0; i < 4 && i < stride; i++) raw[r + i] = data[o + i];
+    for (let i = 4; i < stride; i++) raw[r + i] = (data[o + i] - data[o + i - 4]) & 255;
+  }
+  const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(width, 0); ihdr.writeUInt32BE(height, 4); ihdr[8] = 8; ihdr[9] = 6;
+  return Buffer.concat([SIG, chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw, { level: 1 })), chunk('IEND', Buffer.alloc(0))]);
 }
